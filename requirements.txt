@@ -1,0 +1,24 @@
+# Finmate - Dependencias
+# Bot financiero informativo para WhatsApp
+
+# Web framework
+flask==3.1.0
+gunicorn==23.0.0
+
+# WhatsApp (Twilio)
+twilio==9.4.0
+
+# HTTP async
+httpx==0.28.1
+
+# Scheduling
+apscheduler==3.10.4
+pytz==2024.2
+
+# Google Calendar
+google-api-python-client==2.159.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+
+# Environment variables
+python-dotenv==1.0.1
