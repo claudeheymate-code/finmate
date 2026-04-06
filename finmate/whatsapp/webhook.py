@@ -5,6 +5,7 @@ Recibe mensajes entrantes y responde con información financiera.
 
 import asyncio
 import logging
+import threading
 
 from flask import Blueprint, request
 from twilio.twiml.messaging_response import MessagingResponse
@@ -22,7 +23,6 @@ COMMANDS = {
     "ayuda": "Muestra los comandos disponibles",
     "hola": "Saludo y bienvenida",
 }
-
 
 def _get_help_message() -> str:
     lines = [
@@ -63,32 +63,28 @@ def incoming_message():
             "📊 Preparando tu resumen semanal...\n"
             "_Esto puede tomar unos segundos._"
         )
-        # Enviar resumen en background (la respuesta inmediata es la de arriba)
+        # Enviar resumen en background thread para no bloquear la respuesta a Twilio
         engine = AlertEngine()
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(engine.send_on_demand_summary(from_number))
-            else:
-                asyncio.run(engine.send_on_demand_summary(from_number))
-        except RuntimeError:
-            asyncio.run(engine.send_on_demand_summary(from_number))
+        thread = threading.Thread(
+            target=_run_async_in_thread,
+            args=(engine.send_on_demand_summary(from_number),),
+            daemon=True,
+        )
+        thread.start()
 
     elif incoming_msg in ("mercados", "indices", "bolsa", "markets"):
         msg.body(
             "📈 Consultando mercados...\n"
             "_Recibirás la información en unos segundos._"
         )
-        # Enviar datos de mercado en background
+        # Enviar datos de mercado en background thread para no bloquear la respuesta a Twilio
         engine = AlertEngine()
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(_send_market_snapshot(engine, from_number))
-            else:
-                asyncio.run(_send_market_snapshot(engine, from_number))
-        except RuntimeError:
-            asyncio.run(_send_market_snapshot(engine, from_number))
+        thread = threading.Thread(
+            target=_run_async_in_thread,
+            args=(_send_market_snapshot(engine, from_number),),
+            daemon=True,
+        )
+        thread.start()
 
     else:
         msg.body(
@@ -97,6 +93,18 @@ def incoming_message():
         )
 
     return str(resp)
+
+
+def _run_async_in_thread(coro):
+    """Ejecuta una coroutine en un nuevo event loop dentro de un thread."""
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(coro)
+    except Exception as e:
+        logger.error(f"Error en background thread: {e}")
+    finally:
+        loop.close()
 
 
 async def _send_market_snapshot(engine: AlertEngine, to: str):
