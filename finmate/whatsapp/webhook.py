@@ -3,18 +3,19 @@ Finmate - Webhook de WhatsApp (Twilio)
 Recibe mensajes entrantes y responde con información financiera.
 """
 
-import asyncio
 import logging
-import threading
 
+import httpx
 from flask import Blueprint, request
 from twilio.twiml.messaging_response import MessagingResponse
 
-from finmate.alerts.engine import AlertEngine
+from config.settings import FMP_API_KEY
 
 logger = logging.getLogger(__name__)
 
 whatsapp_bp = Blueprint("whatsapp", __name__)
+
+FMP_BASE = "https://financialmodelingprep.com/api/v3"
 
 # Comandos disponibles
 COMMANDS = {
@@ -22,6 +23,12 @@ COMMANDS = {
     "mercados": "Estado actual de los principales índices",
     "ayuda": "Muestra los comandos disponibles",
     "hola": "Saludo y bienvenida",
+}
+
+INDEX_NAMES = {
+    "^GSPC": "S&P 500",
+    "^DJI": "Dow Jones",
+    "^IXIC": "Nasdaq",
 }
 
 
@@ -36,6 +43,74 @@ def _get_help_message() -> str:
     lines.append("_Envía cualquier comando para recibir información._")
     lines.append("_Finmate no emite recomendaciones de inversión._")
     return "\n".join(lines)
+
+
+def _change_emoji(change_pct) -> str:
+    try:
+        pct = float(change_pct)
+        if pct > 1:
+            return "🟢📈"
+        elif pct > 0:
+            return "🟢"
+        elif pct < -1:
+            return "🔴📉"
+        elif pct < 0:
+            return "🔴"
+        return "⚪"
+    except (ValueError, TypeError):
+        return ""
+
+
+def _format_number(value, prefix: str = "", suffix: str = "") -> str:
+    if value is None:
+        return "N/D"
+    try:
+        num = float(value)
+        if abs(num) >= 1_000_000_000:
+            return f"{prefix}{num / 1_000_000_000:.1f}B{suffix}"
+        if abs(num) >= 1_000_000:
+            return f"{prefix}{num / 1_000_000:.1f}M{suffix}"
+        return f"{prefix}{num:,.2f}{suffix}"
+    except (ValueError, TypeError):
+        return str(value)
+
+
+def _get_market_data() -> str:
+    """Obtiene datos de mercado de FMP de forma síncrona."""
+    try:
+        symbols = "^GSPC,^DJI,^IXIC"
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(
+                f"{FMP_BASE}/quote/{symbols}",
+                params={"apikey": FMP_API_KEY},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        if not data or not isinstance(data, list):
+            return "📈 *MERCADOS*\n\n_No se pudieron obtener datos en este momento._\n\n_Finmate — Información, no recomendación._"
+
+        lines = ["📈 *MERCADOS — AHORA*", ""]
+        for idx in data:
+            name = INDEX_NAMES.get(idx.get("symbol", ""), idx.get("name", ""))
+            emoji = _change_emoji(idx.get("changesPercentage"))
+            price = _format_number(idx.get("price"))
+            change = _format_number(idx.get("changesPercentage"), suffix="%")
+            lines.append(f"{emoji} *{name}*: {price} ({change})")
+
+        lines.append("")
+        lines.append("_Finmate — Información, no recomendación._")
+        return "\n".join(lines)
+
+    except httpx.HTTPStatusError as e:
+        logger.error(f"FMP HTTP error: {e.response.status_code}")
+        return f"❌ Error consultando mercados (HTTP {e.response.status_code}).\n_Intenta más tarde._"
+    except httpx.TimeoutException:
+        logger.error("FMP timeout")
+        return "❌ El servicio de datos tardó demasiado.\n_Intenta en unos minutos._"
+    except Exception as e:
+        logger.error(f"Error obteniendo mercados: {e}", exc_info=True)
+        return f"❌ Error consultando mercados.\n_Intenta más tarde._"
 
 
 @whatsapp_bp.route("/webhook", methods=["POST"])
@@ -59,31 +134,19 @@ def incoming_message():
     elif incoming_msg in ("ayuda", "help", "?", "comandos"):
         msg.body(_get_help_message())
 
-    elif incoming_msg in ("resumen", "semanal", "weekly"):
-        msg.body(
-            "📊 Preparando tu resumen semanal...\n"
-            "_Esto puede tomar unos segundos._"
-        )
-        # Enviar resumen en background thread para no bloquear la respuesta a Twilio
-        thread = threading.Thread(
-            target=_run_summary_background,
-            args=(from_number,),
-            daemon=True,
-        )
-        thread.start()
-
     elif incoming_msg in ("mercados", "indices", "bolsa", "markets"):
+        # Obtener datos de mercado directamente (síncrono, ~2-5 seg)
+        market_text = _get_market_data()
+        msg.body(market_text)
+
+    elif incoming_msg in ("resumen", "semanal", "weekly"):
+        # El resumen es más pesado, responder con mensaje de espera
         msg.body(
-            "📈 Consultando mercados...\n"
-            "_Recibirás la información en unos segundos._"
+            "📊 *Resumen semanal*\n\n"
+            "_Usa el comando *mercados* para ver los índices en tiempo real._\n\n"
+            "_El resumen completo se envía automáticamente los domingos a las 20:00._\n\n"
+            "_Finmate — Información, no recomendación._"
         )
-        # Enviar datos de mercado en background thread para no bloquear la respuesta a Twilio
-        thread = threading.Thread(
-            target=_run_market_background,
-            args=(from_number,),
-            daemon=True,
-        )
-        thread.start()
 
     else:
         msg.body(
@@ -92,87 +155,3 @@ def incoming_message():
         )
 
     return str(resp)
-
-
-def _run_market_background(to: str):
-    """Crea AlertEngine y envía market snapshot en background thread."""
-    try:
-        logger.info(f"[BG] Iniciando market snapshot para {to}")
-        engine = AlertEngine()
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(_send_market_snapshot(engine, to))
-        finally:
-            loop.close()
-    except Exception as e:
-        logger.error(f"[BG] Error fatal en market background: {e}", exc_info=True)
-        try:
-            from finmate.whatsapp.messenger import WhatsAppMessenger
-            messenger = WhatsAppMessenger()
-            messenger.send_message(to, "❌ Error consultando mercados. Intenta más tarde.")
-        except Exception:
-            logger.error("[BG] No se pudo enviar mensaje de error al usuario")
-
-
-def _run_summary_background(to: str):
-    """Crea AlertEngine y envía resumen en background thread."""
-    try:
-        logger.info(f"[BG] Iniciando resumen para {to}")
-        engine = AlertEngine()
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(engine.send_on_demand_summary(to))
-        finally:
-            loop.close()
-    except Exception as e:
-        logger.error(f"[BG] Error fatal en summary background: {e}", exc_info=True)
-        try:
-            from finmate.whatsapp.messenger import WhatsAppMessenger
-            messenger = WhatsAppMessenger()
-            messenger.send_message(to, "❌ Error generando resumen. Intenta más tarde.")
-        except Exception:
-            logger.error("[BG] No se pudo enviar mensaje de error al usuario")
-
-
-async def _send_market_snapshot(engine: AlertEngine, to: str):
-    """Envía un snapshot rápido del mercado."""
-    try:
-        indices = await engine.aggregator.fmp.get_major_indices()
-        movers = await engine.aggregator.fmp.get_market_movers()
-
-        from finmate.whatsapp.formatter import _change_emoji, _format_number, INDEX_NAMES
-
-        lines = ["📈 *MERCADOS — AHORA*", ""]
-        if not indices:
-            lines.append("_No se pudieron obtener datos de índices._")
-        else:
-            for idx in indices:
-                name = INDEX_NAMES.get(idx.get("symbol", ""), idx.get("name", ""))
-                emoji = _change_emoji(idx.get("change_pct"))
-                price = _format_number(idx.get("price"))
-                change = _format_number(idx.get("change_pct"), suffix="%")
-                lines.append(f"{emoji} *{name}*: {price} ({change})")
-
-        lines.append("")
-        if movers:
-            gainers = movers.get("gainers", [])[:3]
-            losers = movers.get("losers", [])[:3]
-            if gainers:
-                lines.append("🟢 _Top Ganadores:_")
-                for g in gainers:
-                    lines.append(f"  {g['symbol']} ({_format_number(g.get('change_pct'), suffix='%')})")
-            if losers:
-                lines.append("🔴 _Top Perdedores:_")
-                for l in losers:
-                    lines.append(f"  {l['symbol']} ({_format_number(l.get('change_pct'), suffix='%')})")
-
-        lines.append("")
-        lines.append("_Finmate — Información, no recomendación._")
-
-        engine.messenger.send_message(to, "\n".join(lines))
-        logger.info(f"[BG] Market snapshot enviado a {to}")
-    except Exception as e:
-        logger.error(f"[BG] Error en market snapshot: {e}", exc_info=True)
-        engine.messenger.send_message(to, "❌ Error consultando mercados. Intenta más tarde.")
