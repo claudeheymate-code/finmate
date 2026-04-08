@@ -24,6 +24,7 @@ COMMANDS = {
     "hola": "Saludo y bienvenida",
 }
 
+
 def _get_help_message() -> str:
     lines = [
         "📊 *FINMATE — Comandos disponibles*",
@@ -64,10 +65,9 @@ def incoming_message():
             "_Esto puede tomar unos segundos._"
         )
         # Enviar resumen en background thread para no bloquear la respuesta a Twilio
-        engine = AlertEngine()
         thread = threading.Thread(
-            target=_run_async_in_thread,
-            args=(engine.send_on_demand_summary(from_number),),
+            target=_run_summary_background,
+            args=(from_number,),
             daemon=True,
         )
         thread.start()
@@ -78,10 +78,9 @@ def incoming_message():
             "_Recibirás la información en unos segundos._"
         )
         # Enviar datos de mercado en background thread para no bloquear la respuesta a Twilio
-        engine = AlertEngine()
         thread = threading.Thread(
-            target=_run_async_in_thread,
-            args=(_send_market_snapshot(engine, from_number),),
+            target=_run_market_background,
+            args=(from_number,),
             daemon=True,
         )
         thread.start()
@@ -95,16 +94,46 @@ def incoming_message():
     return str(resp)
 
 
-def _run_async_in_thread(coro):
-    """Ejecuta una coroutine en un nuevo event loop dentro de un thread."""
+def _run_market_background(to: str):
+    """Crea AlertEngine y envía market snapshot en background thread."""
     try:
+        logger.info(f"[BG] Iniciando market snapshot para {to}")
+        engine = AlertEngine()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(coro)
+        try:
+            loop.run_until_complete(_send_market_snapshot(engine, to))
+        finally:
+            loop.close()
     except Exception as e:
-        logger.error(f"Error en background thread: {e}")
-    finally:
-        loop.close()
+        logger.error(f"[BG] Error fatal en market background: {e}", exc_info=True)
+        try:
+            from finmate.whatsapp.messenger import WhatsAppMessenger
+            messenger = WhatsAppMessenger()
+            messenger.send_message(to, "❌ Error consultando mercados. Intenta más tarde.")
+        except Exception:
+            logger.error("[BG] No se pudo enviar mensaje de error al usuario")
+
+
+def _run_summary_background(to: str):
+    """Crea AlertEngine y envía resumen en background thread."""
+    try:
+        logger.info(f"[BG] Iniciando resumen para {to}")
+        engine = AlertEngine()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(engine.send_on_demand_summary(to))
+        finally:
+            loop.close()
+    except Exception as e:
+        logger.error(f"[BG] Error fatal en summary background: {e}", exc_info=True)
+        try:
+            from finmate.whatsapp.messenger import WhatsAppMessenger
+            messenger = WhatsAppMessenger()
+            messenger.send_message(to, "❌ Error generando resumen. Intenta más tarde.")
+        except Exception:
+            logger.error("[BG] No se pudo enviar mensaje de error al usuario")
 
 
 async def _send_market_snapshot(engine: AlertEngine, to: str):
@@ -116,29 +145,34 @@ async def _send_market_snapshot(engine: AlertEngine, to: str):
         from finmate.whatsapp.formatter import _change_emoji, _format_number, INDEX_NAMES
 
         lines = ["📈 *MERCADOS — AHORA*", ""]
-        for idx in indices:
-            name = INDEX_NAMES.get(idx.get("symbol", ""), idx.get("name", ""))
-            emoji = _change_emoji(idx.get("change_pct"))
-            price = _format_number(idx.get("price"))
-            change = _format_number(idx.get("change_pct"), suffix="%")
-            lines.append(f"{emoji} *{name}*: {price} ({change})")
+        if not indices:
+            lines.append("_No se pudieron obtener datos de índices._")
+        else:
+            for idx in indices:
+                name = INDEX_NAMES.get(idx.get("symbol", ""), idx.get("name", ""))
+                emoji = _change_emoji(idx.get("change_pct"))
+                price = _format_number(idx.get("price"))
+                change = _format_number(idx.get("change_pct"), suffix="%")
+                lines.append(f"{emoji} *{name}*: {price} ({change})")
 
         lines.append("")
-        gainers = movers.get("gainers", [])[:3]
-        losers = movers.get("losers", [])[:3]
-        if gainers:
-            lines.append("🟢 _Top Ganadores:_")
-            for g in gainers:
-                lines.append(f"  {g['symbol']} ({_format_number(g.get('change_pct'), suffix='%')})")
-        if losers:
-            lines.append("🔴 _Top Perdedores:_")
-            for l in losers:
-                lines.append(f"  {l['symbol']} ({_format_number(l.get('change_pct'), suffix='%')})")
+        if movers:
+            gainers = movers.get("gainers", [])[:3]
+            losers = movers.get("losers", [])[:3]
+            if gainers:
+                lines.append("🟢 _Top Ganadores:_")
+                for g in gainers:
+                    lines.append(f"  {g['symbol']} ({_format_number(g.get('change_pct'), suffix='%')})")
+            if losers:
+                lines.append("🔴 _Top Perdedores:_")
+                for l in losers:
+                    lines.append(f"  {l['symbol']} ({_format_number(l.get('change_pct'), suffix='%')})")
 
         lines.append("")
         lines.append("_Finmate — Información, no recomendación._")
 
         engine.messenger.send_message(to, "\n".join(lines))
+        logger.info(f"[BG] Market snapshot enviado a {to}")
     except Exception as e:
-        logger.error(f"Error en market snapshot: {e}")
+        logger.error(f"[BG] Error en market snapshot: {e}", exc_info=True)
         engine.messenger.send_message(to, "❌ Error consultando mercados. Intenta más tarde.")
