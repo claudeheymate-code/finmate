@@ -19,7 +19,10 @@ from finmate.whatsapp.formatter import (
     format_breaking_news_alert,
     format_weekly_summary,
 )
-from finmate.calendar.gcal_client import GoogleCalendarClient
+try:
+    from finmate.calendar.gcal_client import GoogleCalendarClient
+except ImportError:
+    GoogleCalendarClient = None
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +43,13 @@ class AlertEngine:
     def __init__(self):
         self.aggregator = FinancialDataAggregator()
         self.messenger = WhatsAppMessenger()
-        self.calendar = GoogleCalendarClient()
+        # Google Calendar es opcional — no debe romper el bot si falla
+        self.calendar = None
+        if GoogleCalendarClient is not None:
+            try:
+                self.calendar = GoogleCalendarClient()
+            except Exception as e:
+                logger.warning(f"Google Calendar no disponible: {e}")
         self.state = self._load_state()
 
     def _load_state(self) -> dict:
@@ -166,15 +175,16 @@ class AlertEngine:
             message = format_weekly_summary(data)
             self.messenger.broadcast(message)
 
-            # Actualizar Google Calendar
-            earnings = data.get("earnings", [])
-            economic = data.get("economic_calendar", [])
-            if earnings or economic:
-                events_created = self.calendar.populate_weekly_calendar(earnings, economic)
-                logger.info(f"Calendar actualizado: {events_created} eventos")
+            # Actualizar Google Calendar (si está disponible)
+            if self.calendar:
+                earnings = data.get("earnings", [])
+                economic = data.get("economic_calendar", [])
+                if earnings or economic:
+                    events_created = self.calendar.populate_weekly_calendar(earnings, economic)
+                    logger.info(f"Calendar actualizado: {events_created} eventos")
 
-            # Limpiar eventos viejos
-            self.calendar.clear_old_events()
+                # Limpiar eventos viejos
+                self.calendar.clear_old_events()
 
             # Registrar
             self.state["last_weekly_summary"] = datetime.utcnow().isoformat()
