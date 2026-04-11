@@ -9,13 +9,13 @@ import httpx
 from flask import Blueprint, request
 from twilio.twiml.messaging_response import MessagingResponse
 
-from config.settings import FMP_API_KEY
+from config.settings import FINNHUB_API_KEY
 
 logger = logging.getLogger(__name__)
 
 whatsapp_bp = Blueprint("whatsapp", __name__)
 
-FMP_BASE = "https://financialmodelingprep.com/api/v3"
+FINNHUB_BASE = "https://finnhub.io/api/v1"
 
 # Comandos disponibles
 COMMANDS = {
@@ -25,10 +25,11 @@ COMMANDS = {
     "hola": "Saludo y bienvenida",
 }
 
-INDEX_NAMES = {
-    "^GSPC": "S&P 500",
-    "^DJI": "Dow Jones",
-    "^IXIC": "Nasdaq",
+# ETFs que representan los principales índices
+MARKET_SYMBOLS = {
+    "SPY": "S&P 500",
+    "DIA": "Dow Jones",
+    "QQQ": "Nasdaq 100",
 }
 
 
@@ -66,48 +67,53 @@ def _format_number(value, prefix: str = "", suffix: str = "") -> str:
         return "N/D"
     try:
         num = float(value)
-        if abs(num) >= 1_000_000_000:
-            return f"{prefix}{num / 1_000_000_000:.1f}B{suffix}"
-        if abs(num) >= 1_000_000:
-            return f"{prefix}{num / 1_000_000:.1f}M{suffix}"
         return f"{prefix}{num:,.2f}{suffix}"
     except (ValueError, TypeError):
         return str(value)
 
 
 def _get_market_data() -> str:
-    """Obtiene datos de mercado de FMP de forma síncrona."""
+    """Obtiene datos de mercado de Finnhub de forma síncrona."""
     try:
-        symbols = "^GSPC,^DJI,^IXIC"
-        with httpx.Client(timeout=10) as client:
-            resp = client.get(
-                f"{FMP_BASE}/quote/{symbols}",
-                params={"apikey": FMP_API_KEY},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
-        if not data or not isinstance(data, list):
-            return "📈 *MERCADOS*\n\n_No se pudieron obtener datos en este momento._\n\n_Finmate — Información, no recomendación._"
-
         lines = ["📈 *MERCADOS — AHORA*", ""]
-        for idx in data:
-            name = INDEX_NAMES.get(idx.get("symbol", ""), idx.get("name", ""))
-            emoji = _change_emoji(idx.get("changesPercentage"))
-            price = _format_number(idx.get("price"))
-            change = _format_number(idx.get("changesPercentage"), suffix="%")
-            lines.append(f"{emoji} *{name}*: {price} ({change})")
+        has_data = False
+
+        with httpx.Client(timeout=10) as client:
+            for symbol, name in MARKET_SYMBOLS.items():
+                try:
+                    resp = client.get(
+                        f"{FINNHUB_BASE}/quote",
+                        params={"symbol": symbol, "token": FINNHUB_API_KEY},
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+
+                    price = data.get("c")  # current price
+                    change_pct = data.get("dp")  # percent change
+
+                    if price and price > 0:
+                        emoji = _change_emoji(change_pct)
+                        lines.append(
+                            f"{emoji} *{name}* ({symbol}): "
+                            f"{_format_number(price, prefix='$')} "
+                            f"({_format_number(change_pct, suffix='%')})"
+                        )
+                        has_data = True
+                    else:
+                        lines.append(f"⚪ *{name}*: _Sin datos_")
+
+                except Exception as e:
+                    logger.error(f"Error obteniendo {symbol}: {e}")
+                    lines.append(f"⚪ *{name}*: _Error_")
+
+        if not has_data:
+            lines.append("")
+            lines.append("_El mercado puede estar cerrado en este momento._")
 
         lines.append("")
         lines.append("_Finmate — Información, no recomendación._")
         return "\n".join(lines)
 
-    except httpx.HTTPStatusError as e:
-        logger.error(f"FMP HTTP error: {e.response.status_code}")
-        return f"❌ Error consultando mercados (HTTP {e.response.status_code}).\n_Intenta más tarde._"
-    except httpx.TimeoutException:
-        logger.error("FMP timeout")
-        return "❌ El servicio de datos tardó demasiado.\n_Intenta en unos minutos._"
     except Exception as e:
         logger.error(f"Error obteniendo mercados: {e}", exc_info=True)
         return f"❌ Error consultando mercados.\n_Intenta más tarde._"
@@ -135,12 +141,10 @@ def incoming_message():
         msg.body(_get_help_message())
 
     elif incoming_msg in ("mercados", "indices", "bolsa", "markets"):
-        # Obtener datos de mercado directamente (síncrono, ~2-5 seg)
         market_text = _get_market_data()
         msg.body(market_text)
 
     elif incoming_msg in ("resumen", "semanal", "weekly"):
-        # El resumen es más pesado, responder con mensaje de espera
         msg.body(
             "📊 *Resumen semanal*\n\n"
             "_Usa el comando *mercados* para ver los índices en tiempo real._\n\n"
