@@ -4,25 +4,28 @@ Recibe mensajes entrantes y responde con información financiera.
 """
 
 import logging
+from datetime import datetime, timezone
 
 import httpx
 from flask import Blueprint, request
 from twilio.twiml.messaging_response import MessagingResponse
 
-from config.settings import FINNHUB_API_KEY
+from config.settings import FINNHUB_API_KEY, ALPHA_VANTAGE_API_KEY
 
 logger = logging.getLogger(__name__)
 
 whatsapp_bp = Blueprint("whatsapp", __name__)
 
 FINNHUB_BASE = "https://finnhub.io/api/v1"
+ALPHA_VANTAGE_BASE = "https://www.alphavantage.co/query"
 
 # Comandos disponibles
 COMMANDS = {
-    "resumen": "Recibe el resumen semanal de mercados",
-    "mercados": "Estado actual de los principales índices",
-    "ayuda": "Muestra los comandos disponibles",
-    "hola": "Saludo y bienvenida",
+    "Resumen": "Recibe el resumen semanal de mercados",
+    "Mercados": "Estado actual de los principales índices, divisas y commodities",
+    "Contexto": "Últimas 5 noticias de mayor impacto en los mercados",
+    "Ayuda": "Muestra los comandos disponibles",
+    "Hola": "Saludo y bienvenida",
 }
 
 # ETFs que representan los principales índices
@@ -32,10 +35,16 @@ MARKET_SYMBOLS = {
     "QQQ": "Nasdaq 100",
 }
 
+# Commodities via ETFs
+COMMODITY_SYMBOLS = {
+    "GLD": "Oro (Gold)",
+    "SLV": "Plata (Silver)",
+}
+
 
 def _get_help_message() -> str:
     lines = [
-        "📊 *FINMATE — Comandos disponibles*",
+        "📊 *FINMATE — COMANDOS DISPONIBLES*",
         "",
     ]
     for cmd, desc in COMMANDS.items():
@@ -72,51 +81,183 @@ def _format_number(value, prefix: str = "", suffix: str = "") -> str:
         return str(value)
 
 
-def _get_market_data() -> str:
-    """Obtiene datos de mercado de Finnhub de forma síncrona."""
+def _get_finnhub_quote(client, symbol: str) -> dict:
+    """Obtiene quote de Finnhub. Retorna dict con price, change_pct, is_closed."""
     try:
-        lines = ["📈 *MERCADOS — AHORA*", ""]
+        resp = client.get(
+            f"{FINNHUB_BASE}/quote",
+            params={"symbol": symbol, "token": FINNHUB_API_KEY},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        price = data.get("c")  # current price
+        change_pct = data.get("dp")  # percent change
+        prev_close = data.get("pc")  # previous close
+        timestamp = data.get("t", 0)  # unix timestamp
+
+        # Detectar mercado cerrado: si open=0 o change=0 y price=prev_close
+        open_price = data.get("o", 0)
+        is_closed = (open_price == 0 or price == prev_close) and change_pct == 0
+
+        # Si price es 0 pero prev_close existe, usar prev_close
+        if (not price or price == 0) and prev_close and prev_close > 0:
+            price = prev_close
+            is_closed = True
+
+        return {
+            "price": price,
+            "change_pct": change_pct,
+            "is_closed": is_closed,
+            "timestamp": timestamp,
+        }
+    except Exception as e:
+        logger.error(f"Error Finnhub quote {symbol}: {e}")
+        return None
+
+
+def _get_usd_clp(client) -> dict:
+    """Obtiene tipo de cambio USD/CLP desde Alpha Vantage."""
+    try:
+        resp = client.get(
+            ALPHA_VANTAGE_BASE,
+            params={
+                "function": "CURRENCY_EXCHANGE_RATE",
+                "from_currency": "USD",
+                "to_currency": "CLP",
+                "apikey": ALPHA_VANTAGE_API_KEY,
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        rate_data = data.get("Realtime Currency Exchange Rate", {})
+        rate = rate_data.get("5. Exchange Rate")
+        if rate:
+            return {"price": float(rate)}
+    except Exception as e:
+        logger.error(f"Error obteniendo USD/CLP: {e}")
+    return None
+
+
+def _get_market_data() -> str:
+    """Obtiene datos de mercado de Finnhub + Alpha Vantage de forma síncrona."""
+    try:
         has_data = False
+        any_closed = False
 
         with httpx.Client(timeout=10) as client:
+            # --- Indices ---
+            index_lines = ["📈 *MERCADOS — INDICES*", ""]
             for symbol, name in MARKET_SYMBOLS.items():
-                try:
-                    resp = client.get(
-                        f"{FINNHUB_BASE}/quote",
-                        params={"symbol": symbol, "token": FINNHUB_API_KEY},
+                quote = _get_finnhub_quote(client, symbol)
+                if quote and quote["price"] and quote["price"] > 0:
+                    emoji = _change_emoji(quote["change_pct"])
+                    closed_tag = " 🕐" if quote["is_closed"] else ""
+                    index_lines.append(
+                        f"{emoji} *{name}* ({symbol}): "
+                        f"{_format_number(quote['price'], prefix='$')} "
+                        f"({_format_number(quote['change_pct'], suffix='%')}){closed_tag}"
                     )
-                    resp.raise_for_status()
-                    data = resp.json()
+                    has_data = True
+                    if quote["is_closed"]:
+                        any_closed = True
+                else:
+                    index_lines.append(f"⚪ *{name}*: _Sin datos_")
 
-                    price = data.get("c")  # current price
-                    change_pct = data.get("dp")  # percent change
+            # --- Commodities (Oro, Plata) ---
+            commodity_lines = ["", "💰 *COMMODITIES*", ""]
+            for symbol, name in COMMODITY_SYMBOLS.items():
+                quote = _get_finnhub_quote(client, symbol)
+                if quote and quote["price"] and quote["price"] > 0:
+                    emoji = _change_emoji(quote["change_pct"])
+                    closed_tag = " 🕐" if quote["is_closed"] else ""
+                    commodity_lines.append(
+                        f"{emoji} *{name}* ({symbol}): "
+                        f"{_format_number(quote['price'], prefix='$')} "
+                        f"({_format_number(quote['change_pct'], suffix='%')}){closed_tag}"
+                    )
+                    has_data = True
+                    if quote["is_closed"]:
+                        any_closed = True
+                else:
+                    commodity_lines.append(f"⚪ *{name}*: _Sin datos_")
 
-                    if price and price > 0:
-                        emoji = _change_emoji(change_pct)
-                        lines.append(
-                            f"{emoji} *{name}* ({symbol}): "
-                            f"{_format_number(price, prefix='$')} "
-                            f"({_format_number(change_pct, suffix='%')})"
-                        )
-                        has_data = True
-                    else:
-                        lines.append(f"⚪ *{name}*: _Sin datos_")
+            # --- Tipo de cambio USD/CLP ---
+            fx_lines = ["", "💱 *TIPO DE CAMBIO*", ""]
+            usd_clp = _get_usd_clp(client)
+            if usd_clp and usd_clp["price"]:
+                fx_lines.append(
+                    f"🇺🇸🇨🇱 *USD/CLP*: {_format_number(usd_clp['price'], prefix='$')}"
+                )
+                has_data = True
+            else:
+                fx_lines.append("⚪ *USD/CLP*: _Sin datos_")
 
-                except Exception as e:
-                    logger.error(f"Error obteniendo {symbol}: {e}")
-                    lines.append(f"⚪ *{name}*: _Error_")
+        # Armar mensaje final
+        lines = index_lines + commodity_lines + fx_lines
+
+        if any_closed:
+            lines.append("")
+            lines.append("🕐 _= Ultimo dato registrado (mercado cerrado)._")
 
         if not has_data:
             lines.append("")
-            lines.append("_El mercado puede estar cerrado en este momento._")
+            lines.append("_No se pudieron obtener datos en este momento._")
 
         lines.append("")
-        lines.append("_Finmate — Información, no recomendación._")
+        lines.append("_Finmate — Informacion, no recomendacion._")
         return "\n".join(lines)
 
     except Exception as e:
         logger.error(f"Error obteniendo mercados: {e}", exc_info=True)
-        return f"❌ Error consultando mercados.\n_Intenta más tarde._"
+        return "❌ Error consultando mercados.\n_Intenta mas tarde._"
+
+
+def _get_context_news() -> str:
+    """Obtiene las ultimas 5 noticias de mayor impacto desde Finnhub."""
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(
+                f"{FINNHUB_BASE}/news",
+                params={"category": "general", "token": FINNHUB_API_KEY},
+            )
+            resp.raise_for_status()
+            news_list = resp.json()
+
+        if not news_list:
+            return "📰 *CONTEXTO DE MERCADO*\n\n_No hay noticias disponibles en este momento._"
+
+        # Tomar las primeras 5 (ya vienen ordenadas por relevancia/fecha)
+        top_news = news_list[:5]
+
+        lines = ["📰 *CONTEXTO DE MERCADO — ULTIMAS NOTICIAS*", ""]
+
+        for i, article in enumerate(top_news, 1):
+            headline = article.get("headline", "Sin titulo")
+            url = article.get("url", "")
+            source = article.get("source", "")
+            # Timestamp
+            ts = article.get("datetime", 0)
+            if ts:
+                dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+                date_str = dt.strftime("%d/%m %H:%M UTC")
+            else:
+                date_str = ""
+
+            lines.append(f"*{i}.* {headline}")
+            if source:
+                lines.append(f"   📌 _{source}_ {f'— {date_str}' if date_str else ''}")
+            if url:
+                lines.append(f"   🔗 {url}")
+            lines.append("")
+
+        lines.append("_Finmate — Informacion, no recomendacion._")
+        return "\n".join(lines)
+
+    except Exception as e:
+        logger.error(f"Error obteniendo noticias: {e}", exc_info=True)
+        return "❌ Error consultando noticias.\n_Intenta mas tarde._"
 
 
 @whatsapp_bp.route("/webhook", methods=["POST"])
@@ -131,9 +272,9 @@ def incoming_message():
 
     if incoming_msg in ("hola", "hi", "hello", "inicio"):
         msg.body(
-            "👋 *¡Hola! Soy Finmate*, tu asistente de mercados financieros.\n\n"
-            "Te envío alertas y resúmenes semanales sobre lo que mueve los mercados.\n\n"
-            "Escribe *ayuda* para ver los comandos disponibles.\n\n"
+            "👋 *HOLA! SOY FINMATE*, Tu Asistente de Mercados Financieros.\n\n"
+            "Te envio alertas y resumenes semanales sobre lo que mueve los mercados.\n\n"
+            "Escribe *Ayuda* para ver los comandos disponibles.\n\n"
             "_Finmate informa, no recomienda inversiones._"
         )
 
@@ -146,16 +287,20 @@ def incoming_message():
 
     elif incoming_msg in ("resumen", "semanal", "weekly"):
         msg.body(
-            "📊 *Resumen semanal*\n\n"
-            "_Usa el comando *mercados* para ver los índices en tiempo real._\n\n"
-            "_El resumen completo se envía automáticamente los domingos a las 20:00._\n\n"
-            "_Finmate — Información, no recomendación._"
+            "📊 *RESUMEN SEMANAL*\n\n"
+            "_Usa el comando *Mercados* para ver los indices en tiempo real._\n\n"
+            "_El resumen completo se envia automaticamente los domingos a las 20:00._\n\n"
+            "_Finmate — Informacion, no recomendacion._"
         )
+
+    elif incoming_msg in ("contexto", "noticias", "news", "context"):
+        context_text = _get_context_news()
+        msg.body(context_text)
 
     else:
         msg.body(
             f"No reconozco el comando *{incoming_msg}*.\n"
-            "Escribe *ayuda* para ver los comandos disponibles."
+            "Escribe *Ayuda* para ver los comandos disponibles."
         )
 
     return str(resp)
