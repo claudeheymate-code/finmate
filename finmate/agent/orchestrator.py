@@ -57,7 +57,7 @@ _NO_MEMORY_MSG = (
     "❌ No pude acceder a mi memoria en este momento (problema de base de datos). "
     "Probá de nuevo en unos minutos."
 )
-_GENERIC_ERROR_MSG = "❌ Tuve un problema interno respondiendo. Probá de nuevo en unos minutos.";
+_GENERIC_ERROR_MSG = "❌ Tuve un problema interno respondiendo. Probá de nuevo en unos minutos."
 
 
 def _pick_model(user_message: str) -> str:
