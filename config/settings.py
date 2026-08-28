@@ -60,3 +60,34 @@ FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 # Logging
 # ============================================================
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+
+# ============================================================
+# Base de datos (Fase 0 — memoria persistente del agente)
+# Postgres gestionado (ej. Neon: https://neon.tech). Neon entrega la URL como
+# postgres://... o postgresql://... — se normaliza al driver psycopg (v3) acá
+# para no tener que editar la variable de entorno a mano.
+# ============================================================
+_raw_database_url = os.getenv("DATABASE_URL", "")
+if _raw_database_url.startswith("postgres://"):
+    _raw_database_url = _raw_database_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif _raw_database_url.startswith("postgresql://"):
+    _raw_database_url = _raw_database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+DATABASE_URL = _raw_database_url
+
+# ============================================================
+# Cache (Fase 0 — Redis gestionado, ej. Upstash: https://upstash.com)
+# Opcional: si no está seteado, el agente funciona igual pero sin cache
+# (más requests a las APIs financieras).
+# ============================================================
+REDIS_URL = os.getenv("REDIS_URL", "")
+
+# ============================================================
+# Agente (Fase 0 — orquestador con Claude)
+# Enrutado económico: Haiku por defecto, Sonnet para análisis más profundo.
+# Verificar los IDs vigentes en https://platform.claude.com/docs/en/about-claude/models/overview
+# antes de desplegar, por si Anthropic publicó modelos más nuevos.
+# ============================================================
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+ANTHROPIC_MODEL_DEFAULT = os.getenv("ANTHROPIC_MODEL_DEFAULT", "claude-haiku-4-5-20251001")
+ANTHROPIC_MODEL_ANALYSIS = os.getenv("ANTHROPIC_MODEL_ANALYSIS", "claude-sonnet-5")
