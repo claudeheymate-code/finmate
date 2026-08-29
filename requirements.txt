@@ -22,3 +22,15 @@ google-auth-oauthlib==1.2.1
 
 # Environment variables
 python-dotenv==1.0.1
+
+
+# --- Fase 0: agente con memoria persistente ---
+# Orquestador LLM (tool-calling)
+anthropic==0.69.0
+
+# Base de datos (Postgres gestionado, ej. Neon)
+sqlalchemy==2.0.36
+psycopg[binary]==3.2.3
+
+# Cache (Redis gestionado, ej. Upstash)
+redis==5.2.1
