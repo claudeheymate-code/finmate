@@ -32,6 +32,7 @@ from config.settings import (
 )
 from finmate.whatsapp.webhook import whatsapp_bp
 from finmate.alerts.engine import AlertEngine
+from finmate.db.models import init_db
 
 # ============================================================
 # Logging
@@ -42,6 +43,20 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("finmate")
+
+# ============================================================
+# Base de datos (Fase 0 — memoria persistente del agente)
+# Se corre acá, a nivel de módulo, para que también se ejecute cuando
+# gunicorn importa wsgi.py (no solo con `python main.py`). Si todavía no
+# se configuró DATABASE_URL, se loguea el error pero no se cae la app —
+# el webhook sigue respondiendo (avisando que falta memoria) y /health
+# sigue funcionando para que Railway no marque el deploy como caído.
+# ============================================================
+try:
+    init_db()
+    logger.info("Base de datos inicializada (tablas creadas si no existían).")
+except Exception as e:
+    logger.error(f"No se pudo inicializar la base de datos — ¿falta DATABASE_URL? Detalle: {e}")
 
 
 # ============================================================
@@ -55,9 +70,9 @@ app.register_blueprint(whatsapp_bp, url_prefix="/whatsapp")
 def index():
     return {
         "app": "Finmate",
-        "version": "1.0.0",
+        "version": "2.0.0-fase0",
         "status": "running",
-        "description": "Bot financiero informativo para WhatsApp",
+        "description": "Agente financiero personal para WhatsApp",
         "timestamp": datetime.utcnow().isoformat(),
     }
 
