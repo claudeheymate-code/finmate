@@ -12,6 +12,13 @@ así un error acá (o que todavía no haya DATABASE_URL configurada) nunca
 puede afectar earnings/macro/noticias, que ya funcionan en producción. Ver
 la nota en CLAUDE.md sobre por qué esto quedó pendiente en la pasada de
 Fase 1.
+
+Fase 1.6: si hay un Content Template aprobado configurado
+(TWILIO_TEMPLATE_WATCHLIST_ALERT_SID), la alerta se manda como template
+(symbol, variación % y precio como variables — es corta y estructurada,
+entra bien en un template). Si no está configurado, se cae al mensaje de
+texto libre de siempre (sirve para sandbox/desarrollo). Ver
+finmate/alerts/pending.py para el porqué de esta distinción.
 """
 import json
 import logging
@@ -21,7 +28,7 @@ from typing import Optional
 
 import httpx
 
-from config.settings import WATCHLIST_ALERT_THRESHOLD_PCT
+from config.settings import TWILIO_TEMPLATE_WATCHLIST_ALERT_SID, WATCHLIST_ALERT_THRESHOLD_PCT
 from finmate.db.repository import get_all_watchlist_entries
 from finmate.whatsapp.messenger import WhatsAppMessenger
 from finmate.whatsapp.webhook import _change_emoji, _format_number, _get_finnhub_quote
@@ -108,14 +115,24 @@ def check_watchlist_alerts(messenger: Optional[WhatsAppMessenger] = None) -> int
             if state.get(state_key):
                 continue
 
-            emoji = _change_emoji(change_pct)
-            msg = (
-                f"{emoji} *{symbol}* se movió {_format_number(change_pct, suffix='%')} hoy\n"
-                f"Precio actual: {_format_number(quote['price'], prefix='$')}\n\n"
-                f"_Lo tenés en tu watchlist. Escribime si querés más detalle o sacarlo de la lista._"
-            )
+            change_fmt = _format_number(change_pct, suffix="%")
+            price_fmt = _format_number(quote["price"], prefix="$")
+
             try:
-                ok = messenger.send_message(phone, msg)
+                if TWILIO_TEMPLATE_WATCHLIST_ALERT_SID:
+                    ok = messenger.send_template(
+                        phone,
+                        TWILIO_TEMPLATE_WATCHLIST_ALERT_SID,
+                        {"1": symbol, "2": change_fmt, "3": price_fmt},
+                    )
+                else:
+                    emoji = _change_emoji(change_pct)
+                    msg = (
+                        f"{emoji} *{symbol}* se movió {change_fmt} hoy\n"
+                        f"Precio actual: {price_fmt}\n\n"
+                        f"_Lo tenés en tu watchlist. Escribime si querés más detalle o sacarlo de la lista._"
+                    )
+                    ok = messenger.send_message(phone, msg)
             except Exception as e:
                 logger.error(f"Error enviando alerta de watchlist a {phone} ({symbol}): {e}")
                 ok = False
