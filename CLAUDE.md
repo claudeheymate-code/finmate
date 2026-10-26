@@ -48,7 +48,37 @@ curar.
   - Validado end-to-end en sandbox (DB contra SQLite, cotizaciones y cliente
     de Anthropic mockeados): todos los checks pasaron, sin romper nada de
     Fase 0.
-- **Bloqueador real:** nada de la Fase 0 ni la Fase 1 llegó a Railway.
+- **Escrito pero NO desplegado — "Fase 1.5" (alertas de watchlist por
+  usuario), del 26 oct 2026:** conecta la watchlist de Fase 1 con un aviso
+  proactivo de WhatsApp (no esperar a que el usuario pregunte). Cambios:
+  - `finmate/db/repository.py`: `get_all_watchlist_entries()` — todas las
+    filas de watchlist de todos los usuarios, con el teléfono ya resuelto
+    (join con `users`).
+  - `finmate/alerts/watchlist_alerts.py` (nuevo archivo):
+    `check_watchlist_alerts()` recorre esas filas, cotiza cada símbolo una
+    sola vez (cache por símbolo dentro de la corrida, aunque varios
+    usuarios lo sigan) y manda un WhatsApp 1-a-1 (no broadcast) al que
+    corresponda si el movimiento del día supera
+    `WATCHLIST_ALERT_THRESHOLD_PCT` (default 5%). Máximo una alerta por
+    usuario+símbolo+día (estado propio en `watchlist_alert_state.json`,
+    separado del `alert_state.json` del motor broadcast). Si el mercado
+    está cerrado para un símbolo, se lo salta.
+  - `main.py`: nuevo job `watchlist_alert_check` en el scheduler, mismo
+    intervalo que `alert_check` pero **separado a propósito** — con su
+    propio try/except y el import adentro de la función — para que un
+    error acá (o que falte `DATABASE_URL`) nunca pueda tocar el chequeo de
+    alertas broadcast (earnings/macro/noticias) que ya funciona en
+    producción. Esto es justamente lo que la Fase 1 había dejado pendiente
+    a propósito (ver nota en el historial de este archivo).
+  - `config/settings.py`: nueva variable opcional
+    `WATCHLIST_ALERT_THRESHOLD_PCT` (default `5`, no hace falta cargarla en
+    Railway para que funcione).
+  - Validado end-to-end en sandbox (DB SQLite, 2 usuarios con watchlists
+    superpuestas, cotizaciones y Twilio mockeados): dispara alerta solo al
+    superar el umbral, no duplica cuando dos usuarios siguen el mismo
+    símbolo (cachea la cotización), ignora mercado cerrado, y no reenvía
+    la misma alerta el mismo día (dedup).
+- **Bloqueador real:** nada de la Fase 0, Fase 1 ni Fase 1.5 llegó a Railway.
   Faltan, en orden:
   1. Provisionar Postgres (recomendado: Neon, neon.tech) → `DATABASE_URL`.
   2. (Opcional) Provisionar Redis (recomendado: Upstash, upstash.com) →
@@ -63,8 +93,9 @@ curar.
   6. Railway va a redeployar solo en cuanto el repo tenga los archivos (ya
      están subidos a GitHub `main`, tanto Fase 0 como Fase 1) y el servicio
      esté activo con las variables cargadas.
-  7. Probar "hola", una pregunta de mercados y "agregá 10 AAPL a 150" por
-     WhatsApp en producción.
+  7. Probar "hola", una pregunta de mercados, "agregá 10 AAPL a 150" y
+     "seguí a NVDA" por WhatsApp en producción (y confirmar que, si NVDA se
+     mueve fuerte, llega la alerta de watchlist sin que nadie pregunte).
   8. En paralelo: trámite de plantillas de WhatsApp Business (Twilio + Meta)
      — la aprobación de Meta tarda días, conviene arrancarlo cuanto antes.
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
@@ -89,8 +120,9 @@ Finmate/
 │   ├── data_sources/        # Finnhub, FMP (no se usa), Alpha Vantage, aggregator
 │   ├── whatsapp/             # webhook (Twilio), messenger, formatter
 │   ├── calendar/              # Google Calendar (opcional, no configurado)
-│   ├── alerts/                # Motor de alertas (earnings, macro, noticias) — aún no
-│   │                           # conectado a la watchlist por-usuario de Fase 1
+│   ├── alerts/                # engine.py: motor broadcast (earnings, macro, noticias,
+│   │                           # resumen semanal). watchlist_alerts.py (Fase 1.5): alertas
+│   │                           # 1-a-1 por usuario sobre su watchlist — job separado en main.py
 │   └── db/                    # Fase 0 + Fase 1: modelos SQLAlchemy, repository, cache Redis
 ```
 
@@ -103,7 +135,8 @@ Finmate/
 
 Faltan en Railway (ver bloqueador arriba): `DATABASE_URL`, `REDIS_URL`,
 `ANTHROPIC_API_KEY`. Ver `.env.example` para el detalle de cada una. Fase 1
-no agrega variables de entorno nuevas.
+no agrega variables de entorno nuevas. Fase 1.5 agrega una opcional:
+`WATCHLIST_ALERT_THRESHOLD_PCT` (default `5`, no hace falta cargarla).
 
 ## Cómo editar archivos de este proyecto desde un sandbox en la nube
 
