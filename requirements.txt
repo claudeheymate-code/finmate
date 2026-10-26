@@ -6,7 +6,7 @@ flask==3.1.0
 gunicorn==23.0.0
 
 # WhatsApp (Twilio)
-twilio==9.4.0
+twilio==9.4.1
 
 # HTTP async
 httpx==0.28.1
@@ -22,7 +22,6 @@ google-auth-oauthlib==1.2.1
 
 # Environment variables
 python-dotenv==1.0.1
-
 
 # --- Fase 0: agente con memoria persistente ---
 # Orquestador LLM (tool-calling)
