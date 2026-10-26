@@ -2,6 +2,15 @@
 Finmate - Motor de Alertas
 Detecta eventos relevantes y genera alertas en tiempo real.
 Mantiene estado de lo ya notificado para evitar duplicados.
+
+Fase 1.6: el resumen semanal y las alertas de earnings/macro/noticias son
+mensajes largos y dinámicos (listas de longitud variable) — no entran en
+un Content Template de WhatsApp Business aprobado por Meta. Si hay
+templates de aviso configurados (TWILIO_TEMPLATE_MARKET_NOTIFY_SID /
+TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID), se manda ese template corto y
+el contenido real se encola (finmate/alerts/pending.py) para cuando el
+usuario responda. Si no están configurados, se sigue mandando todo como
+texto libre, igual que hasta ahora (sandbox/desarrollo).
 """
 
 import asyncio
@@ -11,6 +20,12 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
+from config.settings import (
+    TWILIO_TEMPLATE_MARKET_NOTIFY_SID,
+    TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID,
+    WHATSAPP_RECIPIENTS,
+)
+from finmate.alerts.pending import queue_pending
 from finmate.data_sources.aggregator import FinancialDataAggregator
 from finmate.whatsapp.messenger import WhatsAppMessenger
 from finmate.whatsapp.formatter import (
@@ -81,6 +96,24 @@ class AlertEngine:
             logger.error(f"Error guardando estado: {e}")
 
     # ----------------------------------------------------------
+    # Envío (Fase 1.6: template de aviso + cola si está configurado)
+    # ----------------------------------------------------------
+    def _broadcast_or_queue(self, msg: str, category_label: str) -> None:
+        """Envía `msg` a todos los destinatarios. Si hay un template de aviso
+        de mercado configurado (requerido para producción real de WhatsApp
+        Business), manda el template corto y encola el contenido completo
+        para cuando el usuario responda (ver finmate/alerts/pending.py). Si
+        no, cae a mensaje de texto libre directo, como hasta ahora."""
+        if TWILIO_TEMPLATE_MARKET_NOTIFY_SID:
+            for phone in WHATSAPP_RECIPIENTS:
+                queue_pending(phone, msg)
+                self.messenger.send_template(
+                    phone, TWILIO_TEMPLATE_MARKET_NOTIFY_SID, {"1": category_label}
+                )
+        else:
+            self.messenger.broadcast(msg)
+
+    # ----------------------------------------------------------
     # Chequeo de alertas en tiempo real
     # ----------------------------------------------------------
     async def check_and_send_alerts(self):
@@ -114,7 +147,7 @@ class AlertEngine:
                         and earning_id not in self.state["sent_earnings"]
                     ):
                         msg = format_earnings_alert(e)
-                        self.messenger.broadcast(msg)
+                        self._broadcast_or_queue(msg, "Resultados corporativos")
                         self.state["sent_earnings"].append(earning_id)
                         alerts_sent += 1
                         logger.info(f"Alerta earnings enviada: {e.get('symbol')}")
@@ -129,7 +162,7 @@ class AlertEngine:
                         and event_id not in self.state["sent_economic"]
                     ):
                         msg = format_economic_alert(ev)
-                        self.messenger.broadcast(msg)
+                        self._broadcast_or_queue(msg, "Dato macroeconómico")
                         self.state["sent_economic"].append(event_id)
                         alerts_sent += 1
                         logger.info(f"Alerta macro enviada: {ev.get('event')}")
@@ -146,7 +179,7 @@ class AlertEngine:
                         and news_alerts < 3
                     ):
                         msg = format_breaking_news_alert(item)
-                        self.messenger.broadcast(msg)
+                        self._broadcast_or_queue(msg, "Noticia de mercado")
                         self.state["sent_news"].append(news_id)
                         alerts_sent += 1
                         news_alerts += 1
@@ -171,9 +204,15 @@ class AlertEngine:
             # Obtener todos los datos
             data = await self.aggregator.get_weekly_data()
 
-            # Formatear y enviar por WhatsApp
+            # Formatear y enviar por WhatsApp (Fase 1.6: template de aviso +
+            # cola si está configurado; si no, texto libre como hasta ahora)
             message = format_weekly_summary(data)
-            self.messenger.broadcast(message)
+            if TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID:
+                for phone in WHATSAPP_RECIPIENTS:
+                    queue_pending(phone, message)
+                    self.messenger.send_template(phone, TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID)
+            else:
+                self.messenger.broadcast(message)
 
             # Actualizar Google Calendar (si está disponible)
             if self.calendar:
