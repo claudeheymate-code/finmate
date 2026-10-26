@@ -1,16 +1,30 @@
 """
 Finmate - Modelos de base de datos (SQLAlchemy)
 
-Fase 0: solo `users` y `conversation_history` — lo mínimo para que el
-agente tenga memoria persistente entre mensajes. El resto del modelo de
-datos del plan (portfolio_holdings, watchlist_items, transactions, etc.)
-se agrega en las fases siguientes, cuando se construya cada función.
+Fase 0: `users` y `conversation_history` — lo mínimo para que el agente
+tenga memoria persistente entre mensajes.
+
+Fase 1: `portfolio_holdings` y `watchlist_items` — el agente puede manejar
+el portafolio y la watchlist del usuario por chat (sumar/restar posiciones,
+seguir activos sin tenerlos). `transactions` (historial detallado de compras/
+ventas) queda para una fase posterior; por ahora `portfolio_holdings` solo
+guarda la posición neta actual por símbolo.
 """
 from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Session, relationship, sessionmaker
 
 from config.settings import DATABASE_URL
@@ -33,6 +47,12 @@ class User(Base):
     conversation_turns = relationship(
         "ConversationTurn", back_populates="user", cascade="all, delete-orphan"
     )
+    portfolio_holdings = relationship(
+        "PortfolioHolding", back_populates="user", cascade="all, delete-orphan"
+    )
+    watchlist_items = relationship(
+        "WatchlistItem", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class ConversationTurn(Base):
@@ -45,6 +65,45 @@ class ConversationTurn(Base):
     timestamp = Column(DateTime, default=dt.datetime.utcnow, nullable=False, index=True)
 
     user = relationship("User", back_populates="conversation_turns")
+
+
+class PortfolioHolding(Base):
+    """Posición neta actual de un usuario en un símbolo (Fase 1).
+
+    No es un libro de transacciones: cada fila es "cuánto tengo ahora" de
+    un ticker. `avg_cost` es opcional (precio promedio de compra) y se usa
+    solo para calcular ganancia/pérdida cuando el usuario lo informó.
+    """
+
+    __tablename__ = "portfolio_holdings"
+    __table_args__ = (UniqueConstraint("user_id", "symbol", name="uq_portfolio_user_symbol"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    symbol = Column(String(16), nullable=False, index=True)
+    quantity = Column(Float, nullable=False)
+    avg_cost = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False
+    )
+
+    user = relationship("User", back_populates="portfolio_holdings")
+
+
+class WatchlistItem(Base):
+    """Activo que el usuario sigue sin tenerlo (necesariamente) en el portafolio."""
+
+    __tablename__ = "watchlist_items"
+    __table_args__ = (UniqueConstraint("user_id", "symbol", name="uq_watchlist_user_symbol"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    symbol = Column(String(16), nullable=False, index=True)
+    note = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="watchlist_items")
 
 
 # ============================================================
