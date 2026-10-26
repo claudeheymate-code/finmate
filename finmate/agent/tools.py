@@ -1,12 +1,26 @@
 """
 Finmate - Definición y ejecución de tools para el orquestador.
 
-Fase 0: una sola tool (get_market_data) que reutiliza la lógica de mercados
-ya probada en producción. Las tools de portafolio, noticias/económicos y
-finanzas personales se agregan en las fases 2 a 5 del plan.
+Fase 0: get_market_data, que reutiliza la lógica de mercados ya probada en
+producción.
+
+Fase 1: tools de portafolio y watchlist (finmate/agent/portfolio_tools.py).
+A diferencia de get_market_data, estas tools son por-usuario, así que
+run_tool ahora recibe un user_id que se propaga desde el orquestador
+(finmate/agent/orchestrator.py -> handle_message). Noticias/económicos y
+finanzas personales más avanzadas quedan para fases siguientes del plan.
 """
 import logging
+from typing import Optional
 
+from finmate.agent.portfolio_tools import (
+    tool_add_to_portfolio,
+    tool_add_to_watchlist,
+    tool_get_portfolio,
+    tool_get_watchlist,
+    tool_remove_from_portfolio,
+    tool_remove_from_watchlist,
+)
 from finmate.db.cache import cached
 from finmate.whatsapp.webhook import _get_market_data
 
@@ -23,7 +37,101 @@ TOOLS = [
             "o cómo están las bolsas hoy."
         ),
         "input_schema": {"type": "object", "properties": {}},
-    }
+    },
+    {
+        "name": "get_portfolio",
+        "description": (
+            "Muestra el portafolio actual del usuario: cada activo, cantidad, "
+            "precio actual, valor total y ganancia/pérdida (si cargó el costo "
+            "promedio de compra). Usar cuando el usuario pregunte por su "
+            "portafolio, sus inversiones, cuánto tiene, o cómo le está yendo."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "add_to_portfolio",
+        "description": (
+            "Agrega (o suma cantidad a) un activo en el portafolio del usuario. "
+            "Usar cuando diga que compró algo o quiera cargar una posición que "
+            "ya tiene. Si no da el precio de compra, se puede omitir avg_cost."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "Ticker del activo, ej: AAPL, NVDA, SPY",
+                },
+                "quantity": {
+                    "type": "number",
+                    "description": "Cantidad de unidades/acciones a agregar",
+                },
+                "avg_cost": {
+                    "type": "number",
+                    "description": "Precio promedio de compra por unidad, si lo sabe (opcional)",
+                },
+            },
+            "required": ["symbol", "quantity"],
+        },
+    },
+    {
+        "name": "remove_from_portfolio",
+        "description": (
+            "Quita (o resta cantidad de) un activo del portafolio del usuario. "
+            "Usar cuando diga que vendió algo. Si no da cantidad, se quita el "
+            "activo por completo."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string", "description": "Ticker del activo"},
+                "quantity": {
+                    "type": "number",
+                    "description": "Cantidad a quitar (opcional; si se omite, se quita todo)",
+                },
+            },
+            "required": ["symbol"],
+        },
+    },
+    {
+        "name": "get_watchlist",
+        "description": (
+            "Muestra la watchlist del usuario: activos que sigue sin tenerlos "
+            "necesariamente en el portafolio, con su precio actual. Usar cuando "
+            "pregunte qué está siguiendo o por el estado de su watchlist."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "add_to_watchlist",
+        "description": (
+            "Agrega un activo a la watchlist del usuario, para seguirlo sin "
+            "cargarlo como posición de portafolio. Usar cuando diga 'seguime a "
+            "X' o 'quiero ver cómo le va a X'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string", "description": "Ticker del activo"},
+                "note": {
+                    "type": "string",
+                    "description": "Nota opcional sobre por qué lo sigue",
+                },
+            },
+            "required": ["symbol"],
+        },
+    },
+    {
+        "name": "remove_from_watchlist",
+        "description": "Quita un activo de la watchlist del usuario.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string", "description": "Ticker del activo"},
+            },
+            "required": ["symbol"],
+        },
+    },
 ]
 
 # Cache corto: si dos usuarios (o el mismo, dos veces) preguntan "mercados"
@@ -31,9 +139,26 @@ TOOLS = [
 # Vantage. 30s es prudente para no mostrar datos desactualizados.
 _MARKET_DATA_CACHE_TTL = 30
 
+# Tools que operan sobre datos del usuario (necesitan user_id).
+_USER_SCOPED_TOOLS = {
+    "get_portfolio": lambda user_id, _input: tool_get_portfolio(user_id),
+    "add_to_portfolio": tool_add_to_portfolio,
+    "remove_from_portfolio": tool_remove_from_portfolio,
+    "get_watchlist": lambda user_id, _input: tool_get_watchlist(user_id),
+    "add_to_watchlist": tool_add_to_watchlist,
+    "remove_from_watchlist": tool_remove_from_watchlist,
+}
 
-def run_tool(name: str, tool_input: dict) -> str:
+
+def run_tool(name: str, tool_input: dict, user_id: Optional[int] = None) -> str:
     if name == "get_market_data":
         return cached("finmate:market_data", _MARKET_DATA_CACHE_TTL, _get_market_data)
+
+    if name in _USER_SCOPED_TOOLS:
+        if user_id is None:
+            logger.error(f"Tool {name} llamada sin user_id")
+            return "Error interno: no pude identificar al usuario para esta operación."
+        return _USER_SCOPED_TOOLS[name](user_id, tool_input)
+
     logger.error(f"Tool desconocida solicitada por el modelo: {name}")
     return f"Error interno: la herramienta '{name}' no existe."
