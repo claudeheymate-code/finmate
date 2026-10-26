@@ -9,6 +9,14 @@ A diferencia de get_market_data, estas tools son por-usuario, así que
 run_tool ahora recibe un user_id que se propaga desde el orquestador
 (finmate/agent/orchestrator.py -> handle_message). Noticias/económicos y
 finanzas personales más avanzadas quedan para fases siguientes del plan.
+
+Fase 1.6: get_pending_notifications, para entregar el contenido real de
+los avisos que el bot mandó como Content Template corto (resumen semanal,
+alertas de mercado — ver finmate/alerts/pending.py y
+finmate/alerts/engine.py). A diferencia de las tools de Fase 1, esta es
+por-teléfono y no por user_id (la cola de pendientes vive por número de
+WhatsApp, igual que WHATSAPP_RECIPIENTS), así que run_tool también recibe
+un `phone` propagado desde el orquestador.
 """
 import logging
 from typing import Optional
@@ -21,6 +29,7 @@ from finmate.agent.portfolio_tools import (
     tool_remove_from_portfolio,
     tool_remove_from_watchlist,
 )
+from finmate.alerts.pending import pop_pending
 from finmate.db.cache import cached
 from finmate.whatsapp.webhook import _get_market_data
 
@@ -132,6 +141,20 @@ TOOLS = [
             "required": ["symbol"],
         },
     },
+    {
+        "name": "get_pending_notifications",
+        "description": (
+            "Entrega el contenido completo de avisos de Finmate que quedaron "
+            "pendientes (resumen semanal, alertas de resultados corporativos, "
+            "datos macro o noticias). Usar cuando el usuario responda a un "
+            "aviso corto de Finmate tipo 'tenés novedades de mercado' o 'tu "
+            "resumen semanal está listo' con algo afirmativo (ej: 'sí', "
+            "'dale', 'mostrame', 'ver', 'mandalo', 'quiero verlo'). Si no hay "
+            "nada pendiente, la tool lo informa — no hace falta preguntarle "
+            "al usuario antes de llamarla."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
 ]
 
 # Cache corto: si dos usuarios (o el mismo, dos veces) preguntan "mercados"
@@ -149,8 +172,19 @@ _USER_SCOPED_TOOLS = {
     "remove_from_watchlist": tool_remove_from_watchlist,
 }
 
+# Tools que operan sobre el teléfono crudo, no sobre el user_id de la DB
+# (Fase 1.6: la cola de notificaciones pendientes vive por número de
+# WhatsApp — ver finmate/alerts/pending.py).
+_PHONE_SCOPED_TOOLS = {
+    "get_pending_notifications": lambda phone, _input: (
+        pop_pending(phone) or "No tenés avisos pendientes en este momento."
+    ),
+}
 
-def run_tool(name: str, tool_input: dict, user_id: Optional[int] = None) -> str:
+
+def run_tool(
+    name: str, tool_input: dict, user_id: Optional[int] = None, phone: Optional[str] = None
+) -> str:
     if name == "get_market_data":
         return cached("finmate:market_data", _MARKET_DATA_CACHE_TTL, _get_market_data)
 
@@ -159,6 +193,12 @@ def run_tool(name: str, tool_input: dict, user_id: Optional[int] = None) -> str:
             logger.error(f"Tool {name} llamada sin user_id")
             return "Error interno: no pude identificar al usuario para esta operación."
         return _USER_SCOPED_TOOLS[name](user_id, tool_input)
+
+    if name in _PHONE_SCOPED_TOOLS:
+        if phone is None:
+            logger.error(f"Tool {name} llamada sin phone")
+            return "Error interno: no pude identificar al usuario para esta operación."
+        return _PHONE_SCOPED_TOOLS[name](phone, tool_input)
 
     logger.error(f"Tool desconocida solicitada por el modelo: {name}")
     return f"Error interno: la herramienta '{name}' no existe."
