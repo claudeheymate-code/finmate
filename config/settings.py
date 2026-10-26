@@ -45,6 +45,11 @@ WEEKLY_SUMMARY_MINUTE = int(os.getenv("WEEKLY_SUMMARY_MINUTE", "0"))
 # Intervalo en minutos para chequear alertas en tiempo real
 ALERT_CHECK_INTERVAL_MINUTES = int(os.getenv("ALERT_CHECK_INTERVAL_MINUTES", "30"))
 
+# Umbral de variación diaria (%) para disparar una alerta de watchlist
+# por usuario (Fase 1.5, finmate/alerts/watchlist_alerts.py). Separado del
+# motor de alertas broadcast de arriba. Default 5% si no se configura.
+WATCHLIST_ALERT_THRESHOLD_PCT = float(os.getenv("WATCHLIST_ALERT_THRESHOLD_PCT", "5"))
+
 # ============================================================
 # Zona horaria
 # ============================================================
