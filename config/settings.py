@@ -61,7 +61,6 @@ FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 # ============================================================
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-
 # ============================================================
 # Base de datos (Fase 0 — memoria persistente del agente)
 # Postgres gestionado (ej. Neon: https://neon.tech). Neon entrega la URL como
