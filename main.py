@@ -99,6 +99,26 @@ def run_weekly_summary():
     asyncio.run(engine.send_weekly_summary())
 
 
+def run_watchlist_alert_check():
+    """Job: chequea alertas de watchlist por usuario (Fase 1.5).
+
+    Deliberadamente separado de `run_alert_check` y envuelto en su propio
+    try/except: necesita DATABASE_URL (consulta la watchlist por usuario) y
+    si falla por lo que sea, no debe tocar el chequeo de alertas broadcast
+    (earnings/macro/noticias) que ya funciona en producción. El import de
+    `check_watchlist_alerts` se hace acá adentro, no arriba del archivo, por
+    la misma razón: que un problema en ese módulo no le impida ni siquiera
+    arrancar al resto del bot.
+    """
+    logger.info("⏰ Ejecutando chequeo de alertas de watchlist...")
+    try:
+        from finmate.alerts.watchlist_alerts import check_watchlist_alerts
+
+        check_watchlist_alerts()
+    except Exception as e:
+        logger.error(f"Error en chequeo de alertas de watchlist (no afecta el resto del bot): {e}")
+
+
 def start_scheduler():
     """Inicializa y arranca el scheduler."""
     tz = pytz.timezone(TIMEZONE)
@@ -132,10 +152,22 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Alertas de watchlist por usuario (Fase 1.5) — mismo intervalo que el
+    # chequeo de alertas broadcast de arriba, pero como job separado para
+    # que un error acá nunca afecte earnings/macro/noticias.
+    scheduler.add_job(
+        run_watchlist_alert_check,
+        IntervalTrigger(minutes=ALERT_CHECK_INTERVAL_MINUTES),
+        id="watchlist_alert_check",
+        name="Chequeo de alertas de watchlist",
+        replace_existing=True,
+    )
+
     scheduler.start()
     logger.info(
         f"Scheduler iniciado: alertas cada {ALERT_CHECK_INTERVAL_MINUTES}min, "
-        f"resumen semanal los {WEEKLY_SUMMARY_DAY} a las {WEEKLY_SUMMARY_HOUR}:{WEEKLY_SUMMARY_MINUTE:02d}"
+        f"resumen semanal los {WEEKLY_SUMMARY_DAY} a las {WEEKLY_SUMMARY_HOUR}:{WEEKLY_SUMMARY_MINUTE:02d}, "
+        f"alertas de watchlist cada {ALERT_CHECK_INTERVAL_MINUTES}min"
     )
     return scheduler
 
