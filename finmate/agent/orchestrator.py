@@ -1,5 +1,5 @@
 """
-Finmate - Orquestador del agente (Fase 0)
+Finmate - Orquestador del agente (Fase 0 + Fase 1)
 
 Reemplaza el router de comandos fijos (if/elif por palabra exacta) del
 webhook anterior: Claude recibe el mensaje + historial + las tools
@@ -7,9 +7,11 @@ disponibles, y decide él mismo si responde directo o si necesita llamar
 a una herramienta antes de contestar.
 
 Enrutado económico (decisión 01 del plan): Haiku por defecto, Sonnet para
-mensajes que piden un análisis más profundo. Con una sola tool (mercados)
-la diferencia todavía no es enorme, pero el hook queda listo para cuando
-se sumen portafolio y datos económicos en las próximas fases.
+mensajes que piden un análisis más profundo.
+
+Fase 1: las tools de portafolio y watchlist son por-usuario, así que el
+loop de tool-calling (_run_agent) ahora recibe el user_id y se lo pasa a
+run_tool en cada llamada a herramienta.
 """
 import logging
 
@@ -41,9 +43,19 @@ Reglas de estilo:
   claridad en vez de inventar datos.
 - Dejá siempre la puerta abierta a que el usuario pregunte más.
 
-Herramientas disponibles: get_market_data te da el estado actual de
-índices, commodities y tipo de cambio. Usala cuando el usuario pregunte
-por mercados o cuando el contexto de la conversación lo pida."""
+Herramientas disponibles:
+- get_market_data: estado actual de índices, commodities y tipo de cambio.
+  Usala cuando pregunte por mercados o el contexto lo pida.
+- get_portfolio / add_to_portfolio / remove_from_portfolio: portafolio
+  personal del usuario (alta, baja y consulta con precio actual y
+  ganancia/pérdida). Usalas cuando hable de lo que tiene invertido, diga
+  que compró o vendió algo, o pregunte cómo le está yendo.
+- get_watchlist / add_to_watchlist / remove_from_watchlist: activos que el
+  usuario sigue sin tenerlos (necesariamente) en el portafolio. Usalas
+  cuando diga "seguime a X" o pregunte qué está siguiendo.
+
+No inventes posiciones, precios ni resultados: si una tool falla o el
+usuario no tiene nada cargado, decilo con claridad en vez de asumir datos."""
 
 _ANALYSIS_TRIGGERS = ("por qué", "porque", "analiza", "explica", "riesgo", "conviene", "oportunidad")
 
@@ -66,7 +78,7 @@ def _pick_model(user_message: str) -> str:
     return ANTHROPIC_MODEL_DEFAULT
 
 
-def _run_agent(messages: list, model: str) -> str:
+def _run_agent(messages: list, model: str, user_id: int) -> str:
     """Loop de tool-calling: llama a Claude, ejecuta las tools que pida, repite
     hasta que devuelva texto final o se agoten los intentos."""
     response = _client.messages.create(
@@ -80,7 +92,7 @@ def _run_agent(messages: list, model: str) -> str:
         for block in response.content:
             if block.type == "tool_use":
                 logger.info(f"Tool call: {block.name}({block.input})")
-                result_text = run_tool(block.name, block.input)
+                result_text = run_tool(block.name, block.input, user_id)
                 tool_results.append(
                     {"type": "tool_result", "tool_use_id": block.id, "content": result_text}
                 )
@@ -118,7 +130,7 @@ def handle_message(phone: str, user_message: str) -> str:
     model = _pick_model(user_message)
 
     try:
-        final_text = _run_agent(messages, model)
+        final_text = _run_agent(messages, model, user.id)
     except Exception as e:
         logger.error(f"Error en el orquestador respondiendo a {phone}: {e}", exc_info=True)
         final_text = _GENERIC_ERROR_MSG
