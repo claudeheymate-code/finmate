@@ -78,8 +78,60 @@ curar.
     superar el umbral, no duplica cuando dos usuarios siguen el mismo
     símbolo (cachea la cotización), ignora mercado cerrado, y no reenvía
     la misma alerta el mismo día (dedup).
-- **Bloqueador real:** nada de la Fase 0, Fase 1 ni Fase 1.5 llegó a Railway.
-  Faltan, en orden:
+- **Escrito pero NO desplegado — "Fase 1.6" (Content Templates de WhatsApp
+  Business + cola de notificaciones pendientes), del 26 oct 2026:** mientras
+  el bot corre en el sandbox de Twilio, mandar texto libre por iniciativa
+  propia (resumen semanal, alertas) funciona sin problema. Pero en un número
+  real de WhatsApp Business, Meta exige que cualquier mensaje que el bot
+  inicie fuera de la ventana de 24hs de mensajería libre use un Content
+  Template aprobado — texto mayormente fijo, pocas variables cortas. Esto
+  no estaba resuelto en ninguna fase anterior y habría roto earnings/macro/
+  noticias/resumen semanal/alertas de watchlist apenas Joaco consiguiera un
+  número real. Cambios:
+  - `finmate/alerts/pending.py` (nuevo archivo): cola de contenido pendiente
+    por teléfono (`queue_pending`/`pop_pending`), separada de los state
+    files de dedup existentes — esto no es dedup, es contenido todavía no
+    entregado.
+  - `config/settings.py`: 3 variables opcionales nuevas (Content SIDs de
+    Twilio): `TWILIO_TEMPLATE_WATCHLIST_ALERT_SID`,
+    `TWILIO_TEMPLATE_MARKET_NOTIFY_SID`,
+    `TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID`. Mientras no estén
+    configuradas, nada cambia (se sigue mandando texto libre, como hoy).
+  - `finmate/whatsapp/messenger.py`: nuevos métodos `send_template()` /
+    `broadcast_template()` (usan `content_sid` + `content_variables` del
+    SDK de Twilio en vez de `body` libre).
+  - `finmate/alerts/watchlist_alerts.py`: si hay
+    `TWILIO_TEMPLATE_WATCHLIST_ALERT_SID` configurado, manda la alerta como
+    template (symbol, variación % y precio como variables — es corta y
+    estructurada, entra en un template). Si no, cae al texto libre de
+    siempre.
+  - `finmate/alerts/engine.py`: nuevo método `_broadcast_or_queue()` — si
+    hay template de aviso de mercado/resumen semanal configurado, encola el
+    contenido real (`queue_pending`) y manda un template corto de aviso; si
+    no, broadcast de texto libre como hasta ahora. Reemplaza los 4 llamados
+    a `broadcast()` (earnings, macro, noticias, resumen semanal).
+  - `finmate/agent/tools.py`: nueva tool `get_pending_notifications` — el
+    agente la llama cuando el usuario responde afirmativo a un aviso corto
+    ("dale", "mostrame"), y entrega el contenido real encolado. Como la
+    cola vive por teléfono (no por `user_id` de la DB), se agregó el
+    concepto de tools "phone-scoped" (`_PHONE_SCOPED_TOOLS`) separado de
+    las "user-scoped" de Fase 1.
+  - `finmate/agent/orchestrator.py`: `_run_agent` y `handle_message` ahora
+    también propagan `phone` (no solo `user_id`) a `run_tool`.
+  - Validado end-to-end en sandbox (DB SQLite, Twilio y cliente de
+    Anthropic mockeados) en dos modos — `TWILIO_TEMPLATE_*` sin configurar
+    (confirma que el comportamiento actual no cambia) y configurado
+    (confirma que se manda el template corto, se encola el contenido, y que
+    `get_pending_notifications` lo entrega correctamente) — más un test
+    separado de extremo a extremo del orquestador confirmando que `phone`
+    llega intacto desde `handle_message` hasta la tool.
+  - Pendiente (trabajo de Joaco, no de código): crear los 3 templates en
+    Twilio Content Template Builder y someterlos a aprobación de Meta, y
+    pegar los 3 Content SIDs (`HXxxxxx...`) resultantes en las variables de
+    Railway. Mientras no estén, el bot sigue funcionando exactamente igual
+    que ahora.
+- **Bloqueador real:** nada de la Fase 0, Fase 1, Fase 1.5 ni Fase 1.6 llegó
+  a Railway. Faltan, en orden:
   1. Provisionar Postgres (recomendado: Neon, neon.tech) → `DATABASE_URL`.
   2. (Opcional) Provisionar Redis (recomendado: Upstash, upstash.com) →
      `REDIS_URL`.
@@ -98,6 +150,9 @@ curar.
      mueve fuerte, llega la alerta de watchlist sin que nadie pregunte).
   8. En paralelo: trámite de plantillas de WhatsApp Business (Twilio + Meta)
      — la aprobación de Meta tarda días, conviene arrancarlo cuanto antes.
+     El código que las usa (Fase 1.6) ya está listo; falta crear los 3
+     templates en Twilio y pegar sus Content SIDs en Railway (ver Fase 1.6
+     arriba para el detalle de cuáles).
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
   marca como "yanked" — se subió a `9.4.1` (25 oct 2026, sin romper nada,
   verificado). `pyflakes` señala imports sin usar y f-strings sin
@@ -123,6 +178,8 @@ Finmate/
 │   ├── alerts/                # engine.py: motor broadcast (earnings, macro, noticias,
 │   │                           # resumen semanal). watchlist_alerts.py (Fase 1.5): alertas
 │   │                           # 1-a-1 por usuario sobre su watchlist — job separado en main.py
+│   │                           # pending.py (Fase 1.6): cola de contenido pendiente por
+│   │                           # teléfono, para cuando el aviso se manda como Content Template
 │   └── db/                    # Fase 0 + Fase 1: modelos SQLAlchemy, repository, cache Redis
 ```
 
@@ -136,7 +193,11 @@ Finmate/
 Faltan en Railway (ver bloqueador arriba): `DATABASE_URL`, `REDIS_URL`,
 `ANTHROPIC_API_KEY`. Ver `.env.example` para el detalle de cada una. Fase 1
 no agrega variables de entorno nuevas. Fase 1.5 agrega una opcional:
-`WATCHLIST_ALERT_THRESHOLD_PCT` (default `5`, no hace falta cargarla).
+`WATCHLIST_ALERT_THRESHOLD_PCT` (default `5`, no hace falta cargarla). Fase
+1.6 agrega 3 opcionales más (Content SIDs de Twilio, ver Fase 1.6 arriba):
+`TWILIO_TEMPLATE_WATCHLIST_ALERT_SID`, `TWILIO_TEMPLATE_MARKET_NOTIFY_SID`,
+`TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID` — tampoco hace falta cargarlas
+para que el bot siga funcionando como hoy.
 
 ## Cómo editar archivos de este proyecto desde un sandbox en la nube
 
