@@ -51,6 +51,24 @@ ALERT_CHECK_INTERVAL_MINUTES = int(os.getenv("ALERT_CHECK_INTERVAL_MINUTES", "30
 WATCHLIST_ALERT_THRESHOLD_PCT = float(os.getenv("WATCHLIST_ALERT_THRESHOLD_PCT", "5"))
 
 # ============================================================
+# WhatsApp Business Templates (Fase 1.6)
+# Content SIDs (HXxxxxx...) de los templates aprobados por Meta, creados en
+# Twilio Content Template Builder. Un mensaje que el bot manda por su
+# propia iniciativa (no como respuesta directa) necesita un template
+# aprobado fuera de la ventana de 24hs de mensajería libre de WhatsApp.
+#
+# Mientras estas variables no estén configuradas, el bot sigue mandando
+# los mensajes como texto libre (así funciona hoy en el sandbox de Twilio,
+# que no exige templates) — no se rompe nada existente. En cuanto Joaco
+# cree los templates en Twilio y pegue acá sus SIDs, el envío pasa a usar
+# el template corto + cola de contenido pendiente (ver
+# finmate/alerts/pending.py) automáticamente.
+# ============================================================
+TWILIO_TEMPLATE_WATCHLIST_ALERT_SID = os.getenv("TWILIO_TEMPLATE_WATCHLIST_ALERT_SID", "")
+TWILIO_TEMPLATE_MARKET_NOTIFY_SID = os.getenv("TWILIO_TEMPLATE_MARKET_NOTIFY_SID", "")
+TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID = os.getenv("TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID", "")
+
+# ============================================================
 # Zona horaria
 # ============================================================
 TIMEZONE = os.getenv("TIMEZONE", "America/Santiago")
