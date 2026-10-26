@@ -194,3 +194,21 @@ def get_watchlist(user_id: int) -> List[Tuple[str, Optional[str]]]:
         return [(r.symbol, r.note) for r in rows]
     finally:
         session.close()
+
+
+def get_all_watchlist_entries() -> List[Tuple[int, str, str]]:
+    """Devuelve [(user_id, phone, symbol), ...] de TODOS los usuarios con
+    watchlist, sin importar a quién pertenece cada ítem. Usado por el chequeo
+    periódico de alertas de watchlist (ver finmate/alerts/watchlist_alerts.py),
+    separado a propósito de `get_watchlist` (que es por-usuario, para cuando
+    el agente responde "mostrame mi watchlist" por chat)."""
+    session = get_session()
+    try:
+        rows = (
+            session.query(WatchlistItem.user_id, User.phone, WatchlistItem.symbol)
+            .join(User, User.id == WatchlistItem.user_id)
+            .all()
+        )
+        return [(r[0], r[1], r[2]) for r in rows]
+    finally:
+        session.close()
