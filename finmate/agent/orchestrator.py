@@ -12,6 +12,10 @@ mensajes que piden un análisis más profundo.
 Fase 1: las tools de portafolio y watchlist son por-usuario, así que el
 loop de tool-calling (_run_agent) ahora recibe el user_id y se lo pasa a
 run_tool en cada llamada a herramienta.
+
+Fase 1.6: get_pending_notifications (ver finmate/agent/tools.py) necesita
+el teléfono crudo, no el user_id, así que _run_agent también propaga
+`phone` a run_tool.
 """
 import logging
 
@@ -53,6 +57,11 @@ Herramientas disponibles:
 - get_watchlist / add_to_watchlist / remove_from_watchlist: activos que el
   usuario sigue sin tenerlos (necesariamente) en el portafolio. Usalas
   cuando diga "seguime a X" o pregunte qué está siguiendo.
+- get_pending_notifications: cuando le mandaste antes un aviso corto tipo
+  "tenés novedades de mercado" o "tu resumen semanal está listo" y el
+  usuario responde algo afirmativo (sí, dale, mostrame, ver, mandalo),
+  usala para traer el contenido completo y mandárselo. No hace falta
+  preguntarle de nuevo si quiere verlo.
 
 No inventes posiciones, precios ni resultados: si una tool falla o el
 usuario no tiene nada cargado, decilo con claridad en vez de asumir datos."""
@@ -78,7 +87,7 @@ def _pick_model(user_message: str) -> str:
     return ANTHROPIC_MODEL_DEFAULT
 
 
-def _run_agent(messages: list, model: str, user_id: int) -> str:
+def _run_agent(messages: list, model: str, user_id: int, phone: str) -> str:
     """Loop de tool-calling: llama a Claude, ejecuta las tools que pida, repite
     hasta que devuelva texto final o se agoten los intentos."""
     response = _client.messages.create(
@@ -92,7 +101,7 @@ def _run_agent(messages: list, model: str, user_id: int) -> str:
         for block in response.content:
             if block.type == "tool_use":
                 logger.info(f"Tool call: {block.name}({block.input})")
-                result_text = run_tool(block.name, block.input, user_id)
+                result_text = run_tool(block.name, block.input, user_id, phone)
                 tool_results.append(
                     {"type": "tool_result", "tool_use_id": block.id, "content": result_text}
                 )
@@ -130,7 +139,7 @@ def handle_message(phone: str, user_message: str) -> str:
     model = _pick_model(user_message)
 
     try:
-        final_text = _run_agent(messages, model, user.id)
+        final_text = _run_agent(messages, model, user.id, phone)
     except Exception as e:
         logger.error(f"Error en el orquestador respondiendo a {phone}: {e}", exc_info=True)
         final_text = _GENERIC_ERROR_MSG
