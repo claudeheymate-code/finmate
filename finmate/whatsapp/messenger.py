@@ -3,6 +3,7 @@ Finmate - Mensajería WhatsApp via Twilio
 Envía mensajes formateados a los destinatarios configurados.
 """
 
+import json
 import logging
 from typing import Optional
 
@@ -101,4 +102,54 @@ class WhatsAppMessenger:
 
         sent = sum(1 for v in results.values() if v)
         logger.info(f"Broadcast completado: {sent}/{len(targets)} exitosos")
+        return results
+
+    # ----------------------------------------------------------
+    # Content Templates (Fase 1.6)
+    #
+    # Para mensajes que el bot manda por iniciativa propia (fuera de la
+    # ventana de 24hs de mensajería libre de WhatsApp) hace falta un
+    # Content Template aprobado por Meta, no `body` libre. Se identifican
+    # por su Content SID (HXxxxxx...), creado en Twilio Content Template
+    # Builder — ver TWILIO_TEMPLATE_* en config/settings.py.
+    # ----------------------------------------------------------
+    def send_template(
+        self, to: str, content_sid: str, content_variables: Optional[dict] = None
+    ) -> bool:
+        """Envía un mensaje usando un Content Template aprobado por Meta."""
+        if not self.client:
+            logger.error("Twilio client no inicializado")
+            return False
+
+        try:
+            message = self.client.messages.create(
+                from_=self.from_number,
+                to=to,
+                content_sid=content_sid,
+                content_variables=json.dumps(content_variables or {}),
+            )
+            logger.info(f"Template enviado a {to}: SID {message.sid} (content {content_sid})")
+            return True
+        except Exception as e:
+            logger.error(f"Error enviando template {content_sid} a {to}: {e}")
+            return False
+
+    def broadcast_template(
+        self,
+        content_sid: str,
+        content_variables: Optional[dict] = None,
+        recipients: Optional[list[str]] = None,
+    ) -> dict:
+        """Envía un Content Template a todos los destinatarios configurados."""
+        targets = recipients or WHATSAPP_RECIPIENTS
+        if not targets:
+            logger.warning("No hay destinatarios configurados para WhatsApp")
+            return {}
+
+        results = {}
+        for number in targets:
+            results[number] = self.send_template(number, content_sid, content_variables)
+
+        sent = sum(1 for v in results.values() if v)
+        logger.info(f"Broadcast de template completado: {sent}/{len(targets)} exitosos")
         return results
