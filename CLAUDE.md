@@ -131,8 +131,8 @@ curar.
     Railway. Mientras no estén, el bot sigue funcionando exactamente igual
     que ahora.
 - **Bloqueador real:** nada de la Fase 0, Fase 1, Fase 1.5 ni Fase 1.6 llegó
-  a Railway. Chequeado el 26 oct 2026 directamente en las consolas (Neon,
-  Upstash, Railway, Twilio) — estado real de cada paso:
+  a Railway. Chequeado el 27 oct 2026 directamente en las consolas (Neon,
+  Upstash, Railway, Twilio, Claude Platform) — estado real de cada paso:
   1. ✅ Postgres ya está provisionado: proyecto Neon `finmate`
      (`shiny-term-24632740`), branch `production`, free plan. Solo falta
      que Joaco copie el connection string (botón "Connect" → "Show
@@ -140,9 +140,11 @@ curar.
   2. ✅ Redis ya está provisionado: base Upstash `finmate`, free tier. Solo
      falta que Joaco copie el `UPSTASH_REDIS_REST_URL`/token (o el
      `redis://` de la pestaña TCP) y lo pegue como `REDIS_URL` en Railway.
-  3. ⬜ `ANTHROPIC_API_KEY`: no confirmado si ya existe una key creada en
-     console.anthropic.com / platform.claude.com — Joaco tiene que
-     verificar o crear una.
+  3. ✅ `ANTHROPIC_API_KEY`: ya existe una key creada en
+     platform.claude.com llamada `finmate-railway` (alcance Organización,
+     creada 28 ago 2026). Solo falta que Joaco la copie (botón de revelar
+     en la tabla de claves) y la pegue como `ANTHROPIC_API_KEY` en Railway
+     — el valor en sí nunca lo vi ni lo puedo ver yo.
   4. ❌ **Este es el bloqueador activo de verdad:** el servicio `web` en
      Railway (proyecto `melodious-surprise`) muestra "Trial expired" /
      "Service is offline". Joaco tiene que agregar un método de pago en
@@ -164,8 +166,13 @@ curar.
      Template Builder en el doc `claude/whatsapp-templates.md` del
      proyecto de Claude — falta que Joaco los cree ahí y pegue los Content
      SIDs resultantes en Railway (ver Fase 1.6 arriba para el detalle de
-     cuáles). Twilio sigue en cuenta trial con saldo (~$10.73 al 26 oct
-     2026) — alcanza para seguir probando en el sandbox mientras tanto.
+     cuáles). Intenté entrar a Twilio Content Template Builder para
+     crearlos directamente, pero la sesión del navegador ya había
+     expirado (pide login) — no voy a iniciar sesión yo (eso implicaría
+     tocar credenciales), así que Joaco tiene que loguearse y crearlos a
+     mano con los textos ya redactados. Twilio sigue en cuenta trial con
+     saldo (~$10.73 al 26 oct 2026) — alcanza para seguir probando en el
+     sandbox mientras tanto.
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
   marca como "yanked" — se subió a `9.4.1` (25 oct 2026, sin romper nada,
   verificado). `pyflakes` señala imports sin usar y f-strings sin
