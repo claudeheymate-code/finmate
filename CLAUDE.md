@@ -131,17 +131,26 @@ curar.
     Railway. Mientras no estén, el bot sigue funcionando exactamente igual
     que ahora.
 - **Bloqueador real:** nada de la Fase 0, Fase 1, Fase 1.5 ni Fase 1.6 llegó
-  a Railway. Faltan, en orden:
-  1. Provisionar Postgres (recomendado: Neon, neon.tech) → `DATABASE_URL`.
-  2. (Opcional) Provisionar Redis (recomendado: Upstash, upstash.com) →
-     `REDIS_URL`.
-  3. Crear API key en console.anthropic.com → `ANTHROPIC_API_KEY`.
-  4. Resolver el estado de pago de Railway (el servicio mostró "Trial
-     Ended" — Joaco tiene que configurar el método de pago él mismo, no es
-     algo que yo pueda hacer).
-  5. Pegar `DATABASE_URL`, `REDIS_URL` y `ANTHROPIC_API_KEY` en las
-     Variables de Railway (Joaco tiene que hacerlo él mismo — nunca debo
-     ingresar credenciales yo).
+  a Railway. Chequeado el 26 oct 2026 directamente en las consolas (Neon,
+  Upstash, Railway, Twilio) — estado real de cada paso:
+  1. ✅ Postgres ya está provisionado: proyecto Neon `finmate`
+     (`shiny-term-24632740`), branch `production`, free plan. Solo falta
+     que Joaco copie el connection string (botón "Connect" → "Show
+     password") y lo pegue como `DATABASE_URL` en Railway.
+  2. ✅ Redis ya está provisionado: base Upstash `finmate`, free tier. Solo
+     falta que Joaco copie el `UPSTASH_REDIS_REST_URL`/token (o el
+     `redis://` de la pestaña TCP) y lo pegue como `REDIS_URL` en Railway.
+  3. ⬜ `ANTHROPIC_API_KEY`: no confirmado si ya existe una key creada en
+     console.anthropic.com / platform.claude.com — Joaco tiene que
+     verificar o crear una.
+  4. ❌ **Este es el bloqueador activo de verdad:** el servicio `web` en
+     Railway (proyecto `melodious-surprise`) muestra "Trial expired" /
+     "Service is offline". Joaco tiene que agregar un método de pago en
+     Railway — no es algo que yo pueda hacer (nunca debo ingresar datos de
+     pago ni credenciales).
+  5. Una vez resuelto el pago: pegar `DATABASE_URL`, `REDIS_URL` y
+     `ANTHROPIC_API_KEY` en las Variables de Railway (Joaco tiene que
+     hacerlo él mismo — nunca debo ingresar credenciales yo).
   6. Railway va a redeployar solo en cuanto el repo tenga los archivos (ya
      están subidos a GitHub `main`, tanto Fase 0 como Fase 1) y el servicio
      esté activo con las variables cargadas.
@@ -150,9 +159,13 @@ curar.
      mueve fuerte, llega la alerta de watchlist sin que nadie pregunte).
   8. En paralelo: trámite de plantillas de WhatsApp Business (Twilio + Meta)
      — la aprobación de Meta tarda días, conviene arrancarlo cuanto antes.
-     El código que las usa (Fase 1.6) ya está listo; falta crear los 3
-     templates en Twilio y pegar sus Content SIDs en Railway (ver Fase 1.6
-     arriba para el detalle de cuáles).
+     El código que las usa (Fase 1.6) ya está listo; los 3 textos de
+     template quedaron redactados y listos para pegar en Twilio Content
+     Template Builder en el doc `claude/whatsapp-templates.md` del
+     proyecto de Claude — falta que Joaco los cree ahí y pegue los Content
+     SIDs resultantes en Railway (ver Fase 1.6 arriba para el detalle de
+     cuáles). Twilio sigue en cuenta trial con saldo (~$10.73 al 26 oct
+     2026) — alcanza para seguir probando en el sandbox mientras tanto.
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
   marca como "yanked" — se subió a `9.4.1` (25 oct 2026, sin romper nada,
   verificado). `pyflakes` señala imports sin usar y f-strings sin
