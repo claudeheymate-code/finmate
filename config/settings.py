@@ -112,4 +112,17 @@ REDIS_URL = os.getenv("REDIS_URL", "")
 # ============================================================
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL_DEFAULT = os.getenv("ANTHROPIC_MODEL_DEFAULT", "claude-haiku-4-5-20251001")
-ANTHROPIC_MODEL_ANALYSIS = os.getenv("ANTHROPIC_MODEL_ANALYSIS", "claude-sonnet-5")
+ANTHROPIC_MODEL_ANALYSIS = os.getenv("ANTHROPIC_MODEL_ANALYSIS", "claude-sonnet-4-6")
+
+# ============================================================
+# Scheduler de apertura/cierre de mercados (Plan Fase 2)
+# NYSE abre 9:30 ET = 13:30 UTC. Cierra 16:00 ET = 20:00 UTC.
+# Por defecto deshabilitados — activar en Railway cuando estén
+# las plantillas de WhatsApp Business aprobadas por Meta.
+# ============================================================
+MARKET_OPEN_ALERT_ENABLED = os.getenv("MARKET_OPEN_ALERT_ENABLED", "false").lower() == "true"
+MARKET_CLOSE_ALERT_ENABLED = os.getenv("MARKET_CLOSE_ALERT_ENABLED", "false").lower() == "true"
+MARKET_OPEN_HOUR_UTC = int(os.getenv("MARKET_OPEN_HOUR_UTC", "13"))
+MARKET_OPEN_MINUTE_UTC = int(os.getenv("MARKET_OPEN_MINUTE_UTC", "30"))
+MARKET_CLOSE_HOUR_UTC = int(os.getenv("MARKET_CLOSE_HOUR_UTC", "20"))
+MARKET_CLOSE_MINUTE_UTC = int(os.getenv("MARKET_CLOSE_MINUTE_UTC", "0"))
