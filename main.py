@@ -20,6 +20,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import pytz
 
+from config import settings
 from config.settings import (
     FLASK_PORT,
     FLASK_DEBUG,
@@ -99,6 +100,34 @@ def run_weekly_summary():
     asyncio.run(engine.send_weekly_summary())
 
 
+def run_market_open_alert():
+    """Job: alerta de apertura de mercado (Plan Fase 2). Solo actúa si está habilitado."""
+    if not settings.MARKET_OPEN_ALERT_ENABLED:
+        return
+    logger.info("🔔 Ejecutando alerta de apertura de mercado...")
+    try:
+        from finmate.alerts.engine import AlertEngine
+        engine = AlertEngine()
+        if hasattr(engine, "run_market_open_alert"):
+            asyncio.run(engine.run_market_open_alert())
+    except Exception as e:
+        logger.error(f"Error en market open alert (no afecta el resto del bot): {e}")
+
+
+def run_market_close_alert():
+    """Job: alerta de cierre de mercado (Plan Fase 2). Solo actúa si está habilitado."""
+    if not settings.MARKET_CLOSE_ALERT_ENABLED:
+        return
+    logger.info("🔔 Ejecutando alerta de cierre de mercado...")
+    try:
+        from finmate.alerts.engine import AlertEngine
+        engine = AlertEngine()
+        if hasattr(engine, "run_market_close_alert"):
+            asyncio.run(engine.run_market_close_alert())
+    except Exception as e:
+        logger.error(f"Error en market close alert (no afecta el resto del bot): {e}")
+
+
 def run_watchlist_alert_check():
     """Job: chequea alertas de watchlist por usuario (Fase 1.5).
 
@@ -160,6 +189,22 @@ def start_scheduler():
         IntervalTrigger(minutes=ALERT_CHECK_INTERVAL_MINUTES),
         id="watchlist_alert_check",
         name="Chequeo de alertas de watchlist",
+        replace_existing=True,
+    )
+
+    # Apertura y cierre de mercado (Plan Fase 2) — deshabilitados por defecto
+    scheduler.add_job(
+        run_market_open_alert,
+        CronTrigger(hour=settings.MARKET_OPEN_HOUR_UTC, minute=settings.MARKET_OPEN_MINUTE_UTC),
+        id="market_open_alert",
+        name="Alerta apertura de mercado",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_market_close_alert,
+        CronTrigger(hour=settings.MARKET_CLOSE_HOUR_UTC, minute=settings.MARKET_CLOSE_MINUTE_UTC),
+        id="market_close_alert",
+        name="Alerta cierre de mercado",
         replace_existing=True,
     )
 

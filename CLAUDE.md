@@ -11,6 +11,15 @@ esta misma carpeta. Este archivo es el resumen vivo y corto — actualizalo al
 final de cada sesión en vez de dejar que `RESUMEN_CONVERSACION.md` crezca sin
 curar.
 
+**Documentación completa en `docs/`** (empezar por `docs/00_LEEME_INDICE.md`):
+plan de arquitectura con las 9 fases (`docs/01_PLAN_ARQUITECTURA_Y_FASES.md`),
+checklist por fase con verificaciones (`docs/02_CHECKLIST_CONSTRUCCION_POR_FASE.md`),
+estado actual + equivalencia entre la numeración de fases del plan y la del
+código (`docs/03_ESTADO_ACTUAL_Y_PROXIMOS_PASOS.md`), ideas
+(`docs/04_BRAINSTORMING_IDEAS.md`) y plantillas de WhatsApp
+(`docs/05_WHATSAPP_TEMPLATES_TWILIO.md`). Al cerrar una sesión, actualizar
+también el checklist y el doc de estado.
+
 ## Estado actual (última revisión: 26 oct 2026)
 
 - **En producción (funciona):** bot de comandos informativos sobre mercados
@@ -179,6 +188,22 @@ curar.
   placeholders en `webhook.py`, `formatter.py`, `engine.py`,
   `gcal_client.py`, `main.py` — cosmético, no afecta funcionamiento, no se
   tocó para no mezclar cambios.
+
+## Actualización 8 nov 2026 — Plan Fases 1, 2, 4, 5 y 6 (parcial)
+
+Escrito el 29 oct, verificado el 8 nov contra SQLite temporal + Finnhub real. 20 tools en
+`finmate/agent/tools.py`. Nuevos módulos: `personality_tools.py` + `db/personality_repo.py`
+(personalidad en system prompt), `market_tools.py` (`explain_movement`), `news_tools.py` +
+`db/news_repo.py` + `data_sources/economic_calendar.py` (temas e indicadores seguidos,
+catálogo curado sin fechas reales), `finance_tools.py` + `db/finance_repo.py` (gastos/ingresos,
+categorías: Vivienda, Alimentación, Transporte, Ocio, Salud, Educación, Otros),
+`db/alerts_log_repo.py` (tabla creada, todavía no la usan los motores de alertas).
+Tablas nuevas en `db/models.py`: `personality_settings`, `news_topics_followed`,
+`economic_indicators_followed`, `transactions`, `budget_categories`, `alerts_log`
+(`init_db()` las crea solas). Fixes del 8 nov: `add_expense` exige `tipo` gasto/ingreso,
+categorías sin tilde se normalizan, `explain_movement` filtra noticias por ticker/empresa.
+**Ojo:** la carpeta local no es un repo git funcional; estos archivos hay que subirlos a
+GitHub `main` antes de desplegar. Detalle en `docs/03_ESTADO_ACTUAL_Y_PROXIMOS_PASOS.md`.
 
 ## Arquitectura
 
