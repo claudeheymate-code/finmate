@@ -202,8 +202,8 @@ Tablas nuevas en `db/models.py`: `personality_settings`, `news_topics_followed`,
 `economic_indicators_followed`, `transactions`, `budget_categories`, `alerts_log`
 (`init_db()` las crea solas). Fixes del 8 nov: `add_expense` exige `tipo` gasto/ingreso,
 categorías sin tilde se normalizan, `explain_movement` filtra noticias por ticker/empresa.
-**Ojo:** la carpeta local no es un repo git funcional; estos archivos hay que subirlos a
-GitHub `main` antes de desplegar. Detalle en `docs/03_ESTADO_ACTUAL_Y_PROXIMOS_PASOS.md`.
+**Subido a GitHub `main` el 8 nov 2026** (la carpeta local no es un repo git funcional).
+En Railway → Variables, NO aceptar las "Suggested Variables" (son placeholders de `.env.example`). Detalle en `docs/03_ESTADO_ACTUAL_Y_PROXIMOS_PASOS.md`.
 
 ## Arquitectura
 
