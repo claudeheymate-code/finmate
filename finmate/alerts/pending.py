@@ -52,6 +52,11 @@ def _save(state: dict) -> None:
 
 def queue_pending(phone: str, text: str) -> None:
     """Agrega `text` a la cola de pendientes de `phone`."""
+    # TODO(review): _load + _save no es atómico — si dos alertas para el mismo
+    # teléfono llegan en paralelo (ej. dos threads del scheduler disparando al
+    # mismo instante), la segunda sobrescribe el archivo antes de que la primera
+    # termine de leerlo, perdiendo una entrada. Solución limpia: threading.Lock
+    # compartido a nivel de módulo. Improbable en el flujo actual; no bloquea deploy.
     state = _load()
     items = state.get(phone, [])
     items.append(text)

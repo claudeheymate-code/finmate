@@ -100,6 +100,8 @@ def check_watchlist_alerts(messenger: Optional[WhatsAppMessenger] = None) -> int
                 quote_cache[symbol] = _get_finnhub_quote(client, symbol)
             quote = quote_cache[symbol]
 
+            # TODO(review): `not quote.get("price")` saltea precio==0.0, válido
+            # en teoría para penny stocks extremos. Comportamiento consistente con el resto del bot.
             if not quote or not quote.get("price") or quote.get("is_closed"):
                 continue
 
