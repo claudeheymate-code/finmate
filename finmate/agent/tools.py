@@ -21,6 +21,21 @@ un `phone` propagado desde el orquestador.
 import logging
 from typing import Optional
 
+from finmate.agent.finance_tools import (
+    tool_add_expense,
+    tool_get_monthly_summary,
+    tool_get_recent_transactions,
+)
+from finmate.agent.market_tools import tool_explain_movement
+from finmate.agent.news_tools import (
+    tool_follow_indicator,
+    tool_follow_news_topic,
+    tool_get_economic_calendar,
+    tool_get_my_news_topics,
+    tool_unfollow_indicator,
+    tool_unfollow_news_topic,
+)
+from finmate.agent.personality_tools import tool_get_personality, tool_set_personality
 from finmate.agent.portfolio_tools import (
     tool_add_to_portfolio,
     tool_add_to_watchlist,
@@ -155,6 +170,128 @@ TOOLS = [
         ),
         "input_schema": {"type": "object", "properties": {}},
     },
+    # ── Finanzas personales (Plan Fase 5) ──────────────────────────────────
+    {
+        "name": "add_expense",
+        "description": "Registra un gasto o ingreso personal. Usar cuando el usuario diga algo como 'gasté X en Y', 'pagué X', 'cobré X', 'ingresé X'. Extraé el monto (negativo para gasto, positivo para ingreso), la categoría y una descripción corta.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "tipo":        {"type": "string",  "enum": ["gasto", "ingreso"], "description": "gasto (gasté, pagué, compré) o ingreso (cobré, me pagaron, ingresé)"},
+                "amount":      {"type": "number",  "description": "Monto — negativo para gasto, positivo para ingreso"},
+                "category":    {"type": "string",  "description": "Categoría: Vivienda|Alimentación|Transporte|Ocio|Salud|Educación|Otros"},
+                "description": {"type": "string",  "description": "Descripción corta (ej: almuerzo, uber, netflix)"},
+                "date_str":    {"type": "string",  "description": "Fecha YYYY-MM-DD (opcional, default hoy)"},
+                "raw_text":    {"type": "string",  "description": "Texto original del usuario (opcional)"},
+            },
+            "required": ["tipo", "amount", "category", "description"],
+        },
+    },
+    {
+        "name": "get_monthly_summary",
+        "description": "Muestra el resumen de ingresos y gastos del mes. Usar cuando el usuario pregunte 'cuánto gasté este mes', 'cómo van mis finanzas', 'resumen de gastos'. Si no indica mes, usar el mes actual.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "year":  {"type": "integer", "description": "Año (opcional, default año actual)"},
+                "month": {"type": "integer", "description": "Mes 1-12 (opcional, default mes actual)"},
+            },
+        },
+    },
+    {
+        "name": "get_recent_transactions",
+        "description": "Muestra los últimos movimientos registrados. Usar cuando el usuario pregunte por sus últimas transacciones o historial reciente.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    # ── Noticias e indicadores económicos (Plan Fase 4) ────────────────────
+    {
+        "name": "get_my_news_topics",
+        "description": "Muestra los temas de noticias e indicadores económicos que el usuario está siguiendo. Usar cuando pregunte qué está siguiendo o quiera ver su configuración de alertas.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "follow_news_topic",
+        "description": "Agrega un tema de noticias para seguir. Usar cuando el usuario diga 'seguime las noticias de X', 'avisame sobre X'. Tipos: ticker (ej: AAPL), sector (ej: tecnología), pais (ej: Chile), keyword (ej: inflación).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "tipo":  {"type": "string", "description": "ticker|sector|pais|keyword"},
+                "valor": {"type": "string", "description": "El valor a seguir"},
+            },
+            "required": ["tipo", "valor"],
+        },
+    },
+    {
+        "name": "unfollow_news_topic",
+        "description": "Quita un tema de noticias. Usar cuando el usuario quiera dejar de recibir noticias sobre algo.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "tipo":  {"type": "string", "description": "ticker|sector|pais|keyword"},
+                "valor": {"type": "string", "description": "El valor a quitar"},
+            },
+            "required": ["tipo", "valor"],
+        },
+    },
+    {
+        "name": "get_economic_calendar",
+        "description": "Muestra el calendario de indicadores económicos del usuario o el catálogo completo. Usar cuando pregunte por indicadores macro, datos económicos, o el calendario.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "follow_indicator",
+        "description": "Agrega un indicador económico macro para seguir. Usar cuando el usuario diga 'seguime el CPI', 'avisame del NFP', etc. Códigos: FED_RATE, CPI_US, NFP, GDP_US, PCE_US, IPC_CL, BCCh_RATE, etc.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "indicator_code": {"type": "string", "description": "Código del indicador (ej: CPI_US, NFP, FED_RATE)"},
+            },
+            "required": ["indicator_code"],
+        },
+    },
+    {
+        "name": "unfollow_indicator",
+        "description": "Quita un indicador económico de los seguimientos.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "indicator_code": {"type": "string", "description": "Código del indicador a quitar"},
+            },
+            "required": ["indicator_code"],
+        },
+    },
+    # ── Explicar movimiento de mercado (Plan Fase 2) ───────────────────────
+    {
+        "name": "explain_movement",
+        "description": "Explica el movimiento reciente de un activo: precio, variación del día y noticias relacionadas. Usar cuando el usuario pregunte 'por qué se movió X', 'qué pasó con AAPL', 'explicame el movimiento de Tesla'.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string", "description": "Ticker del activo (ej: AAPL, NVDA, BTC-USD)"},
+            },
+            "required": ["symbol"],
+        },
+    },
+    # ── Personalidad (Plan Fase 1) ─────────────────────────────────────────
+    {
+        "name": "get_personality",
+        "description": "Muestra la configuración de personalidad actual de Finmate para este usuario: humor, sarcasmo, frecuencia de chistes, nivel conversador y tono. Usar cuando el usuario pregunte cómo configuró el bot o quiera ver su perfil de personalidad.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "set_personality",
+        "description": "Cambia uno o más parámetros de personalidad de Finmate para este usuario. Usar cuando diga 'poneme más humor', 'quiero que seas más gracioso', 'cambié el tono a casual', etc. Parámetros: humor (1-10), sarcasmo (1-10), frecuencia_chistes (1-10), nivel_conversador (1-10), tono (profesional|casual|amigo).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "humor": {"type": "integer", "minimum": 1, "maximum": 10},
+                "sarcasmo": {"type": "integer", "minimum": 1, "maximum": 10},
+                "frecuencia_chistes": {"type": "integer", "minimum": 1, "maximum": 10},
+                "nivel_conversador": {"type": "integer", "minimum": 1, "maximum": 10},
+                "tono": {"type": "string", "enum": ["profesional", "casual", "amigo"]},
+            },
+        },
+    },
 ]
 
 # Cache corto: si dos usuarios (o el mismo, dos veces) preguntan "mercados"
@@ -170,6 +307,19 @@ _USER_SCOPED_TOOLS = {
     "get_watchlist": lambda user_id, _input: tool_get_watchlist(user_id),
     "add_to_watchlist": tool_add_to_watchlist,
     "remove_from_watchlist": tool_remove_from_watchlist,
+    "get_personality":           lambda user_id, _input: tool_get_personality(user_id),
+    "set_personality":           tool_set_personality,
+    # Finanzas personales
+    "add_expense":               tool_add_expense,
+    "get_monthly_summary":       tool_get_monthly_summary,
+    "get_recent_transactions":   lambda user_id, _input: tool_get_recent_transactions(user_id),
+    # Noticias e indicadores
+    "get_my_news_topics":        lambda user_id, _input: tool_get_my_news_topics(user_id),
+    "follow_news_topic":         tool_follow_news_topic,
+    "unfollow_news_topic":       tool_unfollow_news_topic,
+    "get_economic_calendar":     lambda user_id, _input: tool_get_economic_calendar(user_id),
+    "follow_indicator":          tool_follow_indicator,
+    "unfollow_indicator":        tool_unfollow_indicator,
 }
 
 # Tools que operan sobre el teléfono crudo, no sobre el user_id de la DB
@@ -187,6 +337,9 @@ def run_tool(
 ) -> str:
     if name == "get_market_data":
         return cached("finmate:market_data", _MARKET_DATA_CACHE_TTL, _get_market_data)
+
+    if name == "explain_movement":
+        return tool_explain_movement(tool_input)
 
     if name in _USER_SCOPED_TOOLS:
         if user_id is None:

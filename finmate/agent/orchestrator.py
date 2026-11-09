@@ -29,42 +29,58 @@ from config.settings import (
 from finmate.agent.tools import TOOLS, run_tool
 from finmate.db.repository import get_or_create_user, get_recent_history, save_turn
 
+try:
+    from finmate.db.personality_repo import get_personality
+except ImportError:
+    def get_personality(user_id):
+        return {}
+
 logger = logging.getLogger(__name__)
 
 _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
-SYSTEM_PROMPT = """Sos Finmate, un asistente financiero personal que responde por WhatsApp.
+
+def _build_system_prompt(personality: dict) -> list:
+    """Construye el system prompt inyectando la personalidad del usuario."""
+    humor = personality.get("humor", 5)
+    sarcasmo = personality.get("sarcasmo", 3)
+    frecuencia = personality.get("frecuencia_chistes", 3)
+    nivel = personality.get("nivel_conversador", 5)
+    tono = personality.get("tono", "profesional")
+
+    # Texto base (invariable)
+    base = """Sos Finmate, un asistente financiero personal que responde por WhatsApp.
 
 Tu trabajo es informar e interpretar mercados, no dar recomendaciones de
 inversión. Nunca le digas al usuario que compre, venda o mantenga un activo
 específico — podés explicar contexto, riesgos y qué está pasando, pero la
 decisión siempre es de él.
 
-Reglas de estilo:
-- Respondé en español, tono cercano pero profesional.
-- Sé conciso: esto es WhatsApp, no un informe — evitá párrafos largos.
-- Si no tenés información suficiente o una herramienta falla, decilo con
-  claridad en vez de inventar datos.
-- Dejá siempre la puerta abierta a que el usuario pregunte más.
-
 Herramientas disponibles:
 - get_market_data: estado actual de índices, commodities y tipo de cambio.
-  Usala cuando pregunte por mercados o el contexto lo pida.
-- get_portfolio / add_to_portfolio / remove_from_portfolio: portafolio
-  personal del usuario (alta, baja y consulta con precio actual y
-  ganancia/pérdida). Usalas cuando hable de lo que tiene invertido, diga
-  que compró o vendió algo, o pregunte cómo le está yendo.
-- get_watchlist / add_to_watchlist / remove_from_watchlist: activos que el
-  usuario sigue sin tenerlos (necesariamente) en el portafolio. Usalas
-  cuando diga "seguime a X" o pregunte qué está siguiendo.
-- get_pending_notifications: cuando le mandaste antes un aviso corto tipo
-  "tenés novedades de mercado" o "tu resumen semanal está listo" y el
-  usuario responde algo afirmativo (sí, dale, mostrame, ver, mandalo),
-  usala para traer el contenido completo y mandárselo. No hace falta
-  preguntarle de nuevo si quiere verlo.
+- get_portfolio / add_to_portfolio / remove_from_portfolio: portafolio personal.
+- get_watchlist / add_to_watchlist / remove_from_watchlist: activos seguidos.
+- get_pending_notifications: contenido de avisos anteriores del bot.
+- get_personality / set_personality: ver y cambiar cómo hablás con el usuario.
+- add_expense / get_monthly_summary: registro y consulta de gastos personales.
+- follow_news_topic / unfollow_news_topic / get_my_news_topics: temas de noticias.
+- follow_indicator / unfollow_indicator / get_economic_calendar: indicadores macro.
 
-No inventes posiciones, precios ni resultados: si una tool falla o el
-usuario no tiene nada cargado, decilo con claridad en vez de asumir datos."""
+No inventes posiciones, precios ni resultados."""
+
+    # Instrucciones de personalidad (variable)
+    personality_txt = f"""
+
+PERSONALIDAD PARA ESTE USUARIO (ajustá tu estilo, no el rigor):
+- Tono base: {tono} (profesional=formal pero cercano, casual=relajado, amigo=muy informal)
+- Humor: {humor}/10 — {"sin chistes" if humor <= 2 else "algún chiste si viene al caso" if humor <= 5 else "bastante humor, usá emojis expresivos" if humor <= 8 else "muy gracioso, jugá con el lenguaje"}
+- Sarcasmo: {sarcasmo}/10 — {"cero sarcasmo" if sarcasmo <= 2 else "sarcasmo suave ocasional" if sarcasmo <= 5 else "bastante sarcástico" if sarcasmo <= 8 else "muy sarcástico"}
+- Chistes: {frecuencia}/10 — {"nunca hagas chistes" if frecuencia <= 2 else "chiste solo si encaja bien" if frecuencia <= 5 else "un chiste cada tanto" if frecuencia <= 8 else "chistes frecuentes"}
+- Longitud de respuesta: {"muy conciso, máximo 3 líneas" if nivel <= 2 else "conciso" if nivel <= 4 else "normal" if nivel <= 6 else "conversacional, podés extenderte" if nivel <= 8 else "muy conversacional, desarrollá las ideas"}
+
+IMPORTANTE: la personalidad afecta el ESTILO de cómo contás las cosas, nunca la PRECISIÓN de los datos ni el rigor del análisis."""
+
+    return [{"type": "text", "text": base + personality_txt, "cache_control": {"type": "ephemeral"}}]
 
 _ANALYSIS_TRIGGERS = ("por qué", "porque", "analiza", "explica", "riesgo", "conviene", "oportunidad")
 
@@ -87,11 +103,17 @@ def _pick_model(user_message: str) -> str:
     return ANTHROPIC_MODEL_DEFAULT
 
 
-def _run_agent(messages: list, model: str, user_id: int, phone: str) -> str:
+def _run_agent(messages: list, model: str, user_id: int, phone: str, personality: dict) -> str:
     """Loop de tool-calling: llama a Claude, ejecuta las tools que pida, repite
     hasta que devuelva texto final o se agoten los intentos."""
+    system = _build_system_prompt(personality)
+
     response = _client.messages.create(
-        model=model, max_tokens=600, system=SYSTEM_PROMPT, tools=TOOLS, messages=messages
+        model=model,
+        max_tokens=600,
+        system=system,
+        tools=TOOLS,
+        messages=messages,
     )
 
     rounds = 0
@@ -110,7 +132,11 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str) -> str:
         messages.append({"role": "user", "content": tool_results})
 
         response = _client.messages.create(
-            model=model, max_tokens=600, system=SYSTEM_PROMPT, tools=TOOLS, messages=messages
+            model=model,
+            max_tokens=600,
+            system=system,
+            tools=TOOLS,
+            messages=messages,
         )
 
     final_text = "".join(block.text for block in response.content if block.type == "text").strip()
@@ -139,7 +165,12 @@ def handle_message(phone: str, user_message: str) -> str:
     model = _pick_model(user_message)
 
     try:
-        final_text = _run_agent(messages, model, user.id, phone)
+        personality = get_personality(user.id)
+    except Exception:
+        personality = {}  # fallback a defaults
+
+    try:
+        final_text = _run_agent(messages, model, user.id, phone, personality)
     except Exception as e:
         logger.error(f"Error en el orquestador respondiendo a {phone}: {e}", exc_info=True)
         final_text = _GENERIC_ERROR_MSG

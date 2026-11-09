@@ -75,7 +75,7 @@ def tool_get_portfolio(user_id: int) -> str:
 
     for symbol, quantity, avg_cost in holdings:
         quote = _quote_for(symbol)
-        if quote and quote.get("price"):
+        if quote and quote.get("price") is not None:
             price = quote["price"]
             value = price * quantity
             total_value += value
@@ -173,7 +173,7 @@ def tool_get_watchlist(user_id: int) -> str:
     lines = ["*TU WATCHLIST*", ""]
     for symbol, note in items:
         quote = _quote_for(symbol)
-        if quote and quote.get("price"):
+        if quote and quote.get("price") is not None:
             emoji = _change_emoji(quote.get("change_pct"))
             price_txt = (
                 f"{_format_number(quote['price'], prefix='$')} "
