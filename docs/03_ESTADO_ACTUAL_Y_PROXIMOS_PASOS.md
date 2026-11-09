@@ -43,8 +43,14 @@ apertura/cierre (Fase 2), P&L/rentabilidad del portafolio (Fase 3 — hoy solo m
 actual), fechas reales del calendario económico y pre-aviso/post-dato (Fase 4), conectar
 `alerts_log` y umbral de materialidad (Fase 6), hardening (Fase 8).
 
-**⚠️ Esta carpeta no es un repo git funcional** (`.git` está incompleto). El código del 29 oct en
-adelante probablemente **no está en GitHub** → antes de desplegar hay que subirlo (ver CLAUDE.md).
+**✅ 8 nov 2026: todo el código y `docs/` subidos a GitHub `main`** (7 commits por el editor web;
+verificado que el repo queda idéntico a esta carpeta y arranca con las 20 tools). La carpeta local
+sigue sin ser un repo git funcional (`.git` incompleto): para próximos cambios, clonar de nuevo o
+subir por el editor web de GitHub.
+
+⚠️ **Railway → Variables muestra "Suggested Variables" tomadas de `.env.example`: son valores de
+ejemplo (`xxxx`, `usuario:password`). No apretar "Add" en ese bloque** — pisaría las claves reales de
+Twilio/Finnhub. Cargar a mano solo `DATABASE_URL`, `REDIS_URL` y `ANTHROPIC_API_KEY` con "New Variable".
 
 Sugerencia: al retomar con Claude Code, definir si se sigue la numeración del plan o la del
 código, y mantener una sola.
