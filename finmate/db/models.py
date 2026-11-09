@@ -15,7 +15,9 @@ from __future__ import annotations
 import datetime as dt
 
 from sqlalchemy import (
+    Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -52,6 +54,18 @@ class User(Base):
     )
     watchlist_items = relationship(
         "WatchlistItem", back_populates="user", cascade="all, delete-orphan"
+    )
+    personality = relationship(
+        "PersonalitySettings", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    news_topics = relationship(
+        "NewsTopicFollowed", back_populates="user", cascade="all, delete-orphan"
+    )
+    economic_indicators = relationship(
+        "EconomicIndicatorFollowed", back_populates="user", cascade="all, delete-orphan"
+    )
+    transactions = relationship(
+        "Transaction", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -104,6 +118,100 @@ class WatchlistItem(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="watchlist_items")
+
+
+class PersonalitySettings(Base):
+    """Configuración de personalidad por usuario (Plan Fase 1)."""
+
+    __tablename__ = "personality_settings"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    humor = Column(Integer, default=5)               # 1-10: 1=serio, 10=muy gracioso
+    sarcasmo = Column(Integer, default=3)             # 1-10
+    frecuencia_chistes = Column(Integer, default=3)   # 1-10
+    nivel_conversador = Column(Integer, default=5)    # 1-10: 1=muy conciso, 10=muy parlanchín
+    tono = Column(String(50), default="profesional")  # profesional|casual|amigo
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False
+    )
+
+    user = relationship("User", back_populates="personality")
+
+
+class NewsTopicFollowed(Base):
+    """Temas de noticias que el usuario quiere seguir (Plan Fase 4)."""
+
+    __tablename__ = "news_topics_followed"
+    __table_args__ = (UniqueConstraint("user_id", "tipo", "valor", name="uq_news_user_tipo_valor"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    tipo = Column(String(50), nullable=False)    # ticker | sector | pais | keyword
+    valor = Column(String(200), nullable=False)  # AAPL | tecnología | Chile | inflación
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="news_topics")
+
+
+class EconomicIndicatorFollowed(Base):
+    """Indicadores macroeconómicos que el usuario quiere seguir (Plan Fase 4)."""
+
+    __tablename__ = "economic_indicators_followed"
+    __table_args__ = (UniqueConstraint("user_id", "indicator_code", name="uq_eco_user_code"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    indicator_code = Column(String(50), nullable=False)  # FED_RATE|CPI_US|NFP|GDP_US|IPC_CL
+    country = Column(String(10), default="US")
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="economic_indicators")
+
+
+class Transaction(Base):
+    """Transacción de finanzas personales (Plan Fase 5).
+    amount negativo = gasto, positivo = ingreso."""
+
+    __tablename__ = "transactions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    amount = Column(Float, nullable=False)        # negativo=gasto, positivo=ingreso
+    category = Column(String(100), nullable=False)
+    description = Column(String(500))
+    date = Column(DateTime, nullable=False, index=True)
+    raw_text = Column(String(500))               # texto original del usuario
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="transactions")
+
+
+class BudgetCategory(Base):
+    """Categoría de presupuesto — globales (user_id=None) o por usuario (Plan Fase 5)."""
+
+    __tablename__ = "budget_categories"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_budget_user_name"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL = globales/default
+    name = Column(String(100), nullable=False)
+    monthly_limit = Column(Float, nullable=True)  # None = sin límite
+    is_default = Column(Boolean, default=False)
+
+
+class AlertLog(Base):
+    """Log de alertas enviadas — reemplaza JSON state files gradualmente (Plan Fase 6)."""
+
+    __tablename__ = "alerts_log"
+    __table_args__ = (UniqueConstraint("user_id", "alert_type", "ref_id", name="uq_alert_log"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL = broadcast
+    alert_type = Column(String(50), nullable=False)    # watchlist|earnings|macro|news|weekly
+    ref_id = Column(String(200), nullable=False)        # ej: "AAPL_2026-10-29"
+    sent_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False, index=True)
 
 
 # ============================================================
