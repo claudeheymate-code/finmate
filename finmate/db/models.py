@@ -229,6 +229,24 @@ class NotificationSettings(Base):
     )
 
 
+class Feedback(Base):
+    """Mensajes de feedback que los usuarios mandan desde el panel web.
+
+    Se guardan siempre (aunque falle el correo), así nada se pierde.
+    """
+
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    tipo = Column(String(20), nullable=False)          # idea | problema | me_gusta | otro
+    rating = Column(Integer, nullable=True)            # 1-5, opcional
+    message = Column(Text, nullable=False)
+    contact_ok = Column(Boolean, nullable=False, default=False)
+    emailed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+
 class AlertLog(Base):
     """Log de alertas enviadas — reemplaza JSON state files gradualmente (Plan Fase 6)."""
 
