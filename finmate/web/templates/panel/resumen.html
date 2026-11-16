@@ -1,0 +1,13 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><p class="muted small strong">Resumen</p><h1>Tu plata, de un vistazo</h1></div>
+  <span class="pill-status">Sincronizado con WhatsApp</span>
+</div>
+<div class="stats" id="r-stats" aria-live="polite"><p class="faint">Cargando…</p></div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2>Tus activos</h2><p>Principales posiciones y tu watchlist</p></div><a class="small strong" href="{{ url_for('panel.inversiones') }}">Ver todo</a></div><ul class="list tight" id="r-assets"></ul></section>
+  <section class="card glass"><div class="card-head"><div><h2>Lo último en WhatsApp</h2><p>El panel y el chat comparten la misma memoria</p></div></div><div class="chat" id="r-chat"></div></section>
+</div>
+<section class="card glass"><div class="card-head"><div><h2>Lo que seguís</h2><p>Indicadores y temas de noticias</p></div><a class="small strong" href="{{ url_for('panel.ajustes') }}">Editar</a></div><ul class="list tight" id="r-follows"></ul></section>
+{% endblock %}

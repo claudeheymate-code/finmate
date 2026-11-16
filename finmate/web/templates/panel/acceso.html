@@ -1,0 +1,34 @@
+{% from "panel/_icons.html" import icon %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finmate — Entrar</title>
+<link rel="icon" href="{{ url_for('panel.static', filename='finmate-icon-white.png') }}">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css') }}">
+</head>
+<body data-page="acceso">
+<div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+<div class="login">
+  <div style="flex:1 1 420px;max-width:520px;min-width:0">
+    <div class="brand"><img src="{{ url_for('panel.static', filename='finmate-icon-white.png') }}" alt="" style="width:56px;height:56px"><span style="font-size:44px">finmate</span></div>
+    <h1 style="margin-top:28px;font-size:44px">Tu asistente financiero, ahora también en la web</h1>
+    <p class="muted" style="margin-top:18px;font-size:17px;line-height:1.6">Mirá tu portafolio, tus gastos y tus alertas de un vistazo. Lo que cambies acá se refleja en tu chat de WhatsApp.</p>
+  </div>
+  <section class="card glass-strong" style="flex:0 1 420px;padding:32px;border-radius:28px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="up" style="display:flex">{{ icon('lock') }}</span><h2 style="font-size:24px">Entrar</h2></div>
+    {% if dev_login %}
+    <p class="faint small" style="margin-bottom:22px">Modo desarrollo: se entra solo con el número. El acceso con código por WhatsApp llega en la etapa 4.</p>
+    <form id="dev-login" style="display:flex;flex-direction:column;gap:16px">
+      <div class="field"><label for="phone">Tu número de WhatsApp</label><input id="phone" type="tel" required placeholder="+56 9 1234 5678"></div>
+      <button class="btn" type="submit">Entrar al panel</button>
+      <div id="login-msg"></div>
+    </form>
+    {% else %}
+    <p class="faint" style="line-height:1.6">El acceso con un código que te llega por WhatsApp se está terminando. Mientras tanto, seguí usando Finmate desde el chat.</p>
+    {% endif %}
+  </section>
+</div>
+<script src="{{ url_for('panel.static', filename='panel.js') }}"></script>
+</body>
+</html>
