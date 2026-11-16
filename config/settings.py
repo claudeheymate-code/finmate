@@ -141,8 +141,8 @@ REDIS_URL = os.getenv("REDIS_URL", "")
 # antes de desplegar, por si Anthropic publicó modelos más nuevos.
 # ============================================================
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL_DEFAULT = os.getenv("ANTHROPIC_MODEL_DEFAULT", "claude-haiku-4-5-20251001")
-ANTHROPIC_MODEL_ANALYSIS = os.getenv("ANTHROPIC_MODEL_ANALYSIS", "claude-sonnet-4-6")
+ANTHROPIC_MODEL_DEFAULT = os.getenv("ANTHROPIC_MODEL_DEFAULT", "claude-haiku-5-5")
+ANTHROPIC_MODEL_ANALYSIS = os.getenv("ANTHROPIC_MODEL_ANALYSIS", "claude-sonnet-5-5")
 
 # ============================================================
 # Scheduler de apertura/cierre de mercados (Plan Fase 2)
