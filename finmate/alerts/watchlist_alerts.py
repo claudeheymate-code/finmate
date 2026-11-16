@@ -94,6 +94,15 @@ def check_watchlist_alerts(messenger: Optional[WhatsAppMessenger] = None) -> int
     # el mismo símbolo, se consulta a Finnhub una sola vez por símbolo.
     quote_cache: dict = {}
 
+    # Umbral por usuario (panel web → Ajustes). Quien no lo cambió usa el global.
+    try:
+        from finmate.db.settings_repo import get_thresholds_by_user
+
+        thresholds = get_thresholds_by_user()
+    except Exception as e:
+        logger.warning(f"No pude leer umbrales por usuario, uso el global: {e}")
+        thresholds = {}
+
     with httpx.Client(timeout=10) as client:
         for user_id, phone, symbol in entries:
             if symbol not in quote_cache:
@@ -110,7 +119,7 @@ def check_watchlist_alerts(messenger: Optional[WhatsAppMessenger] = None) -> int
             except (TypeError, ValueError):
                 continue
 
-            if abs(change_pct) < WATCHLIST_ALERT_THRESHOLD_PCT:
+            if abs(change_pct) < thresholds.get(user_id, WATCHLIST_ALERT_THRESHOLD_PCT):
                 continue
 
             state_key = f"{user_id}_{symbol}_{today}"

@@ -207,12 +207,16 @@ class AlertEngine:
             # Formatear y enviar por WhatsApp (Fase 1.6: template de aviso +
             # cola si está configurado; si no, texto libre como hasta ahora)
             message = format_weekly_summary(data)
+            # Panel web → Ajustes: quien apagó el resumen semanal no lo recibe.
+            from finmate.db.settings_repo import weekly_summary_enabled_for_phone
+
+            recipients = [p for p in WHATSAPP_RECIPIENTS if weekly_summary_enabled_for_phone(p)]
             if TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID:
-                for phone in WHATSAPP_RECIPIENTS:
+                for phone in recipients:
                     queue_pending(phone, message)
                     self.messenger.send_template(phone, TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID)
-            else:
-                self.messenger.broadcast(message)
+            elif recipients:
+                self.messenger.broadcast(message, recipients=recipients)
 
             # Actualizar Google Calendar (si está disponible)
             if self.calendar:
