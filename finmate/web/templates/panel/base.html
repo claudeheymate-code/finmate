@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#061A36">
 <title>Finmate — {{ title }}</title>
 <link rel="icon" href="{{ url_for('panel.static', filename='finmate-icon-white.png') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,10 +29,12 @@
   </header>
   <div class="layout">
     <nav class="rail glass" aria-label="Secciones">
-      <a href="{{ url_for('panel.resumen') }}" aria-label="Resumen" title="Resumen" {% if page == 'resumen' %}aria-current="page"{% endif %}>{{ icon('home') }}</a>
-      <a href="{{ url_for('panel.inversiones') }}" aria-label="Mis inversiones" title="Mis inversiones" {% if page == 'inversiones' %}aria-current="page"{% endif %}>{{ icon('briefcase') }}</a>
-      <a href="{{ url_for('panel.gastos') }}" aria-label="Mis gastos" title="Mis gastos" {% if page == 'gastos' %}aria-current="page"{% endif %}>{{ icon('wallet') }}</a>
-      <a href="{{ url_for('panel.ajustes') }}" aria-label="Ajustes y personalidad" title="Ajustes y personalidad" {% if page == 'ajustes' %}aria-current="page"{% endif %}>{{ icon('sliders') }}</a>
+      <span class="tab-pill" aria-hidden="true"></span>
+      <a href="{{ url_for('panel.resumen') }}" aria-label="Resumen" title="Resumen" {% if page == 'resumen' %}aria-current="page"{% endif %}>{{ icon('home') }}<span class="tab-label">Resumen</span></a>
+      <a href="{{ url_for('panel.inversiones') }}" aria-label="Mis inversiones" title="Mis inversiones" {% if page == 'inversiones' %}aria-current="page"{% endif %}>{{ icon('briefcase') }}<span class="tab-label">Inversiones</span></a>
+      <a href="{{ url_for('panel.gastos') }}" aria-label="Mis gastos" title="Mis gastos" {% if page == 'gastos' %}aria-current="page"{% endif %}>{{ icon('wallet') }}<span class="tab-label">Gastos</span></a>
+      <a href="{{ url_for('panel.ajustes') }}" aria-label="Ajustes y personalidad" title="Ajustes y personalidad" {% if page == 'ajustes' %}aria-current="page"{% endif %}>{{ icon('sliders') }}<span class="tab-label">Ajustes</span></a>
+      <a href="{{ url_for('panel.feedback') }}" aria-label="Feedback" title="Feedback" {% if page == 'feedback' %}aria-current="page"{% endif %}>{{ icon('feedback') }}<span class="tab-label">Feedback</span></a>
     </nav>
     <main id="main">
       {% block content %}{% endblock %}
