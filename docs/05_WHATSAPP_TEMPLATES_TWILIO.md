@@ -88,3 +88,19 @@ Meta normalmente tarda entre unas horas y unos días en aprobar un template
 Utility bien formado. Si alguno es rechazado, el motivo más común es texto
 ambiguo o que suene a marketing — estos 3 están redactados como avisos de
 servicio neutros a propósito.
+
+---
+
+## Estado al 16 nov 2026 — creadas en Twilio
+
+| Template | Content SID | Variable de Railway |
+|---|---|---|
+| `finmate_watchlist_alert` | `HXfa1e3ccd6df15232bb241b0a9f65c48a` | `TWILIO_TEMPLATE_WATCHLIST_ALERT_SID` |
+| `finmate_market_notify` | `HXe7b3e59262c696b7fb716fcc7a83f3a3` | `TWILIO_TEMPLATE_MARKET_NOTIFY_SID` |
+| `finmate_weekly_summary_notify` | `HX3f5a1d3c93de4292ee6e98c58a76e4a2` | `TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID` |
+
+Idioma: Spanish (`es`), tipo Text, con los valores de ejemplo para Meta ya cargados.
+WhatsApp approval status: **Not Submitted**. Twilio no deja mandarlas a aprobación sin un
+"WhatsApp Sender" (número propio de WhatsApp Business), y eso requiere salir del trial de Twilio.
+Cuando haya sender: abrir cada plantilla → "Save and submit for WhatsApp approval" → elegir categoría
+**Utility**. Recién cuando estén "Approved", cargar los 3 SIDs en Railway.

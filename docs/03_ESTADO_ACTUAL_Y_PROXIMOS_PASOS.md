@@ -1,6 +1,6 @@
 # Finmate — Estado actual y próximos pasos
 
-> Foto al **29 oct 2026**, actualizada el **8 nov 2026**, consolidada desde `CLAUDE.md` (raíz del repo), que sigue siendo
+> Foto al **29 oct 2026**, actualizada el **16 nov 2026**, consolidada desde `CLAUDE.md` (raíz del repo), que sigue siendo
 > el resumen vivo. Si hay diferencias, manda `CLAUDE.md`.
 
 ## En una línea
@@ -55,17 +55,29 @@ Twilio/Finnhub. Cargar a mano solo `DATABASE_URL`, `REDIS_URL` y `ANTHROPIC_API_
 Sugerencia: al retomar con Claude Code, definir si se sigue la numeración del plan o la del
 código, y mantener una sola.
 
+## 💳 Pagos pendientes (acción de Joaco) — revisado 16 nov 2026
+
+| # | Qué pagar | Cuánto | ¿Bloquea? | Dónde |
+|---|---|---|---|---|
+| 1 | **Créditos de la API de Claude** — el saldo está en **USD 0.00**; sin créditos el agente no responde aunque Railway esté arriba | Mínimo USD 5 (vencen al año). Sugerido USD 10–20 para empezar | **Sí** | platform.claude.com → Facturación → "Comprar créditos" |
+| 2 | **Railway plan Hobby** — el servicio `web` está en "Trial expired" | USD 5/mes, incluye USD 5 de uso; si el consumo pasa de 5, se paga la diferencia | **Sí** | railway.com → Settings → Billing |
+| 3 | **Twilio: salir del trial (upgrade)** — necesario para registrar un número propio de WhatsApp Business ("WhatsApp Sender") y mandar las plantillas a Meta. También pide una cuenta de Meta Business Portfolio | Registrar el sender no cuesta; se paga USD 0.005 por mensaje (enviado o recibido) + la tarifa de Meta por plantilla Utility (varía por país) + el costo mensual del número | No para probar en el sandbox; **sí** para alertas proactivas reales | console.twilio.com → "Upgrade Now" (saldo trial actual: USD 10.73) |
+| — | Neon (Postgres), Upstash (Redis), GitHub | USD 0 (planes free) | No | Revisar de vez en cuando que no se pase del free tier |
+
+Orden sugerido: 1 y 2 juntos (son los que desbloquean el deploy), 3 cuando el bot ya funcione en el sandbox.
+Registrar cada pago en `Claude outputs/Finmate_Costos.xlsx` (hojas Suscripciones y Pagos).
+
 ## Bloqueador y pasos para desplegar (acción de Joaco)
 
-1. ✅ Postgres provisionado (Neon `finmate`) → copiar connection string.
+1. ✅ Postgres provisionado (Neon `finmate`, base `neondb`) → copiar connection string. **16 nov: las 10 tablas ya están creadas y probadas** (escritura/lectura OK).
 2. ✅ Redis provisionado (Upstash `finmate`) → copiar URL `rediss://`.
 3. ✅ API key `finmate-railway` creada en platform.claude.com → copiarla.
 4. ❌ **Railway: agregar método de pago** (servicio `web` en "Trial expired"). ← bloqueador activo
 5. Cargar en Railway → Variables: `DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`.
 6. Railway redeploya solo (el código ya está en GitHub `main`).
 7. Probar por WhatsApp: "hola", una pregunta de mercados, "agregá 10 AAPL a 150", "seguí a NVDA".
-8. En paralelo: crear las 3 plantillas en Twilio (textos en `05_WHATSAPP_TEMPLATES_TWILIO.md`),
-   esperar aprobación de Meta y pegar los Content SIDs en Railway.
+8. ✅ 16 nov: las 3 plantillas **ya están creadas** en Twilio (estado "Not Submitted"; para mandarlas a Meta falta el pago 3). ~~Crear las 3 plantillas en Twilio (textos en `05_WHATSAPP_TEMPLATES_TWILIO.md`),
+   esperar aprobación de Meta y pegar los Content SIDs en Railway.~~ **No cargar los SIDs en Railway hasta que Meta las apruebe** (si se cargan antes, el bot intenta mandar plantillas no aprobadas en vez de texto libre).
 
 ## Deuda técnica menor
 
