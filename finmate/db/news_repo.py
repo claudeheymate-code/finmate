@@ -165,3 +165,24 @@ def get_indicator_followers() -> dict:
     except Exception as e:
         logger.error(f"Error leyendo seguidores de indicadores: {e}")
         return {}
+
+
+def get_topic_followers(tipo: str, valor: str) -> list:
+    """[(user_id, phone), ...] de quienes siguen el tema (tipo, valor).
+    Usado por los resúmenes de podcasts (tipo="podcast")."""
+    try:
+        from finmate.db.models import NewsTopicFollowed, User, get_session
+        session = get_session()
+        try:
+            rows = (
+                session.query(User.id, User.phone)
+                .join(NewsTopicFollowed, NewsTopicFollowed.user_id == User.id)
+                .filter(NewsTopicFollowed.tipo == tipo, NewsTopicFollowed.valor == valor)
+                .all()
+            )
+            return [(r[0], r[1]) for r in rows]
+        finally:
+            session.close()
+    except Exception as e:
+        logger.error(f"Error leyendo seguidores de {tipo}={valor}: {e}")
+        return []
