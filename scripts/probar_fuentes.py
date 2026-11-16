@@ -25,11 +25,27 @@ OK, FAIL, SKIP = "✅", "❌", "⏭️"
 results = []
 
 
+_SECRET_VARS = ("FINNHUB_API_KEY", "FRED_API_KEY", "BCCH_API_TOKEN", "MARKETAUX_API_KEY",
+                "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "REDIS_URL", "DATABASE_URL",
+                "TWILIO_AUTH_TOKEN", "FLASK_SECRET_KEY")
+
+
+def _redact(text: str) -> str:
+    """Nunca mostrar una clave, ni siquiera dentro de un mensaje de error."""
+    import re
+    for var in _SECRET_VARS:
+        val = os.getenv(var, "").strip().strip('"')
+        if len(val) >= 6:
+            text = text.replace(val, "<clave>")
+    return re.sub(r"(token|api_key|api_token)=[^&\s']+", r"\1=<clave>", text)
+
+
 def check(name, fn):
     try:
         status, detail = fn()
     except Exception as e:  # noqa: BLE001
         status, detail = FAIL, f"{type(e).__name__}: {e}"
+    detail = _redact(str(detail))[:300]
     results.append((status, name, detail))
     print(f"{status} {name}: {detail}", flush=True)
 
@@ -132,7 +148,8 @@ def redis_check():
     if not has("REDIS_URL"):
         return SKIP, "falta REDIS_URL"
     import redis
-    c = redis.from_url(os.getenv("REDIS_URL"), socket_timeout=5)
+    from config.settings import REDIS_URL
+    c = redis.from_url(REDIS_URL, socket_timeout=5)
     c.set("finmate:prueba", "1", ex=10)
     return OK, "conexión y escritura OK"
 
