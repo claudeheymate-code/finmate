@@ -236,6 +236,17 @@ también el checklist y el doc de estado.
     clave vive solo en Railway).
   - OpenAI retira `gpt-4o-*-transcribe` el 26 feb 2027: antes de esa fecha
     cambiar `TRANSCRIBE_MODEL`.
+- **16 nov 2026, tarde — preparación antes de pagar:**
+  - Modelos de Claude por defecto actualizados a `claude-haiku-5-5` /
+    `claude-sonnet-5-5` (Haiku 5.5 cuesta desde USD 0,10/0,50 por millón de
+    tokens vs USD 1/5 de Haiku 4.5). OJO: en Railway existen
+    `ANTHROPIC_MODEL_DEFAULT` y `ANTHROPIC_MODEL_ANALYSIS` y pisan el
+    default del código — Joaco tiene que cambiarlas o borrarlas.
+  - `scripts/probar_fuentes.py`: prueba cada fuente con las claves reales
+    del `.env` local (sin imprimirlas). Correr con `py scripts\probar_fuentes.py`.
+  - Railway tiene las 26 variables (incluye REDIS_URL, FLASK_SECRET_KEY,
+    OPENAI_API_KEY; PANEL_DEV_LOGIN=false según Joaco). Falta: pagar el plan
+    y presionar Deploy ("Apply N changes"). OpenAI con saldo USD 0.
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
   marca como "yanked" — se subió a `9.4.1` (25 oct 2026, sin romper nada,
   verificado). `pyflakes` señala imports sin usar y f-strings sin
