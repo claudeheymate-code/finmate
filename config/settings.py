@@ -42,6 +42,22 @@ NEWS_CHECK_INTERVAL_MINUTES = int(os.getenv("NEWS_CHECK_INTERVAL_MINUTES", "3"))
 # Máximo de avisos de noticias por usuario por día (evita saturar WhatsApp).
 NEWS_ALERTS_MAX_PER_USER_PER_DAY = int(os.getenv("NEWS_ALERTS_MAX_PER_USER_PER_DAY", "6"))
 
+# --- Etapa B: precios en tiempo real (WebSocket gratis de Finnhub) ---
+# Escucha las operaciones de los símbolos de las watchlists (máx. 50, límite
+# del plan gratis) y evalúa las alertas cada REALTIME_EVAL_SECONDS, en vez
+# de esperar al chequeo de cada 30 min (que queda como respaldo).
+REALTIME_PRICES_ENABLED = os.getenv("REALTIME_PRICES_ENABLED", "true").lower() == "true"
+REALTIME_EVAL_SECONDS = int(os.getenv("REALTIME_EVAL_SECONDS", "20"))
+REALTIME_MAX_SYMBOLS = int(os.getenv("REALTIME_MAX_SYMBOLS", "50"))
+
+# --- Etapa C: resumen diario de podcasts ---
+# Transcripción opcional con OpenAI. Sin OPENAI_API_KEY, el resumen se hace
+# con la descripción del episodio (más corto, pero gratis).
+# OpenAI anunció el retiro de los modelos gpt-4o-*-transcribe para el 26 feb
+# 2027: antes de esa fecha cambiar TRANSCRIBE_MODEL al modelo que recomiende.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+TRANSCRIBE_MODEL = os.getenv("TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
+
 # ============================================================
 # Google Calendar
 # ============================================================
