@@ -36,20 +36,34 @@ _MONTH_NAMES = {
     9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
 }
 
-# Emojis por categoría para el resumen mensual
+# Emojis por categoría para el resumen mensual (claves en minúscula, sin tildes)
 _CATEGORY_EMOJIS = {
-    "vivienda": "🏠",
-    "alimentación": "🍽",
-    "transporte": "🚗",
-    "ocio": "🎮",
-    "salud": "💊",
-    "educación": "📚",
+    "evento social": "🎉",
+    "polola": "❤️",
+    "copete": "🍻",
+    "comidas": "🍽",
+    "regalos": "🎁",
+    "viajes": "✈️",
     "otros": "📦",
 }
 
+# Categorías definidas para el panel web (16 nov 2026). Deben coincidir con
+# finance_repo.DEFAULT_CATEGORIES.
 _VALID_CATEGORIES = {
-    "Vivienda", "Alimentación", "Transporte", "Ocio",
-    "Salud", "Educación", "Otros",
+    "Evento Social", "Polola", "Copete", "Comidas", "Regalos", "Viajes", "Otros",
+}
+
+# Palabras que el usuario (o el modelo) puede usar y a qué categoría van.
+# Claves en minúscula y sin tildes.
+_CATEGORY_ALIASES = {
+    "evento": "Evento Social", "eventos": "Evento Social", "social": "Evento Social",
+    "cumpleanos": "Evento Social", "matrimonio": "Evento Social", "fiesta": "Evento Social",
+    "pareja": "Polola", "novia": "Polola", "pololo": "Polola", "cita": "Polola",
+    "alcohol": "Copete", "bebidas": "Copete", "carrete": "Copete", "bar": "Copete",
+    "comida": "Comidas", "alimentacion": "Comidas", "almuerzo": "Comidas",
+    "cena": "Comidas", "supermercado": "Comidas", "restaurante": "Comidas",
+    "regalo": "Regalos",
+    "viaje": "Viajes", "transporte": "Viajes", "vacaciones": "Viajes",
 }
 
 
@@ -98,12 +112,12 @@ def _normalize_category(raw: str) -> str:
     """Devuelve la categoría canónica o 'Otros' si no se reconoce."""
     if raw in _VALID_CATEGORIES:
         return raw
-    # Intento case-insensitive y sin tildes ("alimentacion" -> "Alimentación")
+    # Intento case-insensitive y sin tildes ("comidas" -> "Comidas"), y alias
     key = _strip_accents(raw).lower().strip()
     for cat in _VALID_CATEGORIES:
         if _strip_accents(cat).lower() == key:
             return cat
-    return "Otros"
+    return _CATEGORY_ALIASES.get(key, "Otros")
 
 
 def _strip_accents(text: str) -> str:
@@ -114,7 +128,7 @@ def _strip_accents(text: str) -> str:
 
 
 def _category_emoji(category: str) -> str:
-    return _CATEGORY_EMOJIS.get(category.lower(), "📦")
+    return _CATEGORY_EMOJIS.get(_strip_accents(category).lower(), "📦")
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +152,8 @@ def tool_add_expense(user_id: int, tool_input: dict) -> str:
         category: str = _normalize_category(tool_input.get("category", "Otros"))
         description: str = tool_input.get("description", "")
         raw_text: str = tool_input.get("raw_text", "")
+        occasion: str = (tool_input.get("occasion") or "").strip()
+        merchant: str = (tool_input.get("merchant") or "").strip()
 
         date_str = tool_input.get("date_str")
         if date_str:
@@ -153,6 +169,8 @@ def tool_add_expense(user_id: int, tool_input: dict) -> str:
             description=description,
             date=transaction_date,
             raw_text=raw_text,
+            occasion=occasion,
+            merchant=merchant,
         )
 
         # Obtener total de gastos del mes para el mensaje de confirmación
@@ -168,6 +186,8 @@ def tool_add_expense(user_id: int, tool_input: dict) -> str:
         date_display = _fmt_date_long(transaction_date)
 
         desc_line = f"📋 {description} · {date_display}" if description else f"📋 {date_display}"
+        if occasion:
+            desc_line += f"\n🗓 Ocasión: {occasion}"
 
         gastos_str = _fmt_amount(-abs(gastos_mes))  # siempre negativo para gastos
 

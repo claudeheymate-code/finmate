@@ -173,13 +173,15 @@ TOOLS = [
     # ── Finanzas personales (Plan Fase 5) ──────────────────────────────────
     {
         "name": "add_expense",
-        "description": "Registra un gasto o ingreso personal. Usar cuando el usuario diga algo como 'gasté X en Y', 'pagué X', 'cobré X', 'ingresé X'. Extraé el monto (negativo para gasto, positivo para ingreso), la categoría y una descripción corta.",
+        "description": "Registra un gasto o ingreso personal. Usar cuando el usuario diga algo como 'gasté X en Y', 'pagué X', 'cobré X', 'ingresé X'. Extraé el monto, la categoría, una descripción corta y, si la menciona, la ocasión (ej: 'cumpleaños de la Cata', 'aniversario'). Si no queda clara la categoría, preguntá antes de registrar ofreciendo las opciones: Evento Social, Polola, Copete, Comidas, Regalos, Viajes u Otros.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "tipo":        {"type": "string",  "enum": ["gasto", "ingreso"], "description": "gasto (gasté, pagué, compré) o ingreso (cobré, me pagaron, ingresé)"},
                 "amount":      {"type": "number",  "description": "Monto — negativo para gasto, positivo para ingreso"},
-                "category":    {"type": "string",  "description": "Categoría: Vivienda|Alimentación|Transporte|Ocio|Salud|Educación|Otros"},
+                "category":    {"type": "string",  "enum": ["Evento Social", "Polola", "Copete", "Comidas", "Regalos", "Viajes", "Otros"], "description": "Categoría del gasto"},
+                "occasion":    {"type": "string",  "description": "Ocasión del gasto si el usuario la dice (ej: cumpleaños de la Cata). Opcional"},
+                "merchant":    {"type": "string",  "description": "Comercio o lugar (ej: Café Altura). Opcional"},
                 "description": {"type": "string",  "description": "Descripción corta (ej: almuerzo, uber, netflix)"},
                 "date_str":    {"type": "string",  "description": "Fecha YYYY-MM-DD (opcional, default hoy)"},
                 "raw_text":    {"type": "string",  "description": "Texto original del usuario (opcional)"},
