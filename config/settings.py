@@ -9,11 +9,31 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _key(name: str) -> str:
+    """Lee una clave quitando espacios, saltos de línea y comillas sobrantes
+    (pasa al copiar y pegar en Railway o en el .env)."""
+    return os.getenv(name, "").strip().strip('"').strip("'").strip()
+
+
+def _redis_url(raw: str) -> str:
+    """Acepta también el comando que muestra Upstash
+    ("redis-cli --tls -u redis://...") y lo convierte a la URL que usa el bot
+    (rediss:// cuando la conexión es con TLS)."""
+    raw = (raw or "").strip().strip('"').strip("'")
+    if raw.startswith("redis-cli"):
+        tls = "--tls" in raw
+        m = [part for part in raw.split() if "://" in part]
+        raw = m[0] if m else ""
+        if tls and raw.startswith("redis://"):
+            raw = "rediss://" + raw[len("redis://"):]
+    return raw
+
+
 # ============================================================
 # TWILIO (WhatsApp)
 # ============================================================
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_ACCOUNT_SID = _key("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = _key("TWILIO_AUTH_TOKEN")
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")  # Sandbox default
 
 # Lista de números a los que se envían alertas (formato: whatsapp:+56912345678)
@@ -24,18 +44,18 @@ WHATSAPP_RECIPIENTS = [
 # ============================================================
 # APIs Financieras (gratuitas)
 # ============================================================
-FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
-FMP_API_KEY = os.getenv("FMP_API_KEY", "")  # Financial Modeling Prep
-ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
+FINNHUB_API_KEY = _key("FINNHUB_API_KEY")
+FMP_API_KEY = _key("FMP_API_KEY")  # Financial Modeling Prep
+ALPHA_VANTAGE_API_KEY = _key("ALPHA_VANTAGE_API_KEY")
 
 # --- Etapa A de fuentes (16 nov 2026) ---
 # FRED (Fed de St. Louis): macro de EE.UU. y calendario de publicaciones.
-FRED_API_KEY = os.getenv("FRED_API_KEY", "")
+FRED_API_KEY = _key("FRED_API_KEY")
 # Banco Central de Chile (API BDE): dólar observado, UF, TPM, IPC.
-BCCH_API_TOKEN = os.getenv("BCCH_API_TOKEN", "")
+BCCH_API_TOKEN = _key("BCCH_API_TOKEN")
 # Marketaux: noticias por empresa con sentimiento. Plan gratis = 100 req/día,
 # por eso se consulta como máximo cada MARKETAUX_MIN_INTERVAL_MINUTES.
-MARKETAUX_API_KEY = os.getenv("MARKETAUX_API_KEY", "")
+MARKETAUX_API_KEY = _key("MARKETAUX_API_KEY")
 MARKETAUX_MIN_INTERVAL_MINUTES = int(os.getenv("MARKETAUX_MIN_INTERVAL_MINUTES", "20"))
 # Cada cuántos minutos se buscan noticias de los activos de cada usuario.
 NEWS_CHECK_INTERVAL_MINUTES = int(os.getenv("NEWS_CHECK_INTERVAL_MINUTES", "3"))
@@ -55,7 +75,7 @@ REALTIME_MAX_SYMBOLS = int(os.getenv("REALTIME_MAX_SYMBOLS", "50"))
 # con la descripción del episodio (más corto, pero gratis).
 # OpenAI anunció el retiro de los modelos gpt-4o-*-transcribe para el 26 feb
 # 2027: antes de esa fecha cambiar TRANSCRIBE_MODEL al modelo que recomiende.
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_API_KEY = _key("OPENAI_API_KEY")
 TRANSCRIBE_MODEL = os.getenv("TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
 
 # ============================================================
@@ -120,7 +140,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # postgres://... o postgresql://... — se normaliza al driver psycopg (v3) acá
 # para no tener que editar la variable de entorno a mano.
 # ============================================================
-_raw_database_url = os.getenv("DATABASE_URL", "")
+_raw_database_url = _key("DATABASE_URL")
 if _raw_database_url.startswith("postgres://"):
     _raw_database_url = _raw_database_url.replace("postgres://", "postgresql+psycopg://", 1)
 elif _raw_database_url.startswith("postgresql://"):
@@ -132,7 +152,7 @@ DATABASE_URL = _raw_database_url
 # Opcional: si no está seteado, el agente funciona igual pero sin cache
 # (más requests a las APIs financieras).
 # ============================================================
-REDIS_URL = os.getenv("REDIS_URL", "")
+REDIS_URL = _redis_url(os.getenv("REDIS_URL", ""))
 
 # ============================================================
 # Agente (Fase 0 — orquestador con Claude)
@@ -140,7 +160,7 @@ REDIS_URL = os.getenv("REDIS_URL", "")
 # Verificar los IDs vigentes en https://platform.claude.com/docs/en/about-claude/models/overview
 # antes de desplegar, por si Anthropic publicó modelos más nuevos.
 # ============================================================
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY = _key("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL_DEFAULT = os.getenv("ANTHROPIC_MODEL_DEFAULT", "claude-haiku-5-5")
 ANTHROPIC_MODEL_ANALYSIS = os.getenv("ANTHROPIC_MODEL_ANALYSIS", "claude-sonnet-5-5")
 
@@ -168,5 +188,24 @@ MARKET_CLOSE_MINUTE_UTC = int(os.getenv("MARKET_CLOSE_MINUTE_UTC", "0"))
 # probar el panel antes de que exista el login por WhatsApp (etapa 4).
 # NUNCA activarlo en producción: cualquiera podría entrar con un número ajeno.
 # ============================================================
-FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
+FLASK_SECRET_KEY = _key("FLASK_SECRET_KEY")
 PANEL_DEV_LOGIN = os.getenv("PANEL_DEV_LOGIN", "false").lower() == "true"
+
+# ============================================================
+# Feedback del panel web
+# Cada mensaje se guarda en la tabla `feedback` y se envía por correo a
+# FEEDBACK_EMAIL_TO. Si hay SMTP configurado (ej. Gmail con una "contraseña
+# de aplicación"), se usa ese; si no, se envía con FormSubmit
+# (https://formsubmit.co, gratis y sin cuenta). FormSubmit pide confirmar el
+# correo la primera vez: llega un email de activación a FEEDBACK_EMAIL_TO.
+# Después de activarlo, FormSubmit da un alias aleatorio que se puede poner
+# en FEEDBACK_FORMSUBMIT_ID para no exponer el correo.
+# ============================================================
+FEEDBACK_EMAIL_TO = os.getenv("FEEDBACK_EMAIL_TO", "claude.heymate@gmail.com").strip()
+FEEDBACK_FORMSUBMIT_ID = _key("FEEDBACK_FORMSUBMIT_ID")
+SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "").strip()
+SMTP_PASSWORD = _key("SMTP_PASSWORD")
+SMTP_FROM = os.getenv("SMTP_FROM", "").strip()
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://claudeheymate-code.github.io").strip()
