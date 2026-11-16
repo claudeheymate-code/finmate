@@ -97,6 +97,11 @@ class PortfolioHolding(Base):
     symbol = Column(String(16), nullable=False, index=True)
     quantity = Column(Float, nullable=False)
     avg_cost = Column(Float, nullable=True)
+    # Panel web (etapa 1): para las tortas de distribución. Se completan solos
+    # la primera vez que se valoriza la posición (ver finmate/services/portfolio.py)
+    # y el usuario los puede corregir desde el panel.
+    asset_class = Column(String(30), nullable=True)   # "Renta variable" | "Renta fija"
+    sector = Column(String(60), nullable=True)         # "Tecnología", "Financiero", "Bonos"...
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False
@@ -183,6 +188,10 @@ class Transaction(Base):
     description = Column(String(500))
     date = Column(DateTime, nullable=False, index=True)
     raw_text = Column(String(500))               # texto original del usuario
+    # Panel web (etapa 1): para trackear gastos por ocasión y guardar la boleta.
+    occasion = Column(String(200), nullable=True)     # "Cumpleaños de la Cata"
+    merchant = Column(String(200), nullable=True)     # "Restaurante Liguria"
+    receipt_url = Column(String(500), nullable=True)  # foto de la boleta (etapa 5)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="transactions")
@@ -199,6 +208,25 @@ class BudgetCategory(Base):
     name = Column(String(100), nullable=False)
     monthly_limit = Column(Float, nullable=True)  # None = sin límite
     is_default = Column(Boolean, default=False)
+
+
+class NotificationSettings(Base):
+    """Preferencias de avisos por usuario (panel web, etapa 1).
+
+    Reemplaza, por usuario, a los valores globales de config/settings.py:
+    WATCHLIST_ALERT_THRESHOLD_PCT y el resumen semanal para todos. Si un
+    usuario no tiene fila, se usan los defaults globales.
+    """
+
+    __tablename__ = "notification_settings"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    watchlist_threshold_pct = Column(Float, nullable=True)   # None = usar el global
+    weekly_summary_enabled = Column(Boolean, nullable=False, default=True)
+    updated_at = Column(
+        DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False
+    )
 
 
 class AlertLog(Base):
@@ -236,14 +264,47 @@ def _ensure_engine() -> None:
                 "DATABASE_URL no está configurada — provisioná Postgres "
                 "(ver plan, decisión 02) y agregá la variable en Railway."
             )
-        _engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=5)
+        if DATABASE_URL.startswith("sqlite"):
+            _engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+        else:
+            _engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=5)
         _SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False)
 
 
+# Columnas agregadas después de que las tablas ya existían en producción.
+# create_all() no agrega columnas a tablas existentes, así que init_db() las
+# agrega con ALTER TABLE si faltan (todas son opcionales, sin riesgo de
+# perder datos). Cuando esto crezca, conviene pasar a Alembic.
+_ADDED_COLUMNS = {
+    "portfolio_holdings": {"asset_class": "VARCHAR(30)", "sector": "VARCHAR(60)"},
+    "transactions": {
+        "occasion": "VARCHAR(200)",
+        "merchant": "VARCHAR(200)",
+        "receipt_url": "VARCHAR(500)",
+    },
+}
+
+
+def _ensure_added_columns() -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(_engine)
+    existing_tables = set(insp.get_table_names())
+    with _engine.begin() as conn:
+        for table, cols in _ADDED_COLUMNS.items():
+            if table not in existing_tables:
+                continue
+            present = {c["name"] for c in insp.get_columns(table)}
+            for col, ddl in cols.items():
+                if col not in present:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+
+
 def init_db() -> None:
-    """Crea las tablas si no existen. Alcanza para Fase 0 (sin Alembic todavía)."""
+    """Crea las tablas si no existen y agrega las columnas nuevas que falten."""
     _ensure_engine()
     Base.metadata.create_all(bind=_engine)
+    _ensure_added_columns()
 
 
 def get_session() -> Session:

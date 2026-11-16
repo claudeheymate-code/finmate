@@ -128,6 +128,52 @@ def remove_holding(user_id: int, symbol: str) -> bool:
         session.close()
 
 
+def get_portfolio_detailed(user_id: int) -> List[dict]:
+    """Como get_portfolio pero con clase de activo y sector (panel web)."""
+    session = get_session()
+    try:
+        rows = (
+            session.query(PortfolioHolding)
+            .filter_by(user_id=user_id)
+            .order_by(PortfolioHolding.symbol)
+            .all()
+        )
+        return [
+            {
+                "symbol": r.symbol,
+                "quantity": r.quantity,
+                "avg_cost": r.avg_cost,
+                "asset_class": r.asset_class,
+                "sector": r.sector,
+            }
+            for r in rows
+        ]
+    finally:
+        session.close()
+
+
+def set_holding_classification(
+    user_id: int, symbol: str, asset_class: Optional[str] = None, sector: Optional[str] = None
+) -> bool:
+    """Guarda clase de activo y/o sector de una posición. False si no existe."""
+    session = get_session()
+    try:
+        symbol = symbol.strip().upper()
+        holding = (
+            session.query(PortfolioHolding).filter_by(user_id=user_id, symbol=symbol).one_or_none()
+        )
+        if holding is None:
+            return False
+        if asset_class:
+            holding.asset_class = asset_class
+        if sector:
+            holding.sector = sector
+        session.commit()
+        return True
+    finally:
+        session.close()
+
+
 def get_portfolio(user_id: int) -> List[Tuple[str, float, Optional[float]]]:
     """Devuelve [(symbol, quantity, avg_cost), ...] ordenado alfabéticamente."""
     session = get_session()
