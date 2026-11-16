@@ -205,6 +205,15 @@ categorías sin tilde se normalizan, `explain_movement` filtra noticias por tick
 **Subido a GitHub `main` el 8 nov 2026** (la carpeta local no es un repo git funcional).
 En Railway → Variables, NO aceptar las "Suggested Variables" (son placeholders de `.env.example`). Detalle en `docs/03_ESTADO_ACTUAL_Y_PROXIMOS_PASOS.md`.
 
+## Actualización 16 nov 2026 — Neon, plantillas y pagos
+
+- Neon: las 10 tablas de `models.py` creadas en la base `neondb` (rama `production`) y probadas.
+- Twilio: las 3 plantillas creadas (SIDs en `docs/05_WHATSAPP_TEMPLATES_TWILIO.md`), sin mandar a
+  Meta porque falta un WhatsApp Sender propio. No cargar los SIDs en Railway hasta que estén aprobadas.
+- **Pagos pendientes** (detalle en `docs/03_ESTADO_ACTUAL_Y_PROXIMOS_PASOS.md`): créditos de la API de
+  Claude (saldo USD 0, bloqueante), Railway Hobby USD 5/mes (bloqueante), upgrade de Twilio (para
+  WhatsApp real).
+
 ## Arquitectura
 
 ```
