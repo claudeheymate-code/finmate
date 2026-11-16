@@ -214,6 +214,33 @@ En Railway → Variables, NO aceptar las "Suggested Variables" (son placeholders
   Claude (saldo USD 0, bloqueante), Railway Hobby USD 5/mes (bloqueante), upgrade de Twilio (para
   WhatsApp real).
 
+## Actualización 16 nov 2026 (tarde) — Panel web: etapas 1, 2 y 3 listas
+
+Plan del panel: `docs/06_PANEL_WEB_DISENO_Y_CONEXION.md`. Etapas 1–3 programadas y probadas
+(29 tests con `pytest`, SQLite temporal y precios simulados; capturas revisadas en escritorio y
+celular). Sin desplegar todavía (Railway sigue pausado).
+- **Etapa 1 (datos):** `portfolio_holdings` + `asset_class`, `sector`; `transactions` +
+  `occasion`, `merchant`, `receipt_url`; tabla nueva `notification_settings` (umbral de watchlist y
+  resumen semanal por usuario). `init_db()` agrega solas las columnas que falten
+  (`_ensure_added_columns`, sin Alembic). Categorías de gasto nuevas: Evento Social, Polola,
+  Copete, Comidas, Regalos, Viajes, Otros (bot y panel). `finmate/services/portfolio.py`:
+  ganancia/pérdida, distribución por clase y sector, top 3 ganadoras/perdedoras; clasifica solo
+  (ETFs de bonos → renta fija; acciones → sector de Finnhub `profile2`). `watchlist_alerts.py`
+  usa el umbral de cada usuario y `engine.send_weekly_summary` respeta a quien lo apagó.
+- **Etapa 2 (API):** `finmate/web/api.py` en `/api/*` (resumen, portafolio, watchlist,
+  explicar movimiento, finanzas, personalidad, seguimientos, avisos, chat con el mismo agente).
+  Sesión con cookie firmada (`FLASK_SECRET_KEY`), anti-CSRF con encabezado `X-Finmate: 1`,
+  cada consulta filtrada por el usuario de la sesión. Login provisorio `/api/auth/dev-login`
+  solo si `PANEL_DEV_LOGIN=true` (apagado por defecto; nunca en producción).
+- **Etapa 3 (pantallas):** `finmate/web/panel.py` + `templates/panel/` + `static/panel/`
+  en `/panel/` (Resumen, Mis inversiones, Mis gastos, Ajustes, Acceso), con la marca.
+  Datos de prueba: `python scripts/seed_demo.py +56900000000` (contra una base de prueba).
+- **Para probar en local:** `DATABASE_URL=sqlite:///demo.db PANEL_DEV_LOGIN=true FLASK_DEBUG=true
+  python scripts/seed_demo.py +56900000000` y luego `python main.py` → http://localhost:5000/panel/
+  (sin `FINNHUB_API_KEY` los precios salen vacíos). Tests: `pip install -r requirements-dev.txt && pytest`.
+- **Antes de desplegar:** cargar `FLASK_SECRET_KEY` en Railway. Pendiente: etapa 4 (login por
+  código de WhatsApp), 5 (boletas con foto) y 6 (lanzamiento).
+
 ## Arquitectura
 
 ```

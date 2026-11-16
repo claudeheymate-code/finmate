@@ -66,6 +66,34 @@ except Exception as e:
 app = Flask(__name__)
 app.register_blueprint(whatsapp_bp, url_prefix="/whatsapp")
 
+# ============================================================
+# Panel web (etapas 2 y 3): API JSON en /api y páginas en /panel.
+# Comparten base de datos y funciones con el bot de WhatsApp.
+# ============================================================
+if settings.FLASK_SECRET_KEY:
+    app.secret_key = settings.FLASK_SECRET_KEY
+else:
+    import secrets as _secrets
+
+    app.secret_key = _secrets.token_hex(32)
+    logger.warning(
+        "FLASK_SECRET_KEY no está configurada: las sesiones del panel se pierden "
+        "con cada reinicio. Cargala en Railway antes de usar el panel en serio."
+    )
+from datetime import timedelta as _timedelta
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=not FLASK_DEBUG,
+    PERMANENT_SESSION_LIFETIME=_timedelta(days=30),
+)
+from finmate.web.api import api_bp
+from finmate.web.panel import panel_bp
+
+app.register_blueprint(api_bp, url_prefix="/api")
+app.register_blueprint(panel_bp, url_prefix="/panel")
+
 
 @app.route("/")
 def index():
