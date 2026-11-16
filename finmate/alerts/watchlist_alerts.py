@@ -23,8 +23,9 @@ finmate/alerts/pending.py para el porqué de esta distinción.
 import json
 import logging
 import os
+import threading
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 
 import httpx
 
@@ -42,6 +43,12 @@ STATE_FILE = "watchlist_alert_state.json"
 # Si un mismo state file crece sin límite (muchos usuarios x muchos símbolos
 # x muchos días), se poda a esta cantidad de entradas más recientes.
 MAX_STATE_ENTRIES = 2000
+
+# Etapa B: el flujo de precios en tiempo real (finmate/realtime/price_stream.py)
+# llama a check_watchlist_alerts desde su propio hilo, y el job de cada 30 min
+# desde el scheduler. Este lock evita que los dos lean/escriban el estado a la
+# vez (y así nunca se manda la misma alerta dos veces).
+_LOCK = threading.Lock()
 
 
 def _load_state() -> dict:
@@ -67,7 +74,20 @@ def _save_state(state: dict) -> None:
         logger.error(f"Error guardando estado de alertas de watchlist: {e}")
 
 
-def check_watchlist_alerts(messenger: Optional[WhatsAppMessenger] = None) -> int:
+def check_watchlist_alerts(
+    messenger: Optional[WhatsAppMessenger] = None,
+    quote_fn: Optional[Callable[[str], Optional[dict]]] = None,
+) -> int:
+    """Ver _check_watchlist_alerts. `quote_fn(symbol)` permite usar precios
+    en tiempo real (Etapa B); si devuelve None para un símbolo, se salta."""
+    with _LOCK:
+        return _check_watchlist_alerts(messenger, quote_fn)
+
+
+def _check_watchlist_alerts(
+    messenger: Optional[WhatsAppMessenger] = None,
+    quote_fn: Optional[Callable[[str], Optional[dict]]] = None,
+) -> int:
     """
     Chequea la watchlist de todos los usuarios y manda una alerta directa
     cuando un símbolo se movió más del umbral configurado (ver
@@ -103,10 +123,13 @@ def check_watchlist_alerts(messenger: Optional[WhatsAppMessenger] = None) -> int
         logger.warning(f"No pude leer umbrales por usuario, uso el global: {e}")
         thresholds = {}
 
-    with httpx.Client(timeout=10) as client:
+    client = httpx.Client(timeout=10) if quote_fn is None else None
+    try:
         for user_id, phone, symbol in entries:
             if symbol not in quote_cache:
-                quote_cache[symbol] = _get_finnhub_quote(client, symbol)
+                quote_cache[symbol] = (
+                    quote_fn(symbol) if quote_fn is not None else _get_finnhub_quote(client, symbol)
+                )
             quote = quote_cache[symbol]
 
             # TODO(review): `not quote.get("price")` saltea precio==0.0, válido
@@ -152,6 +175,9 @@ def check_watchlist_alerts(messenger: Optional[WhatsAppMessenger] = None) -> int
                 state[state_key] = True
                 alerts_sent += 1
                 logger.info(f"Alerta de watchlist enviada a {phone}: {symbol} {change_pct:+.2f}%")
+    finally:
+        if client is not None:
+            client.close()
 
     _save_state(state)
     logger.info(f"Chequeo de alertas de watchlist completado: {alerts_sent} alertas enviadas")
