@@ -28,6 +28,20 @@ FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
 FMP_API_KEY = os.getenv("FMP_API_KEY", "")  # Financial Modeling Prep
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
 
+# --- Etapa A de fuentes (16 nov 2026) ---
+# FRED (Fed de St. Louis): macro de EE.UU. y calendario de publicaciones.
+FRED_API_KEY = os.getenv("FRED_API_KEY", "")
+# Banco Central de Chile (API BDE): dólar observado, UF, TPM, IPC.
+BCCH_API_TOKEN = os.getenv("BCCH_API_TOKEN", "")
+# Marketaux: noticias por empresa con sentimiento. Plan gratis = 100 req/día,
+# por eso se consulta como máximo cada MARKETAUX_MIN_INTERVAL_MINUTES.
+MARKETAUX_API_KEY = os.getenv("MARKETAUX_API_KEY", "")
+MARKETAUX_MIN_INTERVAL_MINUTES = int(os.getenv("MARKETAUX_MIN_INTERVAL_MINUTES", "20"))
+# Cada cuántos minutos se buscan noticias de los activos de cada usuario.
+NEWS_CHECK_INTERVAL_MINUTES = int(os.getenv("NEWS_CHECK_INTERVAL_MINUTES", "3"))
+# Máximo de avisos de noticias por usuario por día (evita saturar WhatsApp).
+NEWS_ALERTS_MAX_PER_USER_PER_DAY = int(os.getenv("NEWS_ALERTS_MAX_PER_USER_PER_DAY", "6"))
+
 # ============================================================
 # Google Calendar
 # ============================================================
