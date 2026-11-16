@@ -26,6 +26,11 @@ from finmate.agent.finance_tools import (
     tool_get_monthly_summary,
     tool_get_recent_transactions,
 )
+from finmate.agent.macro_tools import (
+    tool_get_chile_indicators,
+    tool_get_us_macro,
+    tool_get_us_release_calendar,
+)
 from finmate.agent.market_tools import tool_explain_movement
 from finmate.agent.news_tools import (
     tool_follow_indicator,
@@ -274,6 +279,22 @@ TOOLS = [
             "required": ["symbol"],
         },
     },
+    # ── Macro EE.UU. y Chile (Etapa A de fuentes) ──────────────────────────
+    {
+        "name": "get_us_macro",
+        "description": "Datos macro actuales de EE.UU. desde FRED: tasa de la Fed, inflación (IPC general y subyacente), desempleo y bonos del Tesoro a 2 y 10 años. Usar cuando pregunten por la tasa de la Fed, la inflación o el desempleo en EE.UU., o los bonos del Tesoro.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_chile_indicators",
+        "description": "Indicadores oficiales de Chile desde el Banco Central: dólar observado, UF, tasa de política monetaria (TPM) e IPC. Usar cuando pregunten por el dólar en Chile, el valor de la UF, la TPM o la inflación en Chile.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_us_release_calendar",
+        "description": "Fechas de las próximas publicaciones importantes de EE.UU. (IPC, empleo/NFP, PIB, PCE, decisión de la Fed) en los próximos 14 días, desde el calendario oficial de FRED. Usar cuando pregunten cuándo sale un dato o qué datos vienen esta semana.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
     # ── Personalidad (Plan Fase 1) ─────────────────────────────────────────
     {
         "name": "get_personality",
@@ -342,6 +363,15 @@ def run_tool(
 
     if name == "explain_movement":
         return tool_explain_movement(tool_input)
+
+    if name == "get_us_macro":
+        return cached("finmate:us_macro", 1800, tool_get_us_macro)
+
+    if name == "get_chile_indicators":
+        return cached("finmate:cl_indicators", 1800, tool_get_chile_indicators)
+
+    if name == "get_us_release_calendar":
+        return cached("finmate:us_releases", 3600, tool_get_us_release_calendar)
 
     if name in _USER_SCOPED_TOOLS:
         if user_id is None:
