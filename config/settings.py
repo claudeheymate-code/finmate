@@ -126,3 +126,17 @@ MARKET_OPEN_HOUR_UTC = int(os.getenv("MARKET_OPEN_HOUR_UTC", "13"))
 MARKET_OPEN_MINUTE_UTC = int(os.getenv("MARKET_OPEN_MINUTE_UTC", "30"))
 MARKET_CLOSE_HOUR_UTC = int(os.getenv("MARKET_CLOSE_HOUR_UTC", "20"))
 MARKET_CLOSE_MINUTE_UTC = int(os.getenv("MARKET_CLOSE_MINUTE_UTC", "0"))
+
+# ============================================================
+# Panel web (etapas 2 y 3)
+# FLASK_SECRET_KEY firma la cookie de sesión del panel. En Railway hay que
+# cargar un valor largo y aleatorio (ej: `python -c "import secrets;
+# print(secrets.token_hex(32))"`). Si falta, se genera uno al arrancar y las
+# sesiones se pierden con cada reinicio (sirve para desarrollo, no para prod).
+#
+# PANEL_DEV_LOGIN habilita un acceso sin código (solo con el número) para
+# probar el panel antes de que exista el login por WhatsApp (etapa 4).
+# NUNCA activarlo en producción: cualquiera podría entrar con un número ajeno.
+# ============================================================
+FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
+PANEL_DEV_LOGIN = os.getenv("PANEL_DEV_LOGIN", "false").lower() == "true"
