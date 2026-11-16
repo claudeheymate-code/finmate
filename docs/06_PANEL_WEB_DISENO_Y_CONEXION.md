@@ -2,7 +2,8 @@
 
 > 16 nov 2026. Corresponde al "Centro de Control" del plan (Fases 1 y 7).
 > Diseño: lienzo "Finmate — Panel de control web" en claude.ai
-> (https://claude.ai/artifact/E9Dxi6u4C8pv2mGz768XEx). Marca en `docs/marca/`.
+> (https://claude.ai/artifact/E9Dxi6u4C8pv2mGz768XEx). Plan visual de construcción en el Whiteboard
+> https://claude.ai/artifact/6hknRp3i84HhkV2mQpVEZT. Marca en `docs/marca/`.
 
 ## Marca
 
@@ -24,10 +25,14 @@ translúcidas con desenfoque sobre fondo azul con halos verde y azul.
 1. **Acceso** — entrar con el número de WhatsApp; el código llega por el chat de Finmate.
 2. **Resumen** — valor del portafolio, ganancia total, gastos del mes, alertas activas,
    activos, últimos mensajes del chat y lo que seguís.
-3. **Portafolio y watchlist** — posiciones con ganancia/pérdida, distribución, alta de
-   posiciones, watchlist con umbral de alerta y "¿por qué se movió?".
-4. **Finanzas personales** — ingresos, gastos, balance, gastos por categoría, movimientos y
-   formulario gasto/ingreso.
+3. **Mis inversiones** — top 3 ganadoras y top 3 perdedoras; torta de renta fija vs renta
+   variable y torta por sector; posiciones con ganancia/pérdida y peso; alta de posiciones;
+   watchlist con umbral de alerta y "¿por qué se movió?".
+4. **Mis gastos** — total del mes, mes anterior y diferencia; torta del mes actual y del mes
+   pasado por categoría (**Evento Social, Polola, Copete, Comidas, Regalos, Viajes**); al tocar
+   una categoría se listan sus gastos; al tocar un gasto se ve la foto de la boleta, el comercio
+   y la ocasión, y se puede cambiar la categoría (la torta se actualiza); "Subir una boleta":
+   foto → ocasión → categoría.
 5. **Ajustes y personalidad** — sliders de humor, sarcasmo, chistes, nivel conversador y tono
    con vista previa; temas e indicadores seguidos; umbral de alertas, resumen semanal y
    WhatsApp vinculado.
@@ -83,6 +88,29 @@ número propio.
 | `POST /api/chat` | Barra superior | `orchestrator.handle_message` (misma memoria que WhatsApp) |
 
 Cada consulta filtra por el `user_id` de la sesión: nadie puede ver datos de otro.
+
+### Boletas con foto (nuevo, 16 nov)
+- **Web**: `POST /api/finanzas/boletas` con la imagen → se guarda (Railway volume o un bucket
+  S3-compatible, ej. Cloudflare R2) → Claude con visión lee comercio, fecha y total → el
+  usuario confirma monto, escribe la ocasión y elige la categoría.
+- **WhatsApp**: el usuario manda la foto al chat; el webhook de Twilio recibe `MediaUrl0`, el
+  bot la lee con Claude y pregunta "¿cuál fue la ocasión?" y "¿en qué categoría?"
+  (ofreciendo las 6). Mismo registro en la tabla `transactions`.
+- Cambios de datos: `transactions` suma `occasion`, `merchant`, `receipt_url`; las categorías
+  pasan a ser Evento Social, Polola, Copete, Comidas, Regalos, Viajes (hoy el código usa
+  Vivienda, Alimentación, Transporte, Ocio, Salud, Educación, Otros: actualizar
+  `finance_tools._VALID_CATEGORIES` y la tool `add_expense`). Conviene dejar "Otros" para lo que
+  no encaje.
+- `GET /api/finanzas/resumen` devuelve los dos meses (actual y anterior) por categoría;
+  `PATCH /api/finanzas/movimientos/<id>` cambia la categoría.
+
+### Distribución del portafolio (nuevo, 16 nov)
+- Cada posición necesita **clase de activo** (renta fija / renta variable) y **sector**.
+  Acciones: sector desde Finnhub (`/stock/profile2`, campo `finnhubIndustry`). ETFs de bonos
+  (TLT, BND, etc.): tabla propia de símbolos → "Renta fija". Guardar en `portfolio_holdings`
+  (`asset_class`, `sector`) al agregar la posición, con opción de corregirlo en la web.
+- Top 3 ganadoras/perdedoras: ordenar por ganancia % sobre costo promedio (se calcula con el
+  mismo código de ganancia/pérdida).
 
 ### Lo que falta en el código para que el panel funcione
 1. **Ganancia/pérdida del portafolio** (Plan Fase 3): costo promedio vs precio actual,
