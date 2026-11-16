@@ -218,3 +218,31 @@ def test_tools_de_podcast(client):
     assert (u.id, "whatsapp:+56933334444") in get_topic_followers("podcast", "primer_click")
     assert "no sé" in run_tool("follow_podcast", {"podcast": "Otro"}, user_id=u.id).lower()
     assert "ya no" in run_tool("unfollow_podcast", {"podcast": "Primer Click"}, user_id=u.id)
+
+
+# ── Robustez de configuración (16 nov) ──────────────────────────────────
+
+def test_settings_limpia_claves_y_url_de_upstash():
+    from config.settings import _key, _redis_url
+    import os
+
+    os.environ["X_TEST_KEY"] = ' "abc123" \n'
+    assert _key("X_TEST_KEY") == "abc123"
+    assert _redis_url("redis-cli --tls -u redis://default:pw@host.upstash.io:6379") == \
+        "rediss://default:pw@host.upstash.io:6379"
+    assert _redis_url("rediss://default:pw@h:6379") == "rediss://default:pw@h:6379"
+
+
+def test_bcch_decodifica_latin1(monkeypatch):
+    from finmate.data_sources import bcch
+
+    class R:
+        encoding = "iso-8859-1"
+        content = '{"Codigo":0,"Series":{"descripEsp":"dólar","Obs":[{"indexDateString":"16-11-2026","value":"999.1","statusCode":"OK"}]}}'.encode("latin-1")
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(bcch, "BCCH_API_TOKEN", "t")
+    monkeypatch.setattr(bcch.httpx, "get", lambda *a, **k: R())
+    assert bcch.get_latest("USD_CLP")["value"] == 999.1

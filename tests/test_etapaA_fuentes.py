@@ -8,8 +8,15 @@ NOW = dt.datetime(2026, 11, 16, 17, 0, tzinfo=dt.timezone.utc)
 
 
 class FakeResp:
+    encoding = "utf-8"
+
     def __init__(self, data):
         self._data = data
+
+    @property
+    def content(self):
+        import json
+        return json.dumps(self._data).encode("utf-8")
 
     def raise_for_status(self):
         pass
