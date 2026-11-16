@@ -6,6 +6,7 @@ la Base de Datos Estadísticos). Sin BCCH_API_TOKEN, devuelve vacío y el bot
 sigue funcionando sin esta fuente.
 """
 import datetime as dt
+import json
 import logging
 from typing import Optional
 
@@ -52,7 +53,9 @@ def get_latest(code: str, client: Optional[httpx.Client] = None,
         else:
             r = httpx.get(BASE_URL, params=params, timeout=10)
         r.raise_for_status()
-        data = r.json()
+        # La API responde en ISO-8859-1 (los títulos traen tildes): decodificar
+        # con el charset que declara, no con UTF-8.
+        data = json.loads(r.content.decode(r.encoding or "latin-1", errors="replace"))
     except Exception as e:
         logger.error(f"Error consultando Banco Central ({code}): {e}")
         return None
