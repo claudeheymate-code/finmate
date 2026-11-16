@@ -141,3 +141,27 @@ def remove_economic_indicator(user_id: int, indicator_code: str) -> bool:
         return False
     finally:
         session.close()
+
+
+def get_indicator_followers() -> dict:
+    """{indicator_code: [(user_id, phone), ...]} de todos los usuarios.
+    Usado por los recordatorios de publicaciones macro
+    (finmate/alerts/macro_alerts.py)."""
+    try:
+        from finmate.db.models import EconomicIndicatorFollowed, User, get_session
+        session = get_session()
+        try:
+            rows = (
+                session.query(EconomicIndicatorFollowed.indicator_code, User.id, User.phone)
+                .join(User, User.id == EconomicIndicatorFollowed.user_id)
+                .all()
+            )
+            out: dict = {}
+            for code, uid, phone in rows:
+                out.setdefault(code, []).append((uid, phone))
+            return out
+        finally:
+            session.close()
+    except Exception as e:
+        logger.error(f"Error leyendo seguidores de indicadores: {e}")
+        return {}

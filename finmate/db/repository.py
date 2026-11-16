@@ -258,3 +258,22 @@ def get_all_watchlist_entries() -> List[Tuple[int, str, str]]:
         return [(r[0], r[1], r[2]) for r in rows]
     finally:
         session.close()
+
+
+def get_all_tracked_symbols() -> List[Tuple[int, str, str]]:
+    """Devuelve [(user_id, phone, symbol), ...] con los símbolos del
+    portafolio Y de la watchlist de todos los usuarios, sin duplicados.
+    Usado por las alertas de noticias (finmate/alerts/news_alerts.py)."""
+    session = get_session()
+    try:
+        rows = set()
+        for model in (PortfolioHolding, WatchlistItem):
+            for r in (
+                session.query(model.user_id, User.phone, model.symbol)
+                .join(User, User.id == model.user_id)
+                .all()
+            ):
+                rows.add((r[0], r[1], r[2].upper()))
+        return sorted(rows)
+    finally:
+        session.close()
