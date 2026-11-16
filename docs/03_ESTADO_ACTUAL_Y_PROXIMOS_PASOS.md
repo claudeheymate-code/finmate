@@ -67,8 +67,11 @@ Lista en código y probada (41/41 tests), sin desplegar. FRED (macro EE.UU. +
 calendario), Banco Central de Chile (dólar, UF, TPM, IPC) y Marketaux
 (noticias con sentimiento) conectados; alertas de noticias por usuario cada
 3 min y recordatorio diario de datos macro. Claves ya cargadas en Railway.
-Próximas: Etapa B (WebSocket de precios Finnhub) y Etapa C (podcasts por
-RSS + transcripción + resumen).
+Etapa B (precios en tiempo real con el WebSocket gratis de Finnhub,
+alertas de watchlist en ~20 s) y Etapa C (resumen diario de Primer Click
+del DF por RSS + transcripción opcional + Claude) también listas en código,
+53/53 tests. Opcional: `OPENAI_API_KEY` en Railway para transcribir el
+audio (~USD 1/mes); sin ella, el resumen usa la descripción del episodio.
 
 ## 💳 Pagos pendientes (acción de Joaco) — revisado 16 nov 2026
 
