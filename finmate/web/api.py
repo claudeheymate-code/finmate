@@ -428,6 +428,35 @@ def avisos_put():
 # ------------------------------------------------------------------
 # Chat con el mismo agente del bot
 # ------------------------------------------------------------------
+@api_bp.post("/feedback")
+@api_login_required
+def feedback_enviar():
+    from finmate.services import feedback as fb
+
+    b = _body()
+    tipo = (b.get("tipo") or "").strip().lower()
+    message = (b.get("message") or "").strip()
+    rating = b.get("rating")
+    if tipo not in fb.TIPOS:
+        return _err("Elegí de qué se trata (idea, problema, me gusta u otro).")
+    if len(message) < 5:
+        return _err("Escribí un poco más para que podamos entenderte.")
+    if len(message) > 2000:
+        return _err("El mensaje es demasiado largo (máximo 2000 caracteres).")
+    if rating is not None:
+        try:
+            rating = int(rating)
+        except (TypeError, ValueError):
+            return _err("Calificación inválida.")
+        if not 1 <= rating <= 5:
+            return _err("La calificación va de 1 a 5.")
+    if fb.rate_limited(g.user.id):
+        return _err("Ya mandaste varios mensajes en la última hora. Probá un poco más tarde.", 429)
+    fb_id = fb.guardar_y_enviar(g.user.id, g.user.phone.replace("whatsapp:", ""), tipo, rating, message,
+                                bool(b.get("contact")))
+    return jsonify({"ok": True, "id": fb_id}), 201
+
+
 @api_bp.post("/chat")
 @api_login_required
 def chat():

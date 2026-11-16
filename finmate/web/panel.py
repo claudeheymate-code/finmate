@@ -17,6 +17,7 @@ _PAGES = {
     "inversiones": ("Mis inversiones", "panel/inversiones.html"),
     "gastos": ("Mis gastos", "panel/gastos.html"),
     "ajustes": ("Ajustes y personalidad", "panel/ajustes.html"),
+    "feedback": ("Feedback", "panel/feedback.html"),
 }
 
 
@@ -47,6 +48,11 @@ def gastos():
 @panel_bp.get("/ajustes")
 def ajustes():
     return _render("ajustes")
+
+
+@panel_bp.get("/feedback")
+def feedback():
+    return _render("feedback")
 
 
 @panel_bp.get("/acceso")
