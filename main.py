@@ -176,6 +176,27 @@ def run_watchlist_alert_check():
         logger.error(f"Error en chequeo de alertas de watchlist (no afecta el resto del bot): {e}")
 
 
+def run_news_alert_check():
+    """Job: noticias nuevas de los activos de cada usuario (Etapa A).
+    Separado y con su propio try/except, igual que las alertas de watchlist."""
+    try:
+        from finmate.alerts.news_alerts import check_news_alerts
+
+        check_news_alerts()
+    except Exception as e:
+        logger.error(f"Error en alertas de noticias (no afecta el resto del bot): {e}")
+
+
+def run_macro_reminders():
+    """Job diario: avisa de publicaciones macro de hoy/mañana (FRED)."""
+    try:
+        from finmate.alerts.macro_alerts import check_macro_reminders
+
+        check_macro_reminders()
+    except Exception as e:
+        logger.error(f"Error en recordatorios macro (no afecta el resto del bot): {e}")
+
+
 def start_scheduler():
     """Inicializa y arranca el scheduler."""
     tz = pytz.timezone(TIMEZONE)
@@ -217,6 +238,24 @@ def start_scheduler():
         IntervalTrigger(minutes=ALERT_CHECK_INTERVAL_MINUTES),
         id="watchlist_alert_check",
         name="Chequeo de alertas de watchlist",
+        replace_existing=True,
+    )
+
+    # Noticias de los activos de cada usuario (Etapa A de fuentes)
+    scheduler.add_job(
+        run_news_alert_check,
+        IntervalTrigger(minutes=settings.NEWS_CHECK_INTERVAL_MINUTES),
+        id="news_alert_check",
+        name="Alertas de noticias por usuario",
+        replace_existing=True,
+    )
+
+    # Recordatorio diario de publicaciones macro (FRED), 8:00 hora de Chile
+    scheduler.add_job(
+        run_macro_reminders,
+        CronTrigger(hour=8, minute=0),
+        id="macro_reminders",
+        name="Recordatorios de datos macro",
         replace_existing=True,
     )
 

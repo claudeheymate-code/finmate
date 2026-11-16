@@ -182,6 +182,36 @@ también el checklist y el doc de estado.
      mano con los textos ya redactados. Twilio sigue en cuenta trial con
      saldo (~$10.73 al 26 oct 2026) — alcanza para seguir probando en el
      sandbox mientras tanto.
+- **Escrito pero NO desplegado — "Etapa A de fuentes" (noticias y macro
+  en tiempo real), del 16 nov 2026 tarde:**
+  - Fuentes nuevas en `finmate/data_sources/`: `fred.py` (macro EE.UU. +
+    calendario oficial de publicaciones, reemplaza a Alpha Vantage para
+    macro), `bcch.py` (Banco Central de Chile: dólar observado, UF, TPM,
+    IPC) y `marketaux.py` (noticias por empresa con sentimiento, en lote y
+    con intervalo mínimo por el límite de 100 req/día).
+  - `finmate/alerts/news_alerts.py`: cada `NEWS_CHECK_INTERVAL_MINUTES`
+    (default 3) busca noticias de los símbolos del portafolio + watchlist de
+    cada usuario (Finnhub REST siempre, Marketaux cuando toca), deduplica
+    por titular entre fuentes, solo noticias de los últimos 90 min, máximo
+    6 avisos por usuario por día y 3 titulares por aviso. La primera corrida
+    tras un deploy solo "calienta" (no envía). Usa el template de aviso de
+    mercado + cola de pendientes si está configurado.
+  - `finmate/alerts/macro_alerts.py`: job diario 8:00 que avisa de
+    publicaciones de hoy/mañana (IPC, NFP, PIB, PCE, FOMC) a quienes siguen
+    ese indicador.
+  - `finmate/agent/macro_tools.py`: 3 tools nuevas (`get_us_macro`,
+    `get_chile_indicators`, `get_us_release_calendar`), con cache Redis.
+  - `main.py`: jobs `news_alert_check` y `macro_reminders`, separados y con
+    su propio try/except.
+  - Variables cargadas por Joaco en Railway el 16 nov: `FRED_API_KEY`,
+    `BCCH_API_TOKEN`, `MARKETAUX_API_KEY`. Todas opcionales: sin clave, esa
+    fuente se salta.
+  - Tests: `tests/test_etapaA_fuentes.py` (12, HTTP simulado). 41/41 pasan.
+  - Sin probar contra las APIs reales (las claves viven solo en Railway).
+    Verificar en el primer deploy: códigos de serie de UF
+    (`F073.UFF.PRE.Z.D`) e IPC (`F074.IPC.VAR.Z.Z.C.M`) del Banco Central.
+  - Siguiente: Etapa B (precios en tiempo real con WebSocket de Finnhub) y
+    Etapa C (resumen diario de podcasts por RSS + transcripción).
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
   marca como "yanked" — se subió a `9.4.1` (25 oct 2026, sin romper nada,
   verificado). `pyflakes` señala imports sin usar y f-strings sin
