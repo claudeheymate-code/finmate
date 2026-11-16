@@ -212,6 +212,30 @@ también el checklist y el doc de estado.
     (`F073.UFF.PRE.Z.D`) e IPC (`F074.IPC.VAR.Z.Z.C.M`) del Banco Central.
   - Siguiente: Etapa B (precios en tiempo real con WebSocket de Finnhub) y
     Etapa C (resumen diario de podcasts por RSS + transcripción).
+- **Escrito pero NO desplegado — "Etapa B" (precios en tiempo real) y
+  "Etapa C" (resumen diario de podcasts), del 16 nov 2026 tarde:**
+  - Etapa B: `finmate/realtime/price_stream.py` mantiene abierto el
+    WebSocket gratis de Finnhub (hilo arrancado en `wsgi.py`), suscrito a
+    los símbolos de todas las watchlists (máx. 50), y cada 20 s evalúa las
+    alertas de watchlist con el precio en vivo vs. el cierre anterior.
+    `check_watchlist_alerts` ahora acepta `quote_fn` y tiene un lock, así el
+    flujo en vivo y el chequeo de 30 min (que queda de respaldo) comparten
+    el estado y nunca duplican un aviso. Reconexión automática 5→60 s.
+    `services/quotes.get_quote` usa el precio en vivo si existe. Nueva
+    dependencia `websocket-client==1.8.0`. Solo acciones de EE.UU.
+  - Etapa C: `finmate/podcasts/` (catálogo + `digest.py`). Lee el RSS de
+    Primer Click (DF) `https://anchor.fm/s/713eaf3c/podcast/rss`, detecta el
+    episodio nuevo (salta "Especial (video)"), lo transcribe si hay
+    `OPENAI_API_KEY` (si no, usa la descripción), lo resume con Claude Haiku
+    en 5-6 viñetas y lo manda con link a quienes siguen el podcast + a
+    `WHATSAPP_RECIPIENTS`. Job lun-vie cada 15 min entre 6:30 y 11:45.
+    Tools nuevas: `follow_podcast`, `unfollow_podcast`,
+    `get_podcast_summary` (guardado como news topic tipo "podcast").
+  - Tests: `tests/test_etapaBC.py` (13). 53/53 pasan. Lectura del feed real
+    de Primer Click verificada. WebSocket real de Finnhub sin probar (la
+    clave vive solo en Railway).
+  - OpenAI retira `gpt-4o-*-transcribe` el 26 feb 2027: antes de esa fecha
+    cambiar `TRANSCRIBE_MODEL`.
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
   marca como "yanked" — se subió a `9.4.1` (25 oct 2026, sin romper nada,
   verificado). `pyflakes` señala imports sin usar y f-strings sin

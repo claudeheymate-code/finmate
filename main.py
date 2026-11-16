@@ -197,6 +197,16 @@ def run_macro_reminders():
         logger.error(f"Error en recordatorios macro (no afecta el resto del bot): {e}")
 
 
+def run_podcast_digests():
+    """Job: resumen de episodios nuevos de podcasts (Etapa C)."""
+    try:
+        from finmate.podcasts.digest import check_podcast_digests
+
+        check_podcast_digests()
+    except Exception as e:
+        logger.error(f"Error en resúmenes de podcasts (no afecta el resto del bot): {e}")
+
+
 def start_scheduler():
     """Inicializa y arranca el scheduler."""
     tz = pytz.timezone(TIMEZONE)
@@ -256,6 +266,16 @@ def start_scheduler():
         CronTrigger(hour=8, minute=0),
         id="macro_reminders",
         name="Recordatorios de datos macro",
+        replace_existing=True,
+    )
+
+    # Resumen de podcasts (Etapa C): Primer Click sale ~7:15 hora de Chile en
+    # días hábiles; se revisa cada 15 min entre 6:30 y 11:45.
+    scheduler.add_job(
+        run_podcast_digests,
+        CronTrigger(day_of_week="mon-fri", hour="6-11", minute="0,15,30,45"),
+        id="podcast_digests",
+        name="Resumen de podcasts",
         replace_existing=True,
     )
 

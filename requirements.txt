@@ -33,3 +33,6 @@ psycopg[binary]==3.2.3
 
 # Cache (Redis gestionado, ej. Upstash)
 redis==5.2.1
+
+# --- Etapa B: precios en tiempo real (WebSocket de Finnhub) ---
+websocket-client==1.8.0
