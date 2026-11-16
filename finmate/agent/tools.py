@@ -32,6 +32,11 @@ from finmate.agent.macro_tools import (
     tool_get_us_release_calendar,
 )
 from finmate.agent.market_tools import tool_explain_movement
+from finmate.agent.podcast_tools import (
+    tool_follow_podcast,
+    tool_get_podcast_summary,
+    tool_unfollow_podcast,
+)
 from finmate.agent.news_tools import (
     tool_follow_indicator,
     tool_follow_news_topic,
@@ -295,6 +300,22 @@ TOOLS = [
         "description": "Fechas de las próximas publicaciones importantes de EE.UU. (IPC, empleo/NFP, PIB, PCE, decisión de la Fed) en los próximos 14 días, desde el calendario oficial de FRED. Usar cuando pregunten cuándo sale un dato o qué datos vienen esta semana.",
         "input_schema": {"type": "object", "properties": {}},
     },
+    # ── Podcasts (Etapa C) ─────────────────────────────────────────────────
+    {
+        "name": "follow_podcast",
+        "description": "Suscribe al usuario al resumen diario por WhatsApp de un podcast. Disponible: Primer Click (Diario Financiero). Usar cuando diga 'mándame el resumen de Primer Click', 'quiero el resumen del podcast del DF'.",
+        "input_schema": {"type": "object", "properties": {"podcast": {"type": "string", "description": "Nombre del podcast, ej: Primer Click"}}, "required": ["podcast"]},
+    },
+    {
+        "name": "unfollow_podcast",
+        "description": "Deja de enviar al usuario el resumen diario de un podcast.",
+        "input_schema": {"type": "object", "properties": {"podcast": {"type": "string"}}, "required": ["podcast"]},
+    },
+    {
+        "name": "get_podcast_summary",
+        "description": "Entrega el último resumen generado de un podcast (por defecto Primer Click del Diario Financiero). Usar cuando pregunte 'qué dijo Primer Click hoy', 'resumen del podcast'.",
+        "input_schema": {"type": "object", "properties": {"podcast": {"type": "string"}}},
+    },
     # ── Personalidad (Plan Fase 1) ─────────────────────────────────────────
     {
         "name": "get_personality",
@@ -343,6 +364,9 @@ _USER_SCOPED_TOOLS = {
     "get_economic_calendar":     lambda user_id, _input: tool_get_economic_calendar(user_id),
     "follow_indicator":          tool_follow_indicator,
     "unfollow_indicator":        tool_unfollow_indicator,
+    # Podcasts (Etapa C)
+    "follow_podcast":            tool_follow_podcast,
+    "unfollow_podcast":          tool_unfollow_podcast,
 }
 
 # Tools que operan sobre el teléfono crudo, no sobre el user_id de la DB
@@ -363,6 +387,9 @@ def run_tool(
 
     if name == "explain_movement":
         return tool_explain_movement(tool_input)
+
+    if name == "get_podcast_summary":
+        return tool_get_podcast_summary(tool_input)
 
     if name == "get_us_macro":
         return cached("finmate:us_macro", 1800, tool_get_us_macro)
