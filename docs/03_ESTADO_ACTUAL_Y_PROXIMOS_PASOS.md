@@ -61,6 +61,15 @@ Etapas 1, 2 y 3 del panel programadas y probadas (ver `06_PANEL_WEB_DISENO_Y_CON
 CLAUDE.md). Faltan la 4 (login por código), la 5 (boletas con foto) y la 6 (lanzamiento).
 Al desplegar hay que sumar en Railway la variable `FLASK_SECRET_KEY`.
 
+## Fuentes en tiempo real — Etapa A (16 nov 2026)
+
+Lista en código y probada (41/41 tests), sin desplegar. FRED (macro EE.UU. +
+calendario), Banco Central de Chile (dólar, UF, TPM, IPC) y Marketaux
+(noticias con sentimiento) conectados; alertas de noticias por usuario cada
+3 min y recordatorio diario de datos macro. Claves ya cargadas en Railway.
+Próximas: Etapa B (WebSocket de precios Finnhub) y Etapa C (podcasts por
+RSS + transcripción + resumen).
+
 ## 💳 Pagos pendientes (acción de Joaco) — revisado 16 nov 2026
 
 | # | Qué pagar | Cuánto | ¿Bloquea? | Dónde |
