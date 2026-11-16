@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#061A36">
 <title>Finmate — Mis gastos · Finmate (prueba)</title>
 <link rel="icon" href="finmate-icon-white.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,14 +32,17 @@
   </header>
   <div class="layout">
     <nav class="rail glass" aria-label="Secciones">
+      <span class="tab-pill" aria-hidden="true"></span>
       <a href="index.html" aria-label="Resumen" title="Resumen" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>
-</svg></a>
+</svg><span class="tab-label">Resumen</span></a>
       <a href="inversiones.html" aria-label="Mis inversiones" title="Mis inversiones" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>
-</svg></a>
+</svg><span class="tab-label">Inversiones</span></a>
       <a href="gastos.html" aria-label="Mis gastos" title="Mis gastos" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><circle cx="16" cy="14" r="1.5"/>
-</svg></a>
+</svg><span class="tab-label">Gastos</span></a>
       <a href="ajustes.html" aria-label="Ajustes y personalidad" title="Ajustes y personalidad" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
-</svg></a>
+</svg><span class="tab-label">Ajustes</span></a>
+      <a href="feedback.html" aria-label="Feedback" title="Feedback" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>
+</svg><span class="tab-label">Feedback</span></a>
     </nav>
     <main id="main">
       
@@ -85,6 +89,6 @@
 </div>
 <script src="demo-api.js"></script>
 <script src="panel.js"></script>
-<div id="demo-banner" style="position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:9999;background:rgba(20,22,35,.92);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font:500 12px/1.4 Inter,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center;max-width:94vw"><span>Versión de prueba · datos de ejemplo · tus cambios quedan solo en este navegador</span><button type="button" id="demo-reset" style="all:unset;cursor:pointer;text-decoration:underline">Reiniciar</button></div>
+<div id="demo-banner" style="position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);white-space:nowrap;z-index:9999;background:rgba(20,22,35,.92);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font:500 12px/1.4 Inter,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center;max-width:94vw"><span>Versión de prueba · datos de ejemplo</span><button type="button" id="demo-reset" style="all:unset;cursor:pointer;text-decoration:underline">Reiniciar</button></div>
 </body>
 </html>

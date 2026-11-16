@@ -83,7 +83,7 @@ main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; g
 .right { text-align: right; }
 .strong { font-weight: 600; }
 .delta { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
-.table-wrap { overflow-x: auto; margin-top: 12px; }
+.table-wrap { position: relative; overflow-x: auto; margin-top: 12px; }  /* relative: contiene al .sr-only de la tabla (si no, estira la página en el celular) */
 table { width: 100%; border-collapse: collapse; min-width: 760px; }
 th { padding: 12px 14px; text-align: left; font-size: 13px; font-weight: 500; color: var(--faint); white-space: nowrap; }
 td { padding: 14px; border-top: 1px solid var(--line); white-space: nowrap; }
@@ -150,10 +150,31 @@ input[type=range] { width: 100%; height: 28px; accent-color: var(--emerald); }
 /* Acceso */
 .login { min-height: 100vh; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 48px; padding: 24px; position: relative; z-index: 1; }
 
+.field textarea { min-height: 140px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); color: var(--text); outline: none; width: 100%; resize: vertical; font: inherit; }
+.field textarea:focus { border-color: var(--up); }
+.chips.rating .chip { font-size: 22px; padding: 0 12px; }
+.tab-label, .tab-pill { display: none; }
+.rail { position: relative; }
+.rail a { position: relative; z-index: 1; }
+
+/* ── Celular: menú de pestañas abajo + deslizar entre pestañas ── */
 @media (max-width: 760px) {
-  .rail { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 100%; border-radius: 28px; }
   .topbar { border-radius: 28px; }
-  .quickbar nav { border-radius: 28px; }
   h1 { font-size: 32px; }
-  .shell { padding: 14px; }
+  .shell { padding: 14px; padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+  .quickbar { display: none; }
+  .layout { display: block; }
+  .rail { position: fixed; z-index: 60; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom));
+    flex-direction: row; flex-wrap: nowrap; justify-content: space-between; gap: 0; width: auto; padding: 6px;
+    border-radius: 26px; background: rgba(6, 26, 54, 0.78); box-shadow: 0 10px 34px rgba(0,0,0,0.35); }
+  .rail a { flex: 1 1 0; width: auto; height: 58px; border-radius: 20px; flex-direction: column; gap: 3px;
+    -webkit-tap-highlight-color: transparent; transition: color .25s; }
+  .rail a[aria-current="page"] { background: transparent; color: var(--navy); }
+  .rail a:hover:not([aria-current="page"]) { background: transparent; }
+  .tab-label { display: block; font-size: 10.5px; font-weight: 600; letter-spacing: .01em; line-height: 1; }
+  .tab-pill { display: block; position: absolute; z-index: 0; top: 6px; bottom: 6px; left: 0; width: 0;
+    border-radius: 20px; background: #FFFFFF; transition: transform .32s cubic-bezier(.2,.8,.2,1), width .32s cubic-bezier(.2,.8,.2,1); }
+  .rail.dragging .tab-pill { transition: none; }
+  main { touch-action: pan-y; will-change: transform; }
 }
+@media (prefers-reduced-motion: reduce) { .tab-pill { transition: none !important; } }

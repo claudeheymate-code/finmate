@@ -338,7 +338,141 @@
     });
   }
 
+
+  // ---------- celular: pestañas abajo y deslizar entre pestañas ----------
+  // Efecto tipo Instagram: la pantalla sigue al dedo, el indicador blanco del
+  // menú se mueve hacia la pestaña de al lado y, al soltar, la página siguiente
+  // entra deslizándose desde el costado.
+  function initTabs() {
+    const rail = $(".rail"); const main = document.getElementById("main");
+    if (!rail || !main) return;
+    const links = Array.from(rail.querySelectorAll("a"));
+    const idx = links.findIndex((a) => a.getAttribute("aria-current") === "page");
+    const pill = rail.querySelector(".tab-pill");
+    const mq = window.matchMedia("(max-width: 760px)");
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const KEY = "finmate-tab-dir";
+
+    function placePill(frac) {
+      if (!pill || idx < 0 || !mq.matches) return;
+      const cur = links[idx]; const n = links[idx + (frac > 0 ? 1 : -1)];
+      let left = cur.offsetLeft, width = cur.offsetWidth;
+      if (n && frac) { const f = Math.min(Math.abs(frac), 1); left += (n.offsetLeft - cur.offsetLeft) * f; width += (n.offsetWidth - cur.offsetWidth) * f; }
+      pill.style.transform = "translateX(" + left + "px)"; pill.style.width = width + "px";
+    }
+    function resetMain() { main.style.transition = ""; main.style.transform = ""; main.style.opacity = ""; }
+    function slideTo(i, dirn) {
+      if (!links[i]) return;
+      try { sessionStorage.setItem(KEY, dirn); } catch (e) {}
+      if (calm) { location.href = links[i].href; return; }
+      rail.classList.remove("dragging");
+      if (pill) { pill.style.transform = "translateX(" + links[i].offsetLeft + "px)"; pill.style.width = links[i].offsetWidth + "px"; }
+      main.style.transition = "transform .22s cubic-bezier(.4,0,1,1), opacity .22s";
+      main.style.transform = "translateX(" + (dirn === "next" ? "-100%" : "100%") + ")"; main.style.opacity = "0.3";
+      setTimeout(() => { location.href = links[i].href; }, 190);
+    }
+
+    placePill(0);
+    window.addEventListener("resize", () => placePill(0));
+    window.addEventListener("pageshow", (e) => { if (e.persisted) { resetMain(); placePill(0); } });
+
+    // Entrada de la página nueva desde el costado
+    let dirn = null; try { dirn = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY); } catch (e) {}
+    if (dirn && mq.matches && !calm) {
+      main.style.transition = "none"; main.style.opacity = "0.3";
+      main.style.transform = "translateX(" + (dirn === "next" ? "100%" : "-100%") + ")";
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        main.style.transition = "transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s";
+        main.style.transform = "translateX(0)"; main.style.opacity = "1";
+        setTimeout(resetMain, 380);
+      }));
+    }
+
+    // Tocar una pestaña también desliza en la dirección correcta
+    links.forEach((a, i) => a.addEventListener("click", (e) => {
+      if (!mq.matches || i === idx || idx < 0 || e.metaKey || e.ctrlKey) return;
+      e.preventDefault(); slideTo(i, i > idx ? "next" : "prev");
+    }));
+
+    // Deslizar con el dedo
+    function scrollsX(el) {
+      for (; el && el !== main; el = el.parentElement) {
+        const ox = getComputedStyle(el).overflowX;
+        if ((ox === "auto" || ox === "scroll") && el.scrollWidth > el.clientWidth + 2) return true;
+      }
+      return false;
+    }
+    let sx = 0, sy = 0, st = 0, dx = 0, lock = null, on = false;
+    main.addEventListener("touchstart", (e) => {
+      on = false;
+      if (!mq.matches || idx < 0 || e.touches.length !== 1) return;
+      const t = e.target;
+      if (t.closest("input, textarea, select, [data-noswipe]") || scrollsX(t)) return;
+      on = true; lock = null; dx = 0; sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+    }, { passive: true });
+    main.addEventListener("touchmove", (e) => {
+      if (!on) return;
+      const mx = e.touches[0].clientX - sx, my = e.touches[0].clientY - sy;
+      if (lock === null) {
+        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        lock = Math.abs(mx) > Math.abs(my) * 1.3 ? "x" : "y";
+        if (lock === "x") { main.style.transition = "none"; rail.classList.add("dragging"); }
+      }
+      if (lock !== "x") return;
+      e.preventDefault();
+      const atEdge = (mx > 0 && idx === 0) || (mx < 0 && idx === links.length - 1);
+      dx = atEdge ? mx * 0.25 : mx;
+      const w = window.innerWidth;
+      main.style.transform = "translateX(" + dx + "px)";
+      main.style.opacity = String(1 - Math.min(Math.abs(dx) / w, 1) * 0.4);
+      if (!atEdge) placePill(-dx / w);
+    }, { passive: false });
+    function end() {
+      if (!on) return; on = false;
+      if (lock !== "x") return;
+      const w = window.innerWidth, speed = Math.abs(dx) / Math.max(Date.now() - st, 1);
+      const target = dx < 0 ? idx + 1 : idx - 1;
+      if ((Math.abs(dx) > w * 0.28 || speed > 0.6) && links[target]) { slideTo(target, dx < 0 ? "next" : "prev"); return; }
+      rail.classList.remove("dragging");
+      main.style.transition = "transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s";
+      main.style.transform = "translateX(0)"; main.style.opacity = "1";
+      placePill(0); setTimeout(resetMain, 300);
+    }
+    main.addEventListener("touchend", end);
+    main.addEventListener("touchcancel", end);
+  }
+
+  // ---------- feedback ----------
+  function pageFeedback() {
+    const st = { tipo: null, rating: null };
+    const text = $("#fb-text"), send = $("#fb-send"), out = $("#fb-out");
+    function refresh() {
+      $("#fb-count").textContent = text.value.length + "/2000";
+      send.disabled = !(st.tipo && text.value.trim().length >= 5);
+    }
+    function group(sel, key, attr) {
+      document.querySelectorAll(sel + " [data-" + attr + "]").forEach((b) => b.addEventListener("click", () => {
+        const v = b.dataset[attr]; st[key] = st[key] === v && key === "rating" ? null : v;
+        document.querySelectorAll(sel + " [data-" + attr + "]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset[attr] === st[key])));
+        refresh();
+      }));
+    }
+    group("#fb-tipo", "tipo", "tipo"); group("#fb-rating", "rating", "rating");
+    text.addEventListener("input", refresh); refresh();
+    $("#fb-form").addEventListener("submit", async (e) => {
+      e.preventDefault(); if (send.disabled) return;
+      send.disabled = true; out.innerHTML = '<span class="faint small">Enviando…</span>';
+      try {
+        await api("POST", "/feedback", { tipo: st.tipo, rating: st.rating ? Number(st.rating) : null, message: text.value.trim(), contact: $("#fb-contact").checked });
+        out.innerHTML = '<span class="up small">¡Gracias! Tu mensaje ya le llegó al equipo de Finmate.</span>';
+        text.value = ""; st.tipo = null; st.rating = null; $("#fb-contact").checked = false;
+        document.querySelectorAll("#fb-form [aria-pressed]").forEach((x) => x.setAttribute("aria-pressed", "false"));
+        refresh();
+      } catch (err) { out.innerHTML = box("error-box", err.message); refresh(); }
+    });
+  }
+
   const page = document.body.dataset.page;
-  if (page !== "acceso") initShell();
-  ({ resumen: pageResumen, inversiones: pageInversiones, gastos: pageGastos, ajustes: pageAjustes, acceso: pageAcceso }[page] || function () {})();
+  if (page !== "acceso") { initShell(); initTabs(); }
+  ({ resumen: pageResumen, inversiones: pageInversiones, gastos: pageGastos, ajustes: pageAjustes, feedback: pageFeedback, acceso: pageAcceso }[page] || function () {})();
 })();
