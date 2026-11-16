@@ -1,6 +1,6 @@
 # Finmate — Estado actual y próximos pasos
 
-> Foto al **29 oct 2026**, actualizada el **16 nov 2026**, consolidada desde `CLAUDE.md` (raíz del repo), que sigue siendo
+> Foto al **29 oct 2026**, actualizada el **16 nov 2026** (tarde), consolidada desde `CLAUDE.md` (raíz del repo), que sigue siendo
 > el resumen vivo. Si hay diferencias, manda `CLAUDE.md`.
 
 ## En una línea
@@ -54,6 +54,12 @@ Twilio/Finnhub. Cargar a mano solo `DATABASE_URL`, `REDIS_URL` y `ANTHROPIC_API_
 
 Sugerencia: al retomar con Claude Code, definir si se sigue la numeración del plan o la del
 código, y mantener una sola.
+
+## Panel web (16 nov 2026)
+
+Etapas 1, 2 y 3 del panel programadas y probadas (ver `06_PANEL_WEB_DISENO_Y_CONEXION.md` y
+CLAUDE.md). Faltan la 4 (login por código), la 5 (boletas con foto) y la 6 (lanzamiento).
+Al desplegar hay que sumar en Railway la variable `FLASK_SECRET_KEY`.
 
 ## 💳 Pagos pendientes (acción de Joaco) — revisado 16 nov 2026
 

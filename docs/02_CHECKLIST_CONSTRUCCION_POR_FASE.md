@@ -41,7 +41,7 @@ Objetivo: recuerda la conversación y habla con estilo propio, sin bajar la cali
   - ✔ Verificación: leer/escribir el registro desde Neon con SQL simple.
 - [ ] Inyectar la personalidad en el system prompt del orquestador.
   - ✔ Verificación: cambiar humor/sarcasmo en la DB y ver que cambia el tono en WhatsApp, sin bajar el rigor.
-- [ ] Centro de Control mínimo (login + perfil + personalidad), con Flask extendido.
+- [~] Centro de Control mínimo (login + perfil + personalidad), con Flask extendido (16 nov: panel en `/panel/` con login provisorio; falta login por código, etapa 4).
   - ✔ Verificación de cierre: cambiar la personalidad desde el panel y verlo reflejado en WhatsApp.
 
 ## Fase 2 — Mercados con contexto
@@ -66,7 +66,7 @@ Objetivo: análisis anclado a las posiciones reales.
 
 - [~] `portfolio_holdings` + tools de alta/edición/baja vía chat (Fase 1 del código; posición neta por símbolo, no libro de transacciones).
   - ✔ Verificación: cargar una posición de prueba y verla en la DB.
-- [ ] Cálculo de valor actual, rentabilidad absoluta/%, P&L por posición y total, distribución.
+- [~] Cálculo de valor actual, rentabilidad absoluta/%, P&L por posición y total, distribución (16 nov: `finmate/services/portfolio.py` + panel, con tests).
   - ✔ Verificación: comparar con un cálculo a mano en Excel.
 - [ ] Cruzar portafolio con noticias y riesgos/oportunidades (portafolio como contexto obligatorio).
   - ✔ Verificación de cierre: "¿qué riesgos tiene mi portafolio?" menciona los activos reales.

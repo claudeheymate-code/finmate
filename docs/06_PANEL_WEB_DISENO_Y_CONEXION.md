@@ -122,6 +122,15 @@ Cada consulta filtra por el `user_id` de la sesión: nadie puede ver datos de ot
 4. Las rutas `/panel` y `/api`, el login por código y las plantillas Jinja.
 5. Plantilla `finmate_login_code` (Authentication) en Twilio cuando haya número propio.
 
+### Estado (16 nov 2026)
+- ✅ Etapa 1 — Datos (ganancia/pérdida, clase y sector, avisos por usuario, categorías + ocasión).
+- ✅ Etapa 2 — API `/api/*` con 29 tests.
+- ✅ Etapa 3 — Pantallas en `/panel/` (login provisorio de desarrollo).
+- ⏳ Etapa 4 — Login por código de WhatsApp (necesita deploy y, fuera de las 24 h, la plantilla
+  Authentication).
+- ⏳ Etapa 5 — Boletas con foto (necesita créditos de Claude para leerlas).
+- ⏳ Etapa 6 — Lanzamiento.
+
 ### Orden sugerido
 1. Ganancia/pérdida + `notification_settings` (sirven también al bot).
 2. API `/api/*` con tests.
