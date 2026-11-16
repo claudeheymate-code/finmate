@@ -27,6 +27,15 @@ def get_quote(symbol: str) -> Optional[dict]:
     from finmate.whatsapp.webhook import _get_finnhub_quote
 
     symbol = symbol.upper()
+    # Etapa B: si el flujo en tiempo real tiene un precio reciente, se usa ese.
+    try:
+        from finmate.realtime.price_stream import get_live_quote
+
+        live = get_live_quote(symbol)
+        if live:
+            return live
+    except Exception:
+        pass
     now = time.time()
     with _lock:
         hit = _quotes.get(symbol)
