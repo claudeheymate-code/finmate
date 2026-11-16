@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finmate — Mis inversiones · Finmate (prueba)</title>
+<link rel="icon" href="finmate-icon-white.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="panel.css">
+</head>
+<body data-page="inversiones">
+<div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+<div class="shell">
+  <header class="topbar glass">
+    <a class="brand" href="index.html"><img src="finmate-icon-white.png" alt=""><span>finmate</span></a>
+    <form class="ask" id="ask-form" autocomplete="off">
+      <span class="up" style="display:flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>
+</svg></span>
+      <label for="ask-input" class="sr-only">Preguntale a Finmate</label>
+      <input id="ask-input" type="text" maxlength="1000" placeholder="Preguntale a Finmate… ej: ¿por qué bajó Apple hoy?">
+      <button class="icon-btn primary" type="submit" aria-label="Enviar pregunta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>
+</svg></button>
+    </form>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="user-chip"><span class="avatar">F</span><span>+5690 •••• 0000</span></span>
+      <button class="icon-btn" type="button" id="logout" aria-label="Cerrar sesión"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
+</svg></button>
+    </div>
+    <div class="chat-pop glass-strong" id="ask-pop" hidden></div>
+  </header>
+  <div class="layout">
+    <nav class="rail glass" aria-label="Secciones">
+      <a href="index.html" aria-label="Resumen" title="Resumen" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>
+</svg></a>
+      <a href="inversiones.html" aria-label="Mis inversiones" title="Mis inversiones" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>
+</svg></a>
+      <a href="gastos.html" aria-label="Mis gastos" title="Mis gastos" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><circle cx="16" cy="14" r="1.5"/>
+</svg></a>
+      <a href="ajustes.html" aria-label="Ajustes y personalidad" title="Ajustes y personalidad" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
+</svg></a>
+    </nav>
+    <main id="main">
+      
+<div class="page-head"><div><p class="muted small strong">Portafolio</p><h1>Mis inversiones</h1></div><span class="faint small" id="i-updated"></span></div>
+<div id="i-error"></div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2><span class="up">▲</span> Top 3 ganadoras</h2><p>Mayor ganancia desde que compraste</p></div></div><ul class="list tight" id="i-winners"></ul></section>
+  <section class="card glass"><div class="card-head"><div><h2><span class="down">▼</span> Top 3 perdedoras</h2><p>Mayor pérdida desde que compraste</p></div></div><ul class="list tight" id="i-losers"></ul></section>
+</div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2>Renta fija vs renta variable</h2><p>Cómo se reparte tu plata por tipo de activo</p></div></div><div class="donut-wrap" id="i-class"></div></section>
+  <section class="card glass"><div class="card-head"><div><h2>Por sector</h2><p>Dónde está concentrado tu riesgo</p></div></div><div class="donut-wrap" id="i-sector"></div></section>
+</div>
+<section class="card glass">
+  <div class="card-head"><div><h2>Posiciones</h2><p>Ganancia y pérdida calculadas con el último precio</p></div><div class="totals" id="i-totals"></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Activo</th><th class="r">Cantidad</th><th class="r">Costo promedio</th><th class="r">Precio</th><th class="r">Hoy</th><th class="r">Valor</th><th class="r">Ganancia</th><th class="r">Peso</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody id="i-rows"></tbody></table></div>
+</section>
+<div class="row">
+  <section class="card glass" id="agregar"><h2>Agregar o actualizar posición</h2><p class="faint small" style="margin-top:4px">Si ya la tenés, se suma y se recalcula el costo promedio</p>
+    <form class="inline" id="add-form">
+      <div class="field"><label for="f-sym">Símbolo</label><input id="f-sym" required maxlength="10" placeholder="Ej: VOO"></div>
+      <div class="field"><label for="f-qty">Cantidad</label><input id="f-qty" type="number" step="any" min="0" required placeholder="Ej: 5"></div>
+      <div class="field"><label for="f-avg">Precio promedio (USD)</label><input id="f-avg" type="number" step="any" min="0" placeholder="Ej: 410.50"></div>
+      <button class="btn" type="submit">Agregar</button>
+    </form><div id="add-msg" style="margin-top:12px"></div>
+    <p class="faint small" style="margin-top:12px">También podés escribirle al bot: “agregá 5 VOO a 410,50”.</p></section>
+  <section class="card glass" id="watchlist"><div class="card-head"><div><h2>Watchlist</h2><p>Activos que seguís sin tenerlos</p></div></div><ul class="list" id="i-watch"></ul>
+    <form class="inline" id="watch-form"><div class="field"><label for="f-wsym">Seguir un activo nuevo</label><input id="f-wsym" maxlength="10" required placeholder="Ej: AMZN"></div><button class="btn ghost" type="submit">Seguir</button></form>
+    <div id="explain" style="margin-top:14px"></div></section>
+</div>
+
+    </main>
+  </div>
+  <div class="quickbar"><nav class="glass-strong" aria-label="Acciones rápidas">
+    <a href="inversiones.html#agregar">Agregar posición</a>
+    <a href="gastos.html#boleta">Registrar gasto</a>
+    <a href="inversiones.html#watchlist">Seguir activo</a>
+    <a href="ajustes.html#avisos">Ajustar avisos</a>
+    <a class="plus" href="gastos.html#boleta" aria-label="Registrar gasto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/>
+</svg></a>
+  </nav></div>
+</div>
+<script src="demo-api.js"></script>
+<script src="panel.js"></script>
+<div id="demo-banner" style="position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:9999;background:rgba(20,22,35,.92);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font:500 12px/1.4 Inter,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center;max-width:94vw"><span>Versión de prueba · datos de ejemplo · tus cambios quedan solo en este navegador</span><button type="button" id="demo-reset" style="all:unset;cursor:pointer;text-decoration:underline">Reiniciar</button></div>
+</body>
+</html>

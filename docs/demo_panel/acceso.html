@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finmate — Entrar · Finmate (prueba)</title>
+<link rel="icon" href="finmate-icon-white.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="panel.css">
+</head>
+<body data-page="acceso">
+<div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+<div class="login">
+  <div style="flex:1 1 420px;max-width:520px;min-width:0">
+    <div class="brand"><img src="finmate-icon-white.png" alt="" style="width:56px;height:56px"><span style="font-size:44px">finmate</span></div>
+    <h1 style="margin-top:28px;font-size:44px">Tu asistente financiero, ahora también en la web</h1>
+    <p class="muted" style="margin-top:18px;font-size:17px;line-height:1.6">Mirá tu portafolio, tus gastos y tus alertas de un vistazo. Lo que cambies acá se refleja en tu chat de WhatsApp.</p>
+  </div>
+  <section class="card glass-strong" style="flex:0 1 420px;padding:32px;border-radius:28px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="up" style="display:flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+</svg></span><h2 style="font-size:24px">Entrar</h2></div>
+    
+    <p class="faint small" style="margin-bottom:22px">Modo desarrollo: se entra solo con el número. El acceso con código por WhatsApp llega en la etapa 4.</p>
+    <form id="dev-login" style="display:flex;flex-direction:column;gap:16px">
+      <div class="field"><label for="phone">Tu número de WhatsApp</label><input id="phone" type="tel" required placeholder="+56 9 1234 5678"></div>
+      <button class="btn" type="submit">Entrar al panel</button>
+      <div id="login-msg"></div>
+    </form>
+    
+  </section>
+</div>
+<script src="demo-api.js"></script>
+<script src="panel.js"></script>
+<div id="demo-banner" style="position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:9999;background:rgba(20,22,35,.92);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font:500 12px/1.4 Inter,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center;max-width:94vw"><span>Versión de prueba · datos de ejemplo · tus cambios quedan solo en este navegador</span><button type="button" id="demo-reset" style="all:unset;cursor:pointer;text-decoration:underline">Reiniciar</button></div>
+</body>
+</html>
