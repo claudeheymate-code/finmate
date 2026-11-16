@@ -16,10 +16,16 @@ pensada para trabajar con Claude Code. Consolidado el 29 oct 2026 desde el proye
 | `05_WHATSAPP_TEMPLATES_TWILIO.md` | Los 3 textos de Content Templates listos para Twilio/Meta | Al crear las plantillas |
 | `originales_html/` | Las versiones HTML originales del plan y del checklist (con diseño) | Para verlas en el navegador |
 
+## Panel web y marca (16 nov 2026)
+
+- `06_PANEL_WEB_DISENO_Y_CONEXION.md` — diseño del panel de control web (5 pantallas), cómo se
+  conecta con el bot (mismo Flask, misma base, login por código de WhatsApp), API y lo que falta.
+- `marca/` — logo, ícono (también en blanco para fondos oscuros) y paleta de colores.
+
 ## Otros archivos del proyecto (raíz)
 
 - `RESUMEN_CONVERSACION.md` — historial detallado de decisiones de la Fase 0 y sesiones anteriores.
-  ⚠️ Contiene API keys y tokens en texto plano y **no** está en `.gitignore`.
+  ⚠️ Contiene API keys y tokens en texto plano. Ya está en `.gitignore` (no se sube a GitHub).
 - `SETUP.md`, `DEPLOY_GUIDE.md` — guías originales de instalación y deploy.
 - `Finmate_Guia_Completa.pdf` / `.docx` — guía de usuario original.
 - `Claude outputs/Finmate_Costos.xlsx` — estimación de costos.
@@ -28,5 +34,6 @@ pensada para trabajar con Claude Code. Consolidado el 29 oct 2026 desde el proye
 
 - "Leé `docs/03_ESTADO_ACTUAL_Y_PROXIMOS_PASOS.md` y arrancá la siguiente fase del plan."
 - "Implementá la Fase 1 (personalidad) siguiendo `docs/02_CHECKLIST_CONSTRUCCION_POR_FASE.md`."
+- "Implementá el panel web siguiendo `docs/06_PANEL_WEB_DISENO_Y_CONEXION.md`, empezando por la API."
 - "Agregá esta idea a `docs/04_BRAINSTORMING_IDEAS.md`: ..."
 - Al terminar cada sesión: "Actualizá `CLAUDE.md` y el checklist con lo que hicimos."
