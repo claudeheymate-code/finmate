@@ -54,6 +54,22 @@
 </svg><span class="tab-label">Feedback</span></a>
     </nav>
     <main id="main">
+  <div class="pager" id="pager"><div class="track" id="track">
+  <section class="pane" data-pane="resumen" aria-hidden="true">
+      
+<div class="page-head">
+  <div><p class="muted small strong">Resumen</p><h1>Tu plata, de un vistazo</h1></div>
+  <span class="pill-status">Sincronizado con WhatsApp</span>
+</div>
+<div class="stats" id="r-stats" aria-live="polite"><p class="faint">Cargando…</p></div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2>Tus activos</h2><p>Principales posiciones y tu watchlist</p></div><a class="small strong" href="inversiones.html">Ver todo</a></div><ul class="list tight" id="r-assets"></ul></section>
+  <section class="card glass"><div class="card-head"><div><h2>Lo último en WhatsApp</h2><p>El panel y el chat comparten la misma memoria</p></div></div><div class="chat" id="r-chat"></div></section>
+</div>
+<section class="card glass"><div class="card-head"><div><h2>Lo que seguís</h2><p>Indicadores y temas de noticias</p></div><a class="small strong" href="ajustes.html">Editar</a></div><ul class="list tight" id="r-follows"></ul></section>
+
+  </section>
+  <section class="pane active" data-pane="inversiones">
       
 <div class="page-head"><div><p class="muted small strong">Portafolio</p><h1>Mis inversiones</h1></div><span class="faint small" id="i-updated"></span></div>
 <div id="i-error"></div>
@@ -83,6 +99,121 @@
     <div id="explain" style="margin-top:14px"></div></section>
 </div>
 
+  </section>
+  <section class="pane" data-pane="gastos" aria-hidden="true">
+      
+<div class="page-head"><div><p class="muted small strong">Finanzas personales</p><h1>Mis gastos</h1></div></div>
+<div class="stats" id="g-stats"><p class="faint">Cargando…</p></div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2 id="g-cur-title">Este mes</h2><p>Tocá una categoría para ver sus gastos</p></div></div><div class="donut-wrap" id="g-cur"></div></section>
+  <section class="card glass"><div class="card-head"><div><h2 id="g-prev-title">Mes pasado</h2><p>Para comparar</p></div></div><div class="donut-wrap" id="g-prev"></div></section>
+</div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2 id="g-list-title">Todos los gastos</h2><p>Tocá un gasto para ver el detalle</p></div><button class="btn ghost" type="button" id="g-all">Ver todos</button></div><ul class="tx-list" id="g-list"></ul></section>
+  <section class="card glass-strong" id="g-detail" aria-live="polite"></section>
+</div>
+<section class="card glass" id="boleta">
+  <div class="card-head"><div><h2>Registrar un gasto</h2><p>Contanos la ocasión y elegí la categoría. Pronto vas a poder subir la foto de la boleta y Finmate leerá el monto solo.</p></div><span class="faint small">También por WhatsApp: “gasté 8 lucas en el almuerzo”</span></div>
+  <form id="tx-form">
+    <div class="steps">
+      <div class="drop"><span class="strong">Foto de la boleta</span><span class="small faint">Próximamente: la lectura automática llega en la etapa 5</span></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="field"><label for="t-occ">¿Cuál fue la ocasión?</label><input id="t-occ" maxlength="200" placeholder="Ej: cumpleaños de la Cata"></div>
+        <div class="field"><label for="t-amt">Monto (CLP)</label><input id="t-amt" type="number" min="1" step="1" required placeholder="Ej: 12990"></div>
+        <div class="field"><label for="t-desc">Descripción</label><input id="t-desc" maxlength="200" placeholder="Ej: regalo"></div>
+      </div>
+      <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;min-width:0">
+        <legend class="label-sm" style="padding:0;margin-bottom:8px">Categoría</legend>
+        <div class="chips" id="t-cats"></div>
+        <button class="btn" type="submit" id="t-save" disabled>Guardar gasto</button>
+      </fieldset>
+    </div>
+  </form>
+  <div id="tx-msg" style="margin-top:14px"></div>
+</section>
+
+  </section>
+  <section class="pane" data-pane="ajustes" aria-hidden="true">
+      
+<div class="page-head"><div><p class="muted small strong">Ajustes</p><h1>Tu Finmate, a tu manera</h1></div></div>
+<div class="row">
+  <section class="card glass"><h2>Personalidad del bot</h2><p class="faint small" style="margin-top:4px">Cambia cómo te habla, nunca la calidad del análisis</p>
+    <form id="p-form" style="display:flex;flex-direction:column;gap:22px;margin-top:20px">
+      <div class="slider"><div class="top"><label for="p-humor">Humor</label><span class="up" id="v-humor"></span></div><input id="p-humor" type="range" min="1" max="10" step="1"><span class="faint small">Qué tan relajado y gracioso es</span></div>
+      <div class="slider"><div class="top"><label for="p-sarcasmo">Sarcasmo</label><span class="up" id="v-sarcasmo"></span></div><input id="p-sarcasmo" type="range" min="1" max="10" step="1"><span class="faint small">Un toque de ironía cuando el mercado se pone dramático</span></div>
+      <div class="slider"><div class="top"><label for="p-frecuencia_chistes">Frecuencia de chistes</label><span class="up" id="v-frecuencia_chistes"></span></div><input id="p-frecuencia_chistes" type="range" min="1" max="10" step="1"><span class="faint small">Cada cuánto mete un chiste</span></div>
+      <div class="slider"><div class="top"><label for="p-nivel_conversador">Nivel conversador</label><span class="up" id="v-nivel_conversador"></span></div><input id="p-nivel_conversador" type="range" min="1" max="10" step="1"><span class="faint small">Respuestas cortas o con más contexto</span></div>
+      <fieldset style="border:0;margin:0;padding:0"><legend class="strong" style="padding:0;margin-bottom:10px">Tono</legend>
+        <div class="chips" id="p-tono">
+          <button type="button" class="chip solid" data-tono="profesional">Profesional</button>
+          <button type="button" class="chip solid" data-tono="casual">Casual</button>
+          <button type="button" class="chip solid" data-tono="amigo">Amigo</button>
+        </div></fieldset>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><button class="btn" type="submit">Guardar cambios</button><span id="p-msg"></span></div>
+    </form></section>
+  <section class="card glass"><h2>Así te respondería</h2><p class="faint small" style="margin-top:4px">Vista previa aproximada con tu configuración</p>
+    <div class="chat"><p class="bubble me">¿cómo va mi portafolio hoy?</p><p class="bubble bot" id="p-preview"></p></div></section>
+</div>
+<div class="row">
+  <section class="card glass"><h2>Lo que seguís</h2><p class="faint small" style="margin-top:4px">Temas de noticias e indicadores económicos</p>
+    <p class="label-sm" style="margin-top:18px">Temas de noticias</p><div class="chips" id="s-temas" style="margin-top:8px"></div>
+    <p class="label-sm" style="margin-top:18px">Indicadores</p><div class="chips" id="s-inds" style="margin-top:8px"></div>
+    <form class="inline" id="s-form">
+      <div class="field"><label for="s-tipo">Tipo</label><select id="s-tipo"><option value="indicador">Indicador económico</option><option value="ticker">Empresa (ticker)</option><option value="sector">Sector</option><option value="pais">País</option><option value="keyword">Palabra clave</option></select></div>
+      <div class="field" id="s-valor-wrap"><label for="s-valor">Qué seguir</label><select id="s-valor"></select></div>
+      <button class="btn ghost" type="submit">Seguir</button>
+    </form><div id="s-msg" style="margin-top:10px"></div></section>
+  <section class="card glass" id="avisos"><h2>Avisos</h2><p class="faint small" style="margin-top:4px">Cuándo te escribe Finmate</p>
+    <form id="a-form">
+      <ul class="list">
+        <li><div class="grow"><p class="strong">Umbral de alertas de watchlist</p><p class="faint small">Te avisa si un activo se mueve más que esto en el día</p></div>
+          <div class="field" style="flex:0 0 120px"><label for="a-thr" class="sr-only">Umbral en porcentaje</label><input id="a-thr" type="number" min="0.5" max="50" step="0.5"></div><span class="muted">%</span></li>
+        <li><div class="grow"><p class="strong">Resumen semanal</p><p class="faint small">Domingos a las 20:00 (hora de Chile)</p></div>
+          <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-weekly" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
+        <li><div class="grow"><p class="strong">WhatsApp vinculado</p><p class="faint small">+5690 •••• 0000 · los cambios se sincronizan con el chat</p></div><span class="pill-status">Conectado</span></li>
+      </ul>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px"><button class="btn" type="submit">Guardar avisos</button><span id="a-msg"></span></div>
+    </form></section>
+</div>
+
+  </section>
+  <section class="pane" data-pane="feedback" aria-hidden="true">
+      
+<div class="page-head"><div><p class="muted small strong">Feedback</p><h1>Ayúdanos a mejorar Finmate</h1></div></div>
+<div class="row">
+  <section class="card glass"><h2>Cuéntanos</h2><p class="faint small" style="margin-top:4px">Tu mensaje le llega directo al equipo de Finmate</p>
+    <form id="fb-form" style="display:flex;flex-direction:column;gap:20px;margin-top:20px" novalidate>
+      <fieldset style="border:0;margin:0;padding:0"><legend class="label-sm" style="padding:0;margin-bottom:10px">¿De qué se trata?</legend>
+        <div class="chips" id="fb-tipo">
+          <button type="button" class="chip solid" data-tipo="idea" aria-pressed="false">💡 Idea</button>
+          <button type="button" class="chip solid" data-tipo="problema" aria-pressed="false">🐞 Problema</button>
+          <button type="button" class="chip solid" data-tipo="me_gusta" aria-pressed="false">❤️ Me gusta</button>
+          <button type="button" class="chip solid" data-tipo="otro" aria-pressed="false">💬 Otro</button>
+        </div></fieldset>
+      <fieldset style="border:0;margin:0;padding:0"><legend class="label-sm" style="padding:0;margin-bottom:10px">¿Cómo ha sido tu experiencia? <span class="faint">(opcional)</span></legend>
+        <div class="chips rating" id="fb-rating">
+          <button type="button" class="chip" data-rating="1" aria-pressed="false" aria-label="Muy mala">😞</button>
+          <button type="button" class="chip" data-rating="2" aria-pressed="false" aria-label="Mala">🙁</button>
+          <button type="button" class="chip" data-rating="3" aria-pressed="false" aria-label="Normal">😐</button>
+          <button type="button" class="chip" data-rating="4" aria-pressed="false" aria-label="Buena">🙂</button>
+          <button type="button" class="chip" data-rating="5" aria-pressed="false" aria-label="Excelente">😍</button>
+        </div></fieldset>
+      <div class="field"><label for="fb-text">Tu mensaje</label>
+        <textarea id="fb-text" maxlength="2000" rows="6" placeholder="Ej: me gustaría que el resumen semanal llegara los lunes en la mañana…"></textarea>
+        <span class="faint small" id="fb-count" style="align-self:flex-end">0/2000</span></div>
+      <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="fb-contact" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Pueden escribirme por WhatsApp si necesitan más detalles</label>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><button class="btn" type="submit" id="fb-send" disabled>Enviar feedback</button><span id="fb-out"></span></div>
+    </form></section>
+  <section class="card glass"><h2>Qué pasa con tu mensaje</h2><p class="faint small" style="margin-top:4px">Sin formularios eternos ni bots</p>
+    <ul class="list" style="margin-top:12px">
+      <li><div class="grow"><p class="strong">Llega directo al equipo</p><p class="faint small">Cada mensaje se envía al correo de Finmate apenas lo mandas.</p></div></li>
+      <li><div class="grow"><p class="strong">Lo leemos todo</p><p class="faint small">Las ideas y problemas que más se repiten pasan primero a la lista de mejoras.</p></div></li>
+      <li><div class="grow"><p class="strong">Te respondemos si quieres</p><p class="faint small">Solo si marcas la casilla compartimos tu número con el equipo para contactarte.</p></div></li>
+    </ul></section>
+</div>
+
+  </section>
+  </div></div>
     </main>
   </div>
   <div class="quickbar"><nav class="glass-strong" aria-label="Acciones rápidas">
