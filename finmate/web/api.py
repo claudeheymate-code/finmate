@@ -231,10 +231,37 @@ def explicar(symbol):
 # ------------------------------------------------------------------
 # Finanzas personales
 # ------------------------------------------------------------------
+def _cats_payload(uid):
+    return {"categories": finance_repo.get_categories(uid), "all": finance_repo.category_settings(uid)}
+
+
 @api_bp.get("/finanzas/categorias")
 @api_login_required
 def finanzas_categorias():
-    return jsonify({"categories": finance_repo.DEFAULT_CATEGORIES})
+    return jsonify(_cats_payload(g.user.id))
+
+
+@api_bp.post("/finanzas/categorias")
+@api_login_required
+def finanzas_categoria_agregar():
+    ok, msg = finance_repo.add_user_category(g.user.id, _body().get("name", ""))
+    if not ok:
+        return _err(msg)
+    return jsonify({**_cats_payload(g.user.id), "added": msg}), 201
+
+
+@api_bp.put("/finanzas/categorias")
+@api_login_required
+def finanzas_categoria_activar():
+    """Saca (active=false) o vuelve a poner (active=true) una categoría.
+    Los gastos ya registrados en ella no se tocan."""
+    b = _body()
+    name = str(b.get("name") or "")
+    if finance_repo._same(name, finance_repo.FALLBACK_CATEGORY):
+        return _err("Otros siempre queda disponible.")
+    if not finance_repo.set_category_active(g.user.id, name, bool(b.get("active"))):
+        return _err("Categoría no encontrada.", 404)
+    return jsonify(_cats_payload(g.user.id))
 
 
 @api_bp.get("/finanzas/resumen")
@@ -245,6 +272,7 @@ def finanzas_resumen():
     return jsonify({
         "actual": finance_repo.month_breakdown(g.user.id, year, month),
         "anterior": finance_repo.month_breakdown(g.user.id, py, pm),
+        "anio": finance_repo.year_to_date_breakdown(g.user.id, year, month),
     })
 
 
@@ -253,8 +281,6 @@ def finanzas_resumen():
 def finanzas_movimientos():
     year, month = _year_month()
     cat = request.args.get("categoria") or None
-    if cat and cat not in finance_repo.DEFAULT_CATEGORIES:
-        return _err("Categoría inválida.")
     return jsonify({"items": finance_repo.list_transactions(g.user.id, year, month, cat)})
 
 
@@ -269,10 +295,10 @@ def finanzas_crear():
         return _err("Tipo inválido (gasto o ingreso).")
     if amount is None or amount <= 0:
         return _err("El monto tiene que ser mayor a cero.")
-    if tipo == "gasto" and category not in finance_repo.DEFAULT_CATEGORIES:
+    resolved = finance_repo.resolve_category(g.user.id, category)
+    if tipo == "gasto" and not resolved:
         return _err("Elegí una categoría.")
-    if tipo == "ingreso" and category not in finance_repo.DEFAULT_CATEGORIES:
-        category = "Otros"
+    category = resolved or finance_repo.FALLBACK_CATEGORY
     date = None
     if b.get("date"):
         try:
@@ -297,9 +323,10 @@ def finanzas_editar(tx_id):
     b = _body()
     fields = {}
     if "category" in b:
-        if b["category"] not in finance_repo.DEFAULT_CATEGORIES:
+        resolved = finance_repo.resolve_category(g.user.id, b["category"])
+        if not resolved:
             return _err("Categoría inválida.")
-        fields["category"] = b["category"]
+        fields["category"] = resolved
     for k, limit in (("occasion", 200), ("description", 500), ("merchant", 200)):
         if k in b:
             fields[k] = (b.get(k) or "").strip()[:limit]
