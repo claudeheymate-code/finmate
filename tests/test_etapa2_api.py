@@ -79,13 +79,14 @@ def test_finanzas_valida(client):
     assert client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 100}, headers=H()).status_code == 400
     assert client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": -5, "category": "Comidas"}, headers=H()).status_code == 400
     assert client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 5, "category": "Comidas", "date": "ayer"}, headers=H()).status_code == 400
-    assert client.get("/api/finanzas/movimientos?categoria=Nada").status_code == 400
+    assert client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 5, "category": "Nada"}, headers=H()).status_code == 400
+    assert client.get("/api/finanzas/movimientos?categoria=Nada").get_json()["items"] == []
 
 
 def test_mes_anterior_y_fechas(client):
     today = dt.date.today()
     prev = (today.replace(day=1) - dt.timedelta(days=1)).replace(day=10)
-    client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 30000, "category": "Viajes", "date": prev.isoformat()}, headers=H())
+    client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 30000, "category": "Asados", "date": prev.isoformat()}, headers=H())
     res = client.get("/api/finanzas/resumen").get_json()
     assert res["anterior"]["total_gastos"] == 30000 and res["actual"]["total_gastos"] == 0
 
@@ -96,7 +97,7 @@ def test_aislamiento_entre_usuarios(app, client):
     otro = app.test_client()
     otro.post("/api/auth/dev-login", json={"phone": "+56977777777"}, headers=H())
     assert otro.get("/api/portafolio").get_json()["totals"]["count"] == 0
-    assert otro.patch(f"/api/finanzas/movimientos/{tx['id']}", json={"category": "Viajes"}, headers=H()).status_code == 404
+    assert otro.patch(f"/api/finanzas/movimientos/{tx['id']}", json={"category": "Copete"}, headers=H()).status_code == 404
     assert otro.delete(f"/api/finanzas/movimientos/{tx['id']}", headers=H()).status_code == 404
 
 
@@ -156,3 +157,43 @@ def test_chat_usa_el_mismo_agente(client, monkeypatch):
 def test_me_enmascara_numero(client):
     d = client.get("/api/me").get_json()
     assert "••••" in d["phone"]
+
+
+def test_categorias_por_usuario(app, client):
+    """Cada usuario elige sus categorías: saca las por defecto que no usa y
+    agrega las suyas, sin afectar a los demás."""
+    c = client.get("/api/finanzas/categorias").get_json()
+    assert c["categories"] == ["Comidas", "Carretes", "Asados", "Regalos", "Suscripciones", "Polola", "Copete", "Bets", "Otros"]
+    r = client.post("/api/finanzas/categorias", json={"name": "  bencina "}, headers=H())
+    assert r.status_code == 201 and r.get_json()["added"] == "Bencina"
+    assert client.post("/api/finanzas/categorias", json={"name": "BENCINA"}, headers=H()).status_code == 400  # repetida
+    assert client.post("/api/finanzas/categorias", json={"name": "x"}, headers=H()).status_code == 400
+    r = client.put("/api/finanzas/categorias", json={"name": "Bets", "active": False}, headers=H()).get_json()
+    assert "Bets" not in r["categories"] and "Bencina" in r["categories"] and r["categories"][-1] == "Otros"
+    assert {"name": "Bets", "default": True, "active": False} in r["all"]
+    assert client.put("/api/finanzas/categorias", json={"name": "Otros", "active": False}, headers=H()).status_code == 400
+    # Se puede registrar en la propia, no en la sacada
+    assert client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 20000, "category": "bencina"}, headers=H()).get_json()["category"] == "Bencina"
+    assert client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 5000, "category": "Bets"}, headers=H()).status_code == 400
+    # Volver a agregarla por nombre la reactiva
+    assert "Bets" in client.post("/api/finanzas/categorias", json={"name": "bets"}, headers=H()).get_json()["categories"]
+    # Otro usuario no ve Bencina
+    otro = app.test_client()
+    otro.post("/api/auth/dev-login", json={"phone": "+56966666666"}, headers=H())
+    assert "Bencina" not in otro.get("/api/finanzas/categorias").get_json()["categories"]
+    # Al sacar una propia con gastos, el gasto sigue contando en el resumen
+    client.put("/api/finanzas/categorias", json={"name": "Bencina", "active": False}, headers=H())
+    res = client.get("/api/finanzas/resumen").get_json()
+    amounts = {x["name"]: x["amount"] for x in res["actual"]["categories"]}
+    assert amounts["Bencina"] == 20000 and res["actual"]["total_gastos"] == sum(amounts.values())
+    assert res["anio"]["total_gastos"] >= res["actual"]["total_gastos"]
+
+
+def test_resumen_trae_el_anio(client):
+    today = dt.date.today()
+    if today.month > 1:
+        client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 7000, "category": "Comidas", "date": today.replace(month=1, day=15).isoformat()}, headers=H())
+    client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 3000, "category": "Comidas"}, headers=H())
+    client.post("/api/finanzas/movimientos", json={"tipo": "gasto", "amount": 9000, "category": "Comidas", "date": today.replace(year=today.year - 1).isoformat()}, headers=H())
+    res = client.get("/api/finanzas/resumen").get_json()
+    assert res["anio"]["total_gastos"] == (10000 if today.month > 1 else 3000)

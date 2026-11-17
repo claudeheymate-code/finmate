@@ -118,3 +118,20 @@ def test_todas_las_pestanas_en_la_misma_pagina(client):
         assert html.count('id="fb-form"') == 1  # sin ids duplicados
     js = open("finmate/web/static/panel/panel.js", encoding="utf-8").read()
     assert "history.pushState" in js and "translate3d" in js
+
+
+def test_sin_zoom_barra_que_se_esconde_y_texto_feedback(client):
+    html = client.get("/panel/feedback").get_data(as_text=True)
+    assert "maximum-scale=1, user-scalable=no" in html
+    assert "Cada idea que nos cuentas" in html and "Qué pasa con tu mensaje" not in html
+    js = open("finmate/web/static/panel/panel.js", encoding="utf-8").read()
+    css = open("finmate/web/static/panel/panel.css", encoding="utf-8").read()
+    assert "gesturestart" in js and "rail-hidden" in js and ".rail.rail-hidden" in css
+    mobile = css.split("@media (max-width: 760px)")[-1]
+    assert "font-size: 16px" in mobile  # iOS no hace zoom al tocar un campo
+
+
+def test_gastos_tabla_comparativa_y_categorias(client):
+    html = client.get("/panel/gastos").get_data(as_text=True)
+    assert 'id="g-cmp"' in html and "Lst Mth" in html and 'id="g-ytd"' in html and 'id="g-prev"' not in html
+    assert 'id="c-form"' in html and "Solo cambian en tu cuenta" in html

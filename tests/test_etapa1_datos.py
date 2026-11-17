@@ -83,15 +83,17 @@ def test_categorias_nuevas_y_desglose_mensual():
     py, pm = finance_repo.previous_month(today.year, today.month)
     finance_repo.add_transaction(uid, -8000, "Comidas", "Almuerzo", today, occasion="Trabajo")
     finance_repo.add_transaction(uid, -42000, "Polola", "Cena", today)
-    finance_repo.add_transaction(uid, -5000, "Alimentación", "vieja", today)  # categoría vieja → Otros
+    finance_repo.add_transaction(uid, -5000, "Alimentación", "vieja", today)  # categoría vieja: aparece aparte
     finance_repo.add_transaction(uid, 500000, "Otros", "Sueldo", today)
     finance_repo.add_transaction(uid, -30000, "Viajes", "Bus", dt.date(py, pm, 10))
 
     cur = finance_repo.month_breakdown(uid, today.year, today.month)
     assert cur["total_gastos"] == 55000 and cur["count"] == 3
     amounts = {c["name"]: c["amount"] for c in cur["categories"]}
-    assert amounts["Comidas"] == 8000 and amounts["Polola"] == 42000 and amounts["Otros"] == 5000
-    assert [c["name"] for c in cur["categories"]] == finance_repo.DEFAULT_CATEGORIES
+    assert amounts["Comidas"] == 8000 and amounts["Polola"] == 42000 and amounts["Alimentación"] == 5000
+    names = [c["name"] for c in cur["categories"]]
+    assert names[:8] == finance_repo.DEFAULT_CATEGORIES and names[-1] == "Otros"
+    assert sum(c["amount"] for c in cur["categories"]) == cur["total_gastos"]  # el total siempre cuadra
     prev = finance_repo.month_breakdown(uid, py, pm)
     assert prev["total_gastos"] == 30000
 
@@ -99,7 +101,7 @@ def test_categorias_nuevas_y_desglose_mensual():
     assert items[0]["occasion"] == "Trabajo"
     tx = finance_repo.update_transaction(uid, items[0]["id"], category="Copete")
     assert tx["category"] == "Copete"
-    assert finance_repo.update_transaction(uid + 999, items[0]["id"], category="Viajes") is None
+    assert finance_repo.update_transaction(uid + 999, items[0]["id"], category="Asados") is None
 
 
 def test_tool_add_expense_usa_categorias_y_ocasion():
@@ -108,7 +110,10 @@ def test_tool_add_expense_usa_categorias_y_ocasion():
 
     assert _normalize_category("comidas") == "Comidas"
     assert _normalize_category("almuerzo") == "Comidas"
-    assert _normalize_category("cumpleaños") == "Evento Social"
+    assert _normalize_category("cumpleaños") == "Carretes"
+    assert _normalize_category("netflix") == "Suscripciones" and _normalize_category("apuesta") == "Bets"
+    assert _normalize_category("bencina", ["Comidas", "Bencina", "Otros"]) == "Bencina"
+    assert _normalize_category("asado", ["Comidas", "Otros"]) == "Otros"  # Asados sacada por el usuario
     assert _normalize_category("algo raro") == "Otros"
     uid = _user("whatsapp:+56911110004")
     msg = tool_add_expense(uid, {"tipo": "gasto", "amount": 25000, "category": "regalos", "description": "regalo", "occasion": "Cumpleaños de la Cata"})
@@ -161,3 +166,21 @@ def test_alerta_watchlist_respeta_umbral_por_usuario(monkeypatch):
 
     watchlist_alerts.check_watchlist_alerts(FakeMessenger())
     assert sent == ["whatsapp:+56911110006"]
+
+
+def test_bot_maneja_categorias_por_usuario():
+    from finmate.agent.finance_tools import tool_add_expense, tool_manage_expense_categories
+    from finmate.db import finance_repo
+
+    uid = _user("whatsapp:+56911110009")
+    assert "Bencina" in tool_manage_expense_categories(uid, {"action": "add", "name": "bencina"})
+    msg = tool_add_expense(uid, {"tipo": "gasto", "amount": 30000, "category": "bencina", "description": "estanque"})
+    assert "Bencina" in msg
+    assert "Saqué" in tool_manage_expense_categories(uid, {"action": "remove", "name": "Bets"})
+    lista = tool_manage_expense_categories(uid, {"action": "list"})
+    assert "Bencina" in lista and "Sacaste: Bets" in lista
+    # Con Bets sacada, "apuesta" ya no cae en Bets
+    tool_add_expense(uid, {"tipo": "gasto", "amount": 5000, "category": "apuesta", "description": "partido"})
+    t = finance_repo.list_transactions(uid, dt.date.today().year, dt.date.today().month)[0]
+    assert t["category"] == "Otros"
+    assert "Bencina" not in finance_repo.get_categories(_user("whatsapp:+56911110010"))
