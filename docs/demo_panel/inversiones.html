@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Finmate — Mis inversiones · Finmate (prueba)</title>
 
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -54,9 +54,11 @@
 </svg><span class="tab-label">Feedback</span></a>
     </nav>
     <main id="main">
-  <div class="pager" id="pager"><div class="track" id="track">
-  <section class="pane" data-pane="resumen" aria-hidden="true">
       
+      <div class="pager" id="pager"><div class="track" id="track">
+      
+        <section class="pane" data-pane="resumen" aria-hidden="true">
+          
 <div class="page-head">
   <div><p class="muted small strong">Resumen</p><h1>Tu plata, de un vistazo</h1></div>
   <span class="pill-status">Sincronizado con WhatsApp</span>
@@ -67,10 +69,10 @@
   <section class="card glass"><div class="card-head"><div><h2>Lo último en WhatsApp</h2><p>El panel y el chat comparten la misma memoria</p></div></div><div class="chat" id="r-chat"></div></section>
 </div>
 <section class="card glass"><div class="card-head"><div><h2>Lo que seguís</h2><p>Indicadores y temas de noticias</p></div><a class="small strong" href="ajustes.html">Editar</a></div><ul class="list tight" id="r-follows"></ul></section>
-
-  </section>
-  <section class="pane active" data-pane="inversiones">
+        </section>
       
+        <section class="pane active" data-pane="inversiones">
+          
 <div class="page-head"><div><p class="muted small strong">Portafolio</p><h1>Mis inversiones</h1></div><span class="faint small" id="i-updated"></span></div>
 <div id="i-error"></div>
 <div class="row">
@@ -98,20 +100,29 @@
     <form class="inline" id="watch-form"><div class="field"><label for="f-wsym">Seguir un activo nuevo</label><input id="f-wsym" maxlength="10" required placeholder="Ej: AMZN"></div><button class="btn ghost" type="submit">Seguir</button></form>
     <div id="explain" style="margin-top:14px"></div></section>
 </div>
-
-  </section>
-  <section class="pane" data-pane="gastos" aria-hidden="true">
+        </section>
       
+        <section class="pane" data-pane="gastos" aria-hidden="true">
+          
 <div class="page-head"><div><p class="muted small strong">Finanzas personales</p><h1>Mis gastos</h1></div></div>
 <div class="stats" id="g-stats"><p class="faint">Cargando…</p></div>
 <div class="row">
   <section class="card glass"><div class="card-head"><div><h2 id="g-cur-title">Este mes</h2><p>Tocá una categoría para ver sus gastos</p></div></div><div class="donut-wrap" id="g-cur"></div></section>
-  <section class="card glass"><div class="card-head"><div><h2 id="g-prev-title">Mes pasado</h2><p>Para comparar</p></div></div><div class="donut-wrap" id="g-prev"></div></section>
+  <section class="card glass"><div class="card-head"><div><h2 id="g-ytd-title">En lo que va del año</h2><p>Gastos desde el 1 de enero</p></div></div><div class="donut-wrap" id="g-ytd"></div></section>
 </div>
+<section class="card glass"><div class="card-head"><div><h2>Este mes vs. mes pasado</h2><p>Por categoría, una al lado de la otra</p></div></div>
+  <div class="table-wrap cmp-wrap"><table class="cmp"><thead><tr><th>Categoría</th><th class="r" id="g-th-cur">Este mes</th><th class="r" id="g-th-prev">Lst Mth</th><th class="r" title="Diferencia">Dif.</th></tr></thead><tbody id="g-cmp"></tbody><tfoot id="g-cmp-total"></tfoot></table></div>
+</section>
 <div class="row">
   <section class="card glass"><div class="card-head"><div><h2 id="g-list-title">Todos los gastos</h2><p>Tocá un gasto para ver el detalle</p></div><button class="btn ghost" type="button" id="g-all">Ver todos</button></div><ul class="tx-list" id="g-list"></ul></section>
   <section class="card glass-strong" id="g-detail" aria-live="polite"></section>
 </div>
+<section class="card glass" id="categorias">
+  <div class="card-head"><div><h2>Mis categorías</h2><p>Elige las que usas y agrega las tuyas. Solo cambian en tu cuenta.</p></div></div>
+  <div class="chips" id="c-list" style="margin-top:4px"></div>
+  <form id="c-form" class="cat-add" autocomplete="off"><div class="field"><label for="c-name">Nueva categoría</label><input id="c-name" maxlength="30" placeholder="Ej: Bencina"></div><button class="btn" type="submit">Agregar</button></form>
+  <div id="c-msg" style="margin-top:10px"></div>
+</section>
 <section class="card glass" id="boleta">
   <div class="card-head"><div><h2>Registrar un gasto</h2><p>Contanos la ocasión y elegí la categoría. Pronto vas a poder subir la foto de la boleta y Finmate leerá el monto solo.</p></div><span class="faint small">También por WhatsApp: “gasté 8 lucas en el almuerzo”</span></div>
   <form id="tx-form">
@@ -131,10 +142,10 @@
   </form>
   <div id="tx-msg" style="margin-top:14px"></div>
 </section>
-
-  </section>
-  <section class="pane" data-pane="ajustes" aria-hidden="true">
+        </section>
       
+        <section class="pane" data-pane="ajustes" aria-hidden="true">
+          
 <div class="page-head"><div><p class="muted small strong">Ajustes</p><h1>Tu Finmate, a tu manera</h1></div></div>
 <div class="row">
   <section class="card glass"><h2>Personalidad del bot</h2><p class="faint small" style="margin-top:4px">Cambia cómo te habla, nunca la calidad del análisis</p>
@@ -175,10 +186,10 @@
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px"><button class="btn" type="submit">Guardar avisos</button><span id="a-msg"></span></div>
     </form></section>
 </div>
-
-  </section>
-  <section class="pane" data-pane="feedback" aria-hidden="true">
+        </section>
       
+        <section class="pane" data-pane="feedback" aria-hidden="true">
+          
 <div class="page-head"><div><p class="muted small strong">Feedback</p><h1>Ayúdanos a mejorar Finmate</h1></div></div>
 <div class="row">
   <section class="card glass"><h2>Cuéntanos</h2><p class="faint small" style="margin-top:4px">Tu mensaje le llega directo al equipo de Finmate</p>
@@ -204,16 +215,11 @@
       <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="fb-contact" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Pueden escribirme por WhatsApp si necesitan más detalles</label>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><button class="btn" type="submit" id="fb-send" disabled>Enviar feedback</button><span id="fb-out"></span></div>
     </form></section>
-  <section class="card glass"><h2>Qué pasa con tu mensaje</h2><p class="faint small" style="margin-top:4px">Sin formularios eternos ni bots</p>
-    <ul class="list" style="margin-top:12px">
-      <li><div class="grow"><p class="strong">Llega directo al equipo</p><p class="faint small">Cada mensaje se envía al correo de Finmate apenas lo mandas.</p></div></li>
-      <li><div class="grow"><p class="strong">Lo leemos todo</p><p class="faint small">Las ideas y problemas que más se repiten pasan primero a la lista de mejoras.</p></div></li>
-      <li><div class="grow"><p class="strong">Te respondemos si quieres</p><p class="faint small">Solo si marcas la casilla compartimos tu número con el equipo para contactarte.</p></div></li>
-    </ul></section>
+  <section class="card glass fb-note"><span class="fb-note-icon" aria-hidden="true">✨</span><p class="fb-note-text">Cada idea que nos cuentas nos ayuda a hacer Finmate más a tu medida.</p></section>
 </div>
-
-  </section>
-  </div></div>
+        </section>
+      
+      </div></div>
     </main>
   </div>
   <div class="quickbar"><nav class="glass-strong" aria-label="Acciones rápidas">
