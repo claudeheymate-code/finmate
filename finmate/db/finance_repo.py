@@ -5,11 +5,16 @@ from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# Categorías de gasto (definidas por Joaco el 16 nov 2026 para el panel web).
-# "Otros" queda para lo que no encaje en ninguna.
+# Categorías de gasto por defecto (definidas por Joaco el 16 nov 2026).
+# Cada usuario puede sacar las que no use y agregar las suyas (solo para su
+# cuenta). "Otros" siempre está disponible para lo que no encaje en ninguna y
+# para los ingresos; no se puede sacar.
 DEFAULT_CATEGORIES = [
-    "Evento Social", "Polola", "Copete", "Comidas", "Regalos", "Viajes", "Otros"
+    "Comidas", "Carretes", "Asados", "Regalos", "Suscripciones", "Polola", "Copete", "Bets",
 ]
+FALLBACK_CATEGORY = "Otros"
+MAX_CUSTOM_CATEGORIES = 20
+MAX_CATEGORY_LEN = 30
 
 
 def ensure_default_categories() -> None:
@@ -21,12 +26,18 @@ def ensure_default_categories() -> None:
 
     session = get_session()
     try:
-        for name in DEFAULT_CATEGORIES:
+        wanted = DEFAULT_CATEGORIES + [FALLBACK_CATEGORY]
+        for name in wanted:
             existing = session.query(BudgetCategory).filter_by(
                 user_id=None, name=name
             ).first()
             if not existing:
                 session.add(BudgetCategory(user_id=None, name=name, is_default=True))
+        # Las globales que ya no están en la lista se borran (los gastos viejos
+        # guardan el nombre como texto, así que no se pierde nada).
+        for c in session.query(BudgetCategory).filter_by(user_id=None).all():
+            if c.name not in wanted:
+                session.delete(c)
         session.commit()
     except Exception as e:
         logger.error(f"Error creando categorías default: {e}")
@@ -132,25 +143,123 @@ def get_recent_transactions(user_id: int, limit: int = 10) -> list:
         session.close()
 
 
-def get_categories(user_id: int) -> List[str]:
-    """Devuelve las categorías disponibles para el usuario (globales + las propias)."""
-    try:
-        from finmate.db.models import BudgetCategory, get_session
-    except Exception:
-        return list(DEFAULT_CATEGORIES)
+def clean_category_name(raw) -> str:
+    """Normaliza el nombre de una categoría nueva: sin espacios de más y con
+    la primera letra en mayúscula ("  bencina " -> "Bencina")."""
+    name = " ".join(str(raw or "").split())[:MAX_CATEGORY_LEN]
+    return name[:1].upper() + name[1:] if name else ""
+
+
+def _same(a: str, b: str) -> bool:
+    return (a or "").casefold() == (b or "").casefold()
+
+
+def category_settings(user_id: int) -> List[dict]:
+    """Todas las categorías que el usuario puede ver en Ajustes de gastos:
+    [{"name", "default": bool, "active": bool}] — primero las por defecto
+    (activas o no), después las propias, y al final "Otros"."""
+    from finmate.db.models import BudgetCategory, HiddenCategory, get_session
 
     session = get_session()
     try:
-        defaults = session.query(BudgetCategory).filter_by(user_id=None).all()
-        custom = session.query(BudgetCategory).filter_by(user_id=user_id).all()
-        default_names = {c.name for c in defaults}
-        all_cats = [c.name for c in defaults] + [
-            c.name for c in custom if c.name not in default_names
-        ]
-        return all_cats if all_cats else list(DEFAULT_CATEGORIES)
+        hidden = {h.name for h in session.query(HiddenCategory).filter_by(user_id=user_id)}
+        custom = [c.name for c in session.query(BudgetCategory)
+                  .filter_by(user_id=user_id).order_by(BudgetCategory.id)]
+    except Exception as e:
+        logger.error(f"Error leyendo categorías del usuario: {e}")
+        hidden, custom = set(), []
+    finally:
+        session.close()
+    out = [{"name": n, "default": True, "active": n not in hidden} for n in DEFAULT_CATEGORIES]
+    out += [{"name": n, "default": False, "active": True} for n in custom
+            if not any(_same(n, d) for d in DEFAULT_CATEGORIES + [FALLBACK_CATEGORY])]
+    out.append({"name": FALLBACK_CATEGORY, "default": True, "active": True, "fixed": True})
+    return out
+
+
+def get_categories(user_id: int) -> List[str]:
+    """Categorías que el usuario puede usar hoy (las por defecto que no sacó,
+    las propias y "Otros" al final)."""
+    try:
+        return [c["name"] for c in category_settings(user_id) if c["active"]]
     except Exception as e:
         logger.error(f"Error leyendo categorías: {e}")
-        return list(DEFAULT_CATEGORIES)
+        return DEFAULT_CATEGORIES + [FALLBACK_CATEGORY]
+
+
+def resolve_category(user_id: int, raw: str) -> Optional[str]:
+    """Devuelve el nombre exacto de una categoría activa del usuario que
+    coincida con raw (sin importar mayúsculas), o None."""
+    for c in get_categories(user_id):
+        if _same(c, (raw or "").strip()):
+            return c
+    return None
+
+
+def add_user_category(user_id: int, raw_name: str) -> Tuple[bool, str]:
+    """Agrega una categoría propia (o reactiva una por defecto que el usuario
+    había sacado). Devuelve (ok, mensaje_o_nombre)."""
+    from finmate.db.models import BudgetCategory, HiddenCategory, get_session
+
+    name = clean_category_name(raw_name)
+    if len(name) < 2:
+        return False, "Escribe un nombre de al menos 2 letras."
+    session = get_session()
+    try:
+        for d in DEFAULT_CATEGORIES + [FALLBACK_CATEGORY]:
+            if _same(d, name):
+                h = session.query(HiddenCategory).filter_by(user_id=user_id, name=d).one_or_none()
+                if h is None:
+                    return False, f"{d} ya está en tu lista."
+                session.delete(h); session.commit()
+                return True, d
+        custom = session.query(BudgetCategory).filter_by(user_id=user_id).all()
+        if any(_same(c.name, name) for c in custom):
+            return False, f"{name} ya está en tu lista."
+        if len(custom) >= MAX_CUSTOM_CATEGORIES:
+            return False, f"Puedes tener hasta {MAX_CUSTOM_CATEGORIES} categorías propias."
+        session.add(BudgetCategory(user_id=user_id, name=name, is_default=False))
+        session.commit()
+        return True, name
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error agregando categoría: {e}")
+        return False, "No se pudo guardar la categoría."
+    finally:
+        session.close()
+
+
+def set_category_active(user_id: int, name: str, active: bool) -> bool:
+    """Saca o vuelve a poner una categoría. Las por defecto se ocultan (se
+    pueden reactivar); las propias se borran. "Otros" no se puede sacar.
+    Los gastos ya registrados no se tocan."""
+    from finmate.db.models import BudgetCategory, HiddenCategory, get_session
+
+    if _same(name, FALLBACK_CATEGORY):
+        return False
+    session = get_session()
+    try:
+        default = next((d for d in DEFAULT_CATEGORIES if _same(d, name)), None)
+        if default:
+            h = session.query(HiddenCategory).filter_by(user_id=user_id, name=default).one_or_none()
+            if active and h is not None:
+                session.delete(h)
+            elif not active and h is None:
+                session.add(HiddenCategory(user_id=user_id, name=default))
+            session.commit()
+            return True
+        if active:
+            return add_user_category(user_id, name)[0]
+        c = next((c for c in session.query(BudgetCategory).filter_by(user_id=user_id)
+                  if _same(c.name, name)), None)
+        if c is None:
+            return False
+        session.delete(c); session.commit()
+        return True
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error cambiando categoría: {e}")
+        return False
     finally:
         session.close()
 
@@ -205,22 +314,36 @@ def list_transactions(
         session.close()
 
 
-def month_breakdown(user_id: int, year: int, month: int) -> dict:
-    """Gastos del mes por categoría, en el orden de DEFAULT_CATEGORIES.
+def range_breakdown(user_id: int, start: dt.datetime, end: dt.datetime) -> dict:
+    """Gastos por categoría entre start (incluido) y end (excluido).
 
-    {"year", "month", "total_gastos", "total_ingresos", "count",
-     "categories": [{"name", "amount", "pct"}]}
-    Las categorías viejas o desconocidas se suman en "Otros".
+    {"total_gastos", "total_ingresos", "count", "categories": [{"name", "amount", "pct"}]}
+    Aparecen todas las categorías activas del usuario (aunque estén en 0) y,
+    además, cualquier otra que tenga gastos en el período (por ejemplo una que
+    el usuario sacó después de usarla), para que el total siempre cuadre.
     """
-    ingresos, gastos, por_cat = get_monthly_summary(user_id, year, month)
-    amounts = {c: 0.0 for c in DEFAULT_CATEGORIES}
-    for cat, amount in por_cat.items():
-        key = cat if cat in amounts else "Otros"
-        amounts[key] += amount
-    count = sum(1 for t in list_transactions(user_id, year, month) if t["amount"] < 0)
+    from finmate.db.models import Transaction, get_session
+
+    session = get_session()
+    try:
+        rows = session.query(Transaction).filter(
+            Transaction.user_id == user_id, Transaction.date >= start, Transaction.date < end,
+        ).all()
+    finally:
+        session.close()
+    amounts = {c: 0.0 for c in get_categories(user_id)}
+    gastos = ingresos = 0.0
+    count = 0
+    for t in rows:
+        if t.amount < 0:
+            amounts[t.category] = amounts.get(t.category, 0.0) + abs(t.amount)
+            gastos += abs(t.amount); count += 1
+        else:
+            ingresos += t.amount
+    # "Otros" siempre al final
+    if FALLBACK_CATEGORY in amounts:
+        amounts[FALLBACK_CATEGORY] = amounts.pop(FALLBACK_CATEGORY)
     return {
-        "year": year,
-        "month": month,
         "total_gastos": gastos,
         "total_ingresos": ingresos,
         "count": count,
@@ -229,6 +352,18 @@ def month_breakdown(user_id: int, year: int, month: int) -> dict:
             for c, a in amounts.items()
         ],
     }
+
+
+def month_breakdown(user_id: int, year: int, month: int) -> dict:
+    """Gastos del mes por categoría (ver range_breakdown) más year/month."""
+    start, end = _month_bounds(year, month)
+    return {"year": year, "month": month, **range_breakdown(user_id, start, end)}
+
+
+def year_to_date_breakdown(user_id: int, year: int, month: int) -> dict:
+    """Gastos desde el 1 de enero hasta el fin del mes indicado."""
+    _, end = _month_bounds(year, month)
+    return {"year": year, "month": month, **range_breakdown(user_id, dt.datetime(year, 1, 1), end)}
 
 
 def update_transaction(user_id: int, tx_id: int, **fields) -> Optional[dict]:

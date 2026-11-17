@@ -210,6 +210,18 @@ class BudgetCategory(Base):
     is_default = Column(Boolean, default=False)
 
 
+class HiddenCategory(Base):
+    """Categoría por defecto que un usuario sacó de su lista (16 nov 2026).
+    Las categorías propias se guardan en BudgetCategory con user_id."""
+
+    __tablename__ = "hidden_categories"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_hidden_user_name"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+
+
 class NotificationSettings(Base):
     """Preferencias de avisos por usuario (panel web, etapa 1).
 
