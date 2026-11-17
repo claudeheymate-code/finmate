@@ -340,61 +340,107 @@
 
 
   // ---------- celular: pestañas abajo y deslizar entre pestañas ----------
-  // Efecto tipo Instagram: la pantalla sigue al dedo, el indicador blanco del
-  // menú se mueve hacia la pestaña de al lado y, al soltar, la página siguiente
-  // entra deslizándose desde el costado.
-  function initTabs() {
-    const rail = $(".rail"); const main = document.getElementById("main");
-    if (!rail || !main) return;
+  // Las 5 pestañas están en la misma página, lado a lado (base.html). Al
+  // arrastrar, el riel sigue al dedo y la pestaña vecina ya se ve; al soltar,
+  // termina de deslizarse sin recargar nada (como Instagram). La URL se
+  // actualiza con history.pushState, así "atrás" y recargar siguen funcionando.
+  function initTabs(modules) {
+    const rail = $(".rail"); const track = document.getElementById("track"); const main = document.getElementById("main");
+    if (!rail || !track || !main) return;
     const links = Array.from(rail.querySelectorAll("a"));
-    const idx = links.findIndex((a) => a.getAttribute("aria-current") === "page");
+    const panes = Array.from(track.querySelectorAll(".pane"));
+    const names = panes.map((p) => p.dataset.pane);
     const pill = rail.querySelector(".tab-pill");
     const mq = window.matchMedia("(max-width: 760px)");
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const KEY = "finmate-tab-dir";
+    const EASE = "cubic-bezier(.22,.8,.24,1)";
+    let idx = names.indexOf(document.body.dataset.page);
+    if (idx < 0) return;
+    const started = new Set([names[idx]]);
 
-    function placePill(frac) {
-      if (!pill || idx < 0 || !mq.matches) return;
+    function startPane(i) {
+      const n = names[i];
+      if (!n || started.has(n)) return;
+      started.add(n);
+      try { (modules[n] || function () {})(); } catch (e) { /* cada pestaña maneja sus errores */ }
+    }
+    const width = () => track.parentElement.clientWidth;
+    function setTrack(px, ms) {
+      track.style.transition = ms ? "transform " + ms + "ms " + EASE : "none";
+      track.style.transform = "translate3d(" + px + "px,0,0)";
+    }
+    function placePill(frac, ms) {
+      if (!pill || !mq.matches) return;
       const cur = links[idx]; const n = links[idx + (frac > 0 ? 1 : -1)];
-      let left = cur.offsetLeft, width = cur.offsetWidth;
-      if (n && frac) { const f = Math.min(Math.abs(frac), 1); left += (n.offsetLeft - cur.offsetLeft) * f; width += (n.offsetWidth - cur.offsetWidth) * f; }
-      pill.style.transform = "translateX(" + left + "px)"; pill.style.width = width + "px";
+      let left = cur.offsetLeft, w = cur.offsetWidth;
+      if (n && frac) { const f = Math.min(Math.abs(frac), 1); left += (n.offsetLeft - cur.offsetLeft) * f; w += (n.offsetWidth - cur.offsetWidth) * f; }
+      pill.style.transition = ms === 0 ? "none" : "";
+      pill.style.transform = "translateX(" + left + "px)"; pill.style.width = w + "px";
+      const near = n && Math.abs(frac) > 0.5 ? n : cur;
+      links.forEach((a) => a.classList.toggle("lit", a === near));
     }
-    function resetMain() { main.style.transition = ""; main.style.transform = ""; main.style.opacity = ""; }
-    function slideTo(i, dirn) {
-      if (!links[i]) return;
-      try { sessionStorage.setItem(KEY, dirn); } catch (e) {}
-      if (calm) { location.href = links[i].href; return; }
-      rail.classList.remove("dragging");
-      if (pill) { pill.style.transform = "translateX(" + links[i].offsetLeft + "px)"; pill.style.width = links[i].offsetWidth + "px"; }
-      main.style.transition = "transform .22s cubic-bezier(.4,0,1,1), opacity .22s";
-      main.style.transform = "translateX(" + (dirn === "next" ? "-100%" : "100%") + ")"; main.style.opacity = "0.3";
-      setTimeout(() => { location.href = links[i].href; }, 190);
+    // Las pestañas vecinas se alinean con lo que el usuario está viendo
+    // (si bajó en la página, la vecina se muestra desde arriba igual).
+    function alignNeighbors(on) {
+      const y = on ? window.scrollY : 0;
+      panes.forEach((p, i) => { if (i !== idx) p.style.transform = y ? "translateY(" + y + "px)" : ""; });
+    }
+    function markActive() {
+      panes.forEach((p, i) => {
+        const on = i === idx;
+        p.classList.toggle("active", on);
+        if (on) { p.removeAttribute("aria-hidden"); p.inert = false; } else { p.setAttribute("aria-hidden", "true"); p.inert = true; }
+      });
+      links.forEach((a, i) => { if (i === idx) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+      document.body.dataset.page = names[idx];
+      document.title = "Finmate — " + (links[idx].getAttribute("title") || "");
+    }
+    function goTo(i, opts) {
+      opts = opts || {};
+      if (i < 0 || i >= panes.length) return;
+      const ms = calm || opts.instant ? 0 : (opts.ms || 300);
+      if (i === idx) { setTrack(-idx * width(), ms); placePill(0); return; }
+      startPane(i);
+      alignNeighbors(true);
+      idx = i;
+      placePill(0);
+      setTrack(-idx * width(), ms);
+      const finish = () => {
+        markActive();
+        alignNeighbors(false);
+        window.scrollTo(0, 0);
+        track.style.transition = "none";
+      };
+      if (ms) setTimeout(finish, ms + 20); else finish();
+      if (opts.push !== false && links[idx].href !== location.href) {
+        try { history.pushState({ pane: names[idx] }, "", links[idx].href); } catch (e) {}
+      }
+      // Precarga los datos de las vecinas para que se vean al deslizar
+      setTimeout(() => { startPane(idx - 1); startPane(idx + 1); }, ms + 150);
     }
 
-    placePill(0);
-    window.addEventListener("resize", () => placePill(0));
-    window.addEventListener("pageshow", (e) => { if (e.persisted) { resetMain(); placePill(0); } });
-
-    // Entrada de la página nueva desde el costado
-    let dirn = null; try { dirn = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY); } catch (e) {}
-    if (dirn && mq.matches && !calm) {
-      main.style.transition = "none"; main.style.opacity = "0.3";
-      main.style.transform = "translateX(" + (dirn === "next" ? "100%" : "-100%") + ")";
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        main.style.transition = "transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s";
-        main.style.transform = "translateX(0)"; main.style.opacity = "1";
-        setTimeout(resetMain, 380);
-      }));
+    function layout() {
+      if (mq.matches) { setTrack(-idx * width(), 0); placePill(0, 0); }
+      else { track.style.transform = ""; track.style.transition = ""; }
     }
+    markActive(); layout();
+    window.addEventListener("resize", layout);
+    mq.addEventListener ? mq.addEventListener("change", layout) : mq.addListener(layout);
+    window.addEventListener("popstate", () => {
+      const i = links.findIndex((a) => a.href === location.href || a.pathname === location.pathname);
+      if (i >= 0 && mq.matches) goTo(i, { push: false }); else if (i >= 0) location.reload();
+    });
+    // Precarga las vecinas apenas termina de cargar la pestaña actual
+    setTimeout(() => { if (mq.matches) { startPane(idx - 1); startPane(idx + 1); } }, 600);
 
-    // Tocar una pestaña también desliza en la dirección correcta
+    // Tocar una pestaña desliza sin recargar (en computador navega normal)
     links.forEach((a, i) => a.addEventListener("click", (e) => {
-      if (!mq.matches || i === idx || idx < 0 || e.metaKey || e.ctrlKey) return;
-      e.preventDefault(); slideTo(i, i > idx ? "next" : "prev");
+      if (!mq.matches || e.metaKey || e.ctrlKey) return;
+      e.preventDefault();
+      goTo(i, { ms: Math.min(260 + 60 * Math.abs(i - idx), 420) });
     }));
 
-    // Deslizar con el dedo
+    // Arrastrar con el dedo
     function scrollsX(el) {
       for (; el && el !== main; el = el.parentElement) {
         const ox = getComputedStyle(el).overflowX;
@@ -402,41 +448,48 @@
       }
       return false;
     }
-    let sx = 0, sy = 0, st = 0, dx = 0, lock = null, on = false;
+    let sx = 0, sy = 0, lastX = 0, lastT = 0, vx = 0, dx = 0, lock = null, on = false;
     main.addEventListener("touchstart", (e) => {
       on = false;
-      if (!mq.matches || idx < 0 || e.touches.length !== 1) return;
+      if (!mq.matches || e.touches.length !== 1) return;
       const t = e.target;
       if (t.closest("input, textarea, select, [data-noswipe]") || scrollsX(t)) return;
-      on = true; lock = null; dx = 0; sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+      on = true; lock = null; dx = 0; vx = 0;
+      sx = lastX = e.touches[0].clientX; sy = e.touches[0].clientY; lastT = performance.now();
     }, { passive: true });
     main.addEventListener("touchmove", (e) => {
       if (!on) return;
-      const mx = e.touches[0].clientX - sx, my = e.touches[0].clientY - sy;
+      const x = e.touches[0].clientX, mx = x - sx, my = e.touches[0].clientY - sy;
       if (lock === null) {
-        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
-        lock = Math.abs(mx) > Math.abs(my) * 1.3 ? "x" : "y";
-        if (lock === "x") { main.style.transition = "none"; rail.classList.add("dragging"); }
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        lock = Math.abs(mx) > Math.abs(my) * 1.2 ? "x" : "y";
+        if (lock === "x") { alignNeighbors(true); startPane(idx - 1); startPane(idx + 1); rail.classList.add("dragging"); }
       }
       if (lock !== "x") return;
       e.preventDefault();
-      const atEdge = (mx > 0 && idx === 0) || (mx < 0 && idx === links.length - 1);
-      dx = atEdge ? mx * 0.25 : mx;
-      const w = window.innerWidth;
-      main.style.transform = "translateX(" + dx + "px)";
-      main.style.opacity = String(1 - Math.min(Math.abs(dx) / w, 1) * 0.4);
-      if (!atEdge) placePill(-dx / w);
+      const now = performance.now();
+      vx = 0.8 * ((x - lastX) / Math.max(now - lastT, 1)) + 0.2 * vx;  // px/ms suavizado
+      lastX = x; lastT = now;
+      const atEdge = (mx > 0 && idx === 0) || (mx < 0 && idx === panes.length - 1);
+      dx = atEdge ? mx / 3 : mx;   // resistencia en los extremos
+      setTrack(-idx * width() + dx, 0);
+      placePill(atEdge ? 0 : -dx / width(), 0);
     }, { passive: false });
     function end() {
       if (!on) return; on = false;
-      if (lock !== "x") return;
-      const w = window.innerWidth, speed = Math.abs(dx) / Math.max(Date.now() - st, 1);
-      const target = dx < 0 ? idx + 1 : idx - 1;
-      if ((Math.abs(dx) > w * 0.28 || speed > 0.6) && links[target]) { slideTo(target, dx < 0 ? "next" : "prev"); return; }
       rail.classList.remove("dragging");
-      main.style.transition = "transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s";
-      main.style.transform = "translateX(0)"; main.style.opacity = "1";
-      placePill(0); setTimeout(resetMain, 300);
+      if (lock !== "x") return;
+      const w = width();
+      const flick = Math.abs(vx) > 0.35;
+      let target = idx;
+      if (flick) target = idx + (vx < 0 ? 1 : -1);
+      else if (Math.abs(dx) > w * 0.35) target = idx + (dx < 0 ? 1 : -1);
+      target = Math.max(0, Math.min(panes.length - 1, target));
+      // La duración sigue la velocidad del dedo: un gesto rápido termina rápido
+      const remaining = Math.abs(-target * w - (-idx * w + dx));
+      const ms = Math.round(Math.max(160, Math.min(340, flick ? remaining / Math.abs(vx) : remaining * 0.9)));
+      if (target !== idx) goTo(target, { ms: ms });
+      else { setTrack(-idx * w, ms); placePill(0); setTimeout(() => alignNeighbors(false), ms + 20); }
     }
     main.addEventListener("touchend", end);
     main.addEventListener("touchcancel", end);
@@ -473,6 +526,7 @@
   }
 
   const page = document.body.dataset.page;
-  if (page !== "acceso") { initShell(); initTabs(); }
-  ({ resumen: pageResumen, inversiones: pageInversiones, gastos: pageGastos, ajustes: pageAjustes, feedback: pageFeedback, acceso: pageAcceso }[page] || function () {})();
+  const MODULES = { resumen: pageResumen, inversiones: pageInversiones, gastos: pageGastos, ajustes: pageAjustes, feedback: pageFeedback };
+  if (page === "acceso") pageAcceso();
+  else { initShell(); (MODULES[page] || function () {})(); initTabs(MODULES); }
 })();
