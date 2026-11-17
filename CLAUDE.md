@@ -247,6 +247,21 @@ también el checklist y el doc de estado.
   - Railway tiene las 26 variables (incluye REDIS_URL, FLASK_SECRET_KEY,
     OPENAI_API_KEY; PANEL_DEV_LOGIN=false según Joaco). Falta: pagar el plan
     y presionar Deploy ("Apply N changes"). OpenAI con saldo USD 0.
+- **16 nov 2026, noche — panel en celular + feedback + página web pública:**
+  - Página web pública (GitHub Pages, carpeta `docs/`):
+    https://claudeheymate-code.github.io/finmate/ → versión de prueba del
+    panel (`docs/demo_panel/`, datos de ejemplo, "servidor" simulado en
+    `demo-api.js`; generador en `docs/demo_panel/_generador/`).
+  - Celular: menú de pestañas fijo abajo (con etiquetas) y deslizar entre
+    pestañas con efecto tipo Instagram (`initTabs` en `panel.js`).
+  - Nueva pestaña Feedback (`/panel/feedback`, `POST /api/feedback`, tabla
+    `feedback`, `finmate/services/feedback.py`): se guarda en la base y se
+    envía a claude.heymate@gmail.com por SMTP (si se configura) o FormSubmit.
+    PENDIENTE (Joaco): mandar un primer feedback y presionar "Activate Form"
+    en el correo de FormSubmit; luego opcional `FEEDBACK_FORMSUBMIT_ID`.
+  - Arreglado: en celular, Inversiones se veía alejada (el `.sr-only` de la
+    tabla estiraba la página → `.table-wrap { position: relative }`).
+  - 62/62 tests.
 - **Deuda técnica menor:** `twilio` estaba pineado en `9.4.0`, que PyPI
   marca como "yanked" — se subió a `9.4.1` (25 oct 2026, sin romper nada,
   verificado). `pyflakes` señala imports sin usar y f-strings sin
