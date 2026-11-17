@@ -106,3 +106,15 @@ def test_iconos_para_pantalla_de_inicio(client, app):
     assert 'status-bar-style" content="black-translucent"' in html and "viewport-fit=cover" in acceso
     for icon in data["icons"]:
         assert app.test_client().get(icon["src"]).status_code == 200, icon["src"]
+
+
+def test_todas_las_pestanas_en_la_misma_pagina(client):
+    """Para que deslizar sea continuo, cada página trae las 5 pestañas lado a lado."""
+    for path, page in (("/panel/", "resumen"), ("/panel/gastos", "gastos"), ("/panel/feedback", "feedback")):
+        html = client.get(path).get_data(as_text=True)
+        for p in ("resumen", "inversiones", "gastos", "ajustes", "feedback"):
+            assert f'data-pane="{p}"' in html
+        assert f'class="pane active" data-pane="{page}"' in html
+        assert html.count('id="fb-form"') == 1  # sin ids duplicados
+    js = open("finmate/web/static/panel/panel.js", encoding="utf-8").read()
+    assert "history.pushState" in js and "translate3d" in js
