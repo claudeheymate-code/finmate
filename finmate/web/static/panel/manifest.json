@@ -1,0 +1,17 @@
+{
+  "name": "Finmate",
+  "short_name": "Finmate",
+  "description": "Tu panel de inversiones y gastos conectado a Finmate por WhatsApp.",
+  "lang": "es-CL",
+  "start_url": "/panel/",
+  "scope": "/panel/",
+  "display": "standalone",
+  "background_color": "#061A36",
+  "theme_color": "#061A36",
+  "icons": [
+    { "src": "/panel/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/panel/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/panel/static/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/panel/static/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
