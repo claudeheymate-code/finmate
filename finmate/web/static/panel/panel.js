@@ -5,9 +5,16 @@
   "use strict";
 
   const CAT_COLORS = {
-    "Evento Social": "#009B77", "Polola": "#FF8FB1", "Copete": "#A99BFF",
-    "Comidas": "#FFB37A", "Regalos": "#3DDBB0", "Viajes": "#5AA9FF", "Otros": "#C3CCDB",
+    "Comidas": "#FFB37A", "Carretes": "#009B77", "Asados": "#E2725B", "Regalos": "#3DDBB0",
+    "Suscripciones": "#5AA9FF", "Polola": "#FF8FB1", "Copete": "#A99BFF", "Bets": "#F4D35E", "Otros": "#C3CCDB",
   };
+  // Las categorías propias de cada usuario reciben un color estable según su nombre
+  const EXTRA_COLORS = ["#7FDBDA", "#B8E986", "#FF9F9F", "#9FB4FF", "#E0A3FF", "#FFD39F", "#8FE3B0", "#A7C7E7"];
+  function catColor(name) {
+    if (CAT_COLORS[name]) return CAT_COLORS[name];
+    let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return EXTRA_COLORS[h % EXTRA_COLORS.length];
+  }
   const PALETTE = ["#009B77", "#5AA9FF", "#3DDBB0", "#A99BFF", "#FFB37A", "#FF8FB1", "#C3CCDB", "#7FA7D9"];
   const CLASS_COLORS = { "Renta variable": "#009B77", "Renta fija": "#5AA9FF" };
   const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -196,17 +203,32 @@
 
     async function loadSummary() {
       const r = await api("GET", "/finanzas/resumen?anio=" + state.year + "&mes=" + state.month);
-      const a = r.actual, p = r.anterior;
+      const a = r.actual, p = r.anterior, y = r.anio;
       const diff = a.total_gastos - p.total_gastos;
       $("#g-cur-title").textContent = cap(MONTHS[a.month - 1]) + " " + a.year;
-      $("#g-prev-title").textContent = cap(MONTHS[p.month - 1]) + " " + p.year;
+      $("#g-ytd-title").textContent = "En lo que va de " + y.year;
+      $("#g-th-cur").textContent = cap(MONTHS[a.month - 1]).slice(0, 3);
+      $("#g-th-prev").textContent = "Lst Mth";
+      $("#g-th-prev").title = cap(MONTHS[p.month - 1]) + " " + p.year;
       $("#g-stats").innerHTML =
         '<section class="card glass stat"><p class="label">Gastado en ' + esc(MONTHS[a.month - 1]) + '</p><p class="value">' + esc(clp(a.total_gastos)) + '</p><p class="sub">' + a.count + " gastos registrados</p></section>" +
         '<section class="card glass stat"><p class="label">Gastado en ' + esc(MONTHS[p.month - 1]) + '</p><p class="value">' + esc(clp(p.total_gastos)) + '</p><p class="sub">Mes anterior</p></section>' +
         '<section class="card glass stat"><p class="label">Diferencia</p><p class="value ' + (diff > 0 ? "down" : "up") + '">' + esc(clp(diff, true)) + '</p><p class="sub">' + (diff > 0 ? "Vas gastando más que el mes pasado" : "Vas gastando menos que el mes pasado") + "</p></section>";
-      const toParts = (m) => m.categories.map((c) => ({ name: c.name, value: c.amount, color: CAT_COLORS[c.name] || "#C3CCDB" }));
+      const toParts = (m) => m.categories.map((c) => ({ name: c.name, value: c.amount, color: catColor(c.name) }));
       donut($("#g-cur"), toParts(a), { money: clp, centerLabel: "Total", selected: state.cat, onPick: pickCat });
-      donut($("#g-prev"), toParts(p), { money: clp, centerLabel: "Total" });
+      donut($("#g-ytd"), toParts(y), { money: clp, centerLabel: "Total " + y.year });
+      // Tabla comparativa: todas las categorías que aparecen en alguno de los dos meses
+      const prevBy = {}; p.categories.forEach((c) => { prevBy[c.name] = c.amount; });
+      const names = a.categories.map((c) => c.name);
+      p.categories.forEach((c) => { if (names.indexOf(c.name) < 0 && c.amount) names.splice(Math.max(names.length - 1, 0), 0, c.name); });
+      const curBy = {}; a.categories.forEach((c) => { curBy[c.name] = c.amount; });
+      const cell = (d) => (d === 0 ? '<span class="faint">—</span>' : '<span class="' + (d > 0 ? "down" : "up") + '">' + esc(clp(d, true)) + "</span>");
+      $("#g-cmp").innerHTML = names.map((n) => {
+        const c = curBy[n] || 0, pv = prevBy[n] || 0;
+        return '<tr' + (state.cat === n ? ' class="sel"' : "") + '><td><button type="button" class="cmp-cat" data-cmp="' + esc(n) + '"><span class="dot" style="width:10px;height:10px;background:' + catColor(n) + '"></span><span class="cat-name">' + esc(n) + '</span></button></td><td class="r">' + (c ? esc(clp(c)) : '<span class="faint">$0</span>') + '</td><td class="r">' + (pv ? esc(clp(pv)) : '<span class="faint">$0</span>') + '</td><td class="r">' + cell(c - pv) + "</td></tr>";
+      }).join("");
+      $("#g-cmp-total").innerHTML = '<tr><td class="strong">Total</td><td class="r strong">' + esc(clp(a.total_gastos)) + '</td><td class="r strong">' + esc(clp(p.total_gastos)) + '</td><td class="r strong">' + cell(diff) + "</td></tr>";
+      document.querySelectorAll("[data-cmp]").forEach((b) => b.addEventListener("click", () => pickCat(b.dataset.cmp)));
     }
     async function loadList() {
       const q = "/finanzas/movimientos?anio=" + state.year + "&mes=" + state.month + (state.cat ? "&categoria=" + encodeURIComponent(state.cat) : "");
@@ -214,7 +236,7 @@
       state.items = r.items.filter((t) => t.amount < 0);
       $("#g-list-title").textContent = state.cat ? "Gastos en " + state.cat : "Todos los gastos";
       $("#g-list").innerHTML = state.items.map((t) =>
-        '<li><button type="button" data-tx="' + t.id + '" aria-pressed="' + (state.sel === t.id) + '"><span class="dot" style="width:10px;height:10px;background:' + (CAT_COLORS[t.category] || "#C3CCDB") + '"></span><span class="grow"><span class="strong">' + esc(t.description || t.occasion || "Gasto") + '</span><span class="meta">' + esc([t.occasion, fmtDate(t.date), state.cat ? "" : t.category].filter(Boolean).join(" · ")) + '</span></span><span class="strong">' + esc(clp(-t.amount)) + "</span></button></li>"
+        '<li><button type="button" data-tx="' + t.id + '" aria-pressed="' + (state.sel === t.id) + '"><span class="dot" style="width:10px;height:10px;background:' + (catColor(t.category)) + '"></span><span class="grow"><span class="strong">' + esc(t.description || t.occasion || "Gasto") + '</span><span class="meta">' + esc([t.occasion, fmtDate(t.date), state.cat ? "" : t.category].filter(Boolean).join(" · ")) + '</span></span><span class="strong">' + esc(clp(-t.amount)) + "</span></button></li>"
       ).join("") || '<li class="empty">No hay gastos ' + (state.cat ? "en esta categoría " : "") + "este mes.</li>";
       document.querySelectorAll("[data-tx]").forEach((b) => b.addEventListener("click", () => { state.sel = Number(b.dataset.tx); renderDetail(); loadListSel(); }));
       renderDetail();
@@ -224,7 +246,7 @@
       const t = state.items.find((x) => x.id === state.sel);
       const el = $("#g-detail");
       if (!t) { el.innerHTML = '<div class="empty" style="text-align:center;min-height:300px;display:flex;align-items:center;justify-content:center"><p>Tocá un gasto para ver el detalle y cambiarle la categoría.</p></div>'; return; }
-      const opts = state.cats.map((c) => '<option value="' + esc(c) + '"' + (c === t.category ? " selected" : "") + ">" + esc(c) + "</option>").join("");
+      const opts = (state.cats.indexOf(t.category) < 0 ? [t.category].concat(state.cats) : state.cats).map((c) => '<option value="' + esc(c) + '"' + (c === t.category ? " selected" : "") + ">" + esc(c) + "</option>").join("");
       el.innerHTML =
         "<h2>" + esc(t.description || t.occasion || "Gasto") + '</h2><p class="faint small" style="margin:4px 0 16px">' + esc(fmtDate(t.date)) + " · " + esc(clp(-t.amount)) + "</p>" +
         (t.has_receipt ? '<div class="receipt" role="img" aria-label="Boleta"><p style="text-align:center;font-weight:700">' + esc(t.merchant || "Boleta") + '</p><div class="line"><span>TOTAL</span><span>' + esc(clp(-t.amount)) + "</span></div></div>" : '<p class="faint small">Este gasto no tiene foto de boleta.</p>') +
@@ -242,7 +264,7 @@
     }
     async function pickCat(name) { state.cat = name; state.sel = null; await loadSummary(); await loadList(); }
     function renderNewCats() {
-      $("#t-cats").innerHTML = state.cats.map((c) => '<button type="button" class="chip" data-c="' + esc(c) + '" aria-pressed="' + (state.newCat === c) + '"><span class="dot" style="width:10px;height:10px;background:' + (CAT_COLORS[c] || "#C3CCDB") + '"></span>' + esc(c) + "</button>").join("");
+      $("#t-cats").innerHTML = state.cats.map((c) => '<button type="button" class="chip" data-c="' + esc(c) + '" aria-pressed="' + (state.newCat === c) + '"><span class="dot" style="width:10px;height:10px;background:' + (catColor(c)) + '"></span>' + esc(c) + "</button>").join("");
       document.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => { state.newCat = b.dataset.c; renderNewCats(); updateSave(); }));
     }
     function updateSave() { $("#t-save").disabled = !(Number($("#t-amt").value) > 0 && state.newCat); }
@@ -257,9 +279,33 @@
       } catch (err) { $("#tx-msg").innerHTML = box("error-box", err.message); }
     });
     $("#g-all").addEventListener("click", () => { state.cat = null; state.sel = null; loadSummary(); loadList(); });
+    // Mis categorías: activar/sacar las por defecto, agregar y sacar las propias
+    function applyCats(r) {
+      state.cats = r.categories;
+      if (state.newCat && state.cats.indexOf(state.newCat) < 0) state.newCat = null;
+      renderNewCats(); updateSave();
+      $("#c-list").innerHTML = r.all.map((c) => {
+        if (c.fixed) return '<span class="chip cat-fixed" title="Siempre disponible"><span class="dot" style="width:10px;height:10px;background:' + catColor(c.name) + '"></span>' + esc(c.name) + "</span>";
+        const label = (c.active ? "Sacar " : "Usar ") + c.name;
+        return '<button type="button" class="chip cat-toggle" data-cat="' + esc(c.name) + '" data-on="' + c.active + '" aria-pressed="' + c.active + '" aria-label="' + esc(label) + '"><span class="dot" style="width:10px;height:10px;background:' + catColor(c.name) + '"></span>' + esc(c.name) + '<span class="cat-x" aria-hidden="true">' + (c.active ? (c.default ? "✓" : "✕") : "+") + "</span></button>";
+      }).join("");
+      document.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", async () => {
+        const on = b.dataset.on === "true";
+        try { applyCats(await api("PUT", "/finanzas/categorias", { name: b.dataset.cat, active: !on })); $("#c-msg").innerHTML = ""; await loadSummary(); }
+        catch (e) { $("#c-msg").innerHTML = box("error-box", e.message); }
+      }));
+    }
+    $("#c-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const r = await api("POST", "/finanzas/categorias", { name: $("#c-name").value });
+        applyCats(r); $("#c-name").value = "";
+        $("#c-msg").innerHTML = '<span class="up small">Listo: ' + esc(r.added) + " ya aparece para registrar gastos.</span>";
+        await loadSummary();
+      } catch (err) { $("#c-msg").innerHTML = box("error-box", err.message); }
+    });
     try {
-      state.cats = (await api("GET", "/finanzas/categorias")).categories.filter((c) => c !== "Otros").concat(["Otros"]);
-      renderNewCats();
+      applyCats(await api("GET", "/finanzas/categorias"));
       await loadSummary(); await loadList();
     } catch (e) { $("#g-stats").innerHTML = box("error-box", e.message); }
     void prevYM;
@@ -407,6 +453,7 @@
       setTrack(-idx * width(), ms);
       const finish = () => {
         markActive();
+        document.dispatchEvent(new Event("finmate:pane"));
         alignNeighbors(false);
         window.scrollTo(0, 0);
         track.style.transition = "none";
@@ -495,6 +542,43 @@
     main.addEventListener("touchcancel", end);
   }
 
+  // ---------- celular: la barra de abajo se esconde al bajar y vuelve al subir ----------
+  function initAutoHideRail() {
+    const rail = $(".rail"); if (!rail) return;
+    const mq = window.matchMedia("(max-width: 760px)");
+    let lastY = window.scrollY, acc = 0, ticking = false;
+    function update() {
+      ticking = false;
+      const y = Math.max(window.scrollY, 0);
+      const dy = y - lastY; lastY = y;
+      if (!mq.matches) { rail.classList.remove("rail-hidden"); return; }
+      // cerca del inicio o del final de la página, siempre visible
+      const nearBottom = window.innerHeight + y >= document.documentElement.scrollHeight - 40;
+      if (y < 60 || nearBottom) { acc = 0; rail.classList.remove("rail-hidden"); return; }
+      acc = (acc > 0) === (dy > 0) ? acc + dy : dy;   // suma solo en la misma dirección
+      if (acc > 24) rail.classList.add("rail-hidden");
+      else if (acc < -12) rail.classList.remove("rail-hidden");
+    }
+    window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    // Al cambiar de pestaña o tocar un campo, la barra vuelve
+    document.addEventListener("finmate:pane", () => { acc = 0; lastY = window.scrollY; rail.classList.remove("rail-hidden"); });
+  }
+
+  // ---------- celular: evitar el zoom accidental ----------
+  // iOS ignora user-scalable=no en Safari, así que también se bloquea el
+  // gesto de pellizcar y el doble toque (además, los campos usan 16px para
+  // que iOS no haga zoom al tocarlos; ver panel.css).
+  function preventZoom() {
+    ["gesturestart", "gesturechange", "gestureend"].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+    document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    let lastTap = 0;
+    document.addEventListener("touchend", (e) => {
+      const now = Date.now();
+      if (now - lastTap < 300 && !e.target.closest("input, textarea, select")) e.preventDefault();
+      lastTap = now;
+    }, { passive: false });
+  }
+
   // ---------- feedback ----------
   function pageFeedback() {
     const st = { tipo: null, rating: null };
@@ -527,6 +611,7 @@
 
   const page = document.body.dataset.page;
   const MODULES = { resumen: pageResumen, inversiones: pageInversiones, gastos: pageGastos, ajustes: pageAjustes, feedback: pageFeedback };
+  preventZoom();
   if (page === "acceso") pageAcceso();
-  else { initShell(); (MODULES[page] || function () {})(); initTabs(MODULES); }
+  else { initShell(); (MODULES[page] || function () {})(); initTabs(MODULES); initAutoHideRail(); }
 })();
