@@ -1,0 +1,41 @@
+{# Contenido de la pestaña "ajustes". Se incluye en todas las páginas del panel (ver base.html). #}
+<div class="page-head"><div><p class="muted small strong">Ajustes</p><h1>Tu Finmate, a tu manera</h1></div></div>
+<div class="row">
+  <section class="card glass"><h2>Personalidad del bot</h2><p class="faint small" style="margin-top:4px">Cambia cómo te habla, nunca la calidad del análisis</p>
+    <form id="p-form" style="display:flex;flex-direction:column;gap:22px;margin-top:20px">
+      <div class="slider"><div class="top"><label for="p-humor">Humor</label><span class="up" id="v-humor"></span></div><input id="p-humor" type="range" min="1" max="10" step="1"><span class="faint small">Qué tan relajado y gracioso es</span></div>
+      <div class="slider"><div class="top"><label for="p-sarcasmo">Sarcasmo</label><span class="up" id="v-sarcasmo"></span></div><input id="p-sarcasmo" type="range" min="1" max="10" step="1"><span class="faint small">Un toque de ironía cuando el mercado se pone dramático</span></div>
+      <div class="slider"><div class="top"><label for="p-frecuencia_chistes">Frecuencia de chistes</label><span class="up" id="v-frecuencia_chistes"></span></div><input id="p-frecuencia_chistes" type="range" min="1" max="10" step="1"><span class="faint small">Cada cuánto mete un chiste</span></div>
+      <div class="slider"><div class="top"><label for="p-nivel_conversador">Nivel conversador</label><span class="up" id="v-nivel_conversador"></span></div><input id="p-nivel_conversador" type="range" min="1" max="10" step="1"><span class="faint small">Respuestas cortas o con más contexto</span></div>
+      <fieldset style="border:0;margin:0;padding:0"><legend class="strong" style="padding:0;margin-bottom:10px">Tono</legend>
+        <div class="chips" id="p-tono">
+          <button type="button" class="chip solid" data-tono="profesional">Profesional</button>
+          <button type="button" class="chip solid" data-tono="casual">Casual</button>
+          <button type="button" class="chip solid" data-tono="amigo">Amigo</button>
+        </div></fieldset>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><button class="btn" type="submit">Guardar cambios</button><span id="p-msg"></span></div>
+    </form></section>
+  <section class="card glass"><h2>Así te respondería</h2><p class="faint small" style="margin-top:4px">Vista previa aproximada con tu configuración</p>
+    <div class="chat"><p class="bubble me">¿cómo va mi portafolio hoy?</p><p class="bubble bot" id="p-preview"></p></div></section>
+</div>
+<div class="row">
+  <section class="card glass"><h2>Lo que seguís</h2><p class="faint small" style="margin-top:4px">Temas de noticias e indicadores económicos</p>
+    <p class="label-sm" style="margin-top:18px">Temas de noticias</p><div class="chips" id="s-temas" style="margin-top:8px"></div>
+    <p class="label-sm" style="margin-top:18px">Indicadores</p><div class="chips" id="s-inds" style="margin-top:8px"></div>
+    <form class="inline" id="s-form">
+      <div class="field"><label for="s-tipo">Tipo</label><select id="s-tipo"><option value="indicador">Indicador económico</option><option value="ticker">Empresa (ticker)</option><option value="sector">Sector</option><option value="pais">País</option><option value="keyword">Palabra clave</option></select></div>
+      <div class="field" id="s-valor-wrap"><label for="s-valor">Qué seguir</label><select id="s-valor"></select></div>
+      <button class="btn ghost" type="submit">Seguir</button>
+    </form><div id="s-msg" style="margin-top:10px"></div></section>
+  <section class="card glass" id="avisos"><h2>Avisos</h2><p class="faint small" style="margin-top:4px">Cuándo te escribe Finmate</p>
+    <form id="a-form">
+      <ul class="list">
+        <li><div class="grow"><p class="strong">Umbral de alertas de watchlist</p><p class="faint small">Te avisa si un activo se mueve más que esto en el día</p></div>
+          <div class="field" style="flex:0 0 120px"><label for="a-thr" class="sr-only">Umbral en porcentaje</label><input id="a-thr" type="number" min="0.5" max="50" step="0.5"></div><span class="muted">%</span></li>
+        <li><div class="grow"><p class="strong">Resumen semanal</p><p class="faint small">Domingos a las 20:00 (hora de Chile)</p></div>
+          <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-weekly" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
+        <li><div class="grow"><p class="strong">WhatsApp vinculado</p><p class="faint small">{{ phone }} · los cambios se sincronizan con el chat</p></div><span class="pill-status">Conectado</span></li>
+      </ul>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px"><button class="btn" type="submit">Guardar avisos</button><span id="a-msg"></span></div>
+    </form></section>
+</div>

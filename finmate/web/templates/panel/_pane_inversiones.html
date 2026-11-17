@@ -1,0 +1,28 @@
+{# Contenido de la pestaña "inversiones". Se incluye en todas las páginas del panel (ver base.html). #}
+<div class="page-head"><div><p class="muted small strong">Portafolio</p><h1>Mis inversiones</h1></div><span class="faint small" id="i-updated"></span></div>
+<div id="i-error"></div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2><span class="up">▲</span> Top 3 ganadoras</h2><p>Mayor ganancia desde que compraste</p></div></div><ul class="list tight" id="i-winners"></ul></section>
+  <section class="card glass"><div class="card-head"><div><h2><span class="down">▼</span> Top 3 perdedoras</h2><p>Mayor pérdida desde que compraste</p></div></div><ul class="list tight" id="i-losers"></ul></section>
+</div>
+<div class="row">
+  <section class="card glass"><div class="card-head"><div><h2>Renta fija vs renta variable</h2><p>Cómo se reparte tu plata por tipo de activo</p></div></div><div class="donut-wrap" id="i-class"></div></section>
+  <section class="card glass"><div class="card-head"><div><h2>Por sector</h2><p>Dónde está concentrado tu riesgo</p></div></div><div class="donut-wrap" id="i-sector"></div></section>
+</div>
+<section class="card glass">
+  <div class="card-head"><div><h2>Posiciones</h2><p>Ganancia y pérdida calculadas con el último precio</p></div><div class="totals" id="i-totals"></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Activo</th><th class="r">Cantidad</th><th class="r">Costo promedio</th><th class="r">Precio</th><th class="r">Hoy</th><th class="r">Valor</th><th class="r">Ganancia</th><th class="r">Peso</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody id="i-rows"></tbody></table></div>
+</section>
+<div class="row">
+  <section class="card glass" id="agregar"><h2>Agregar o actualizar posición</h2><p class="faint small" style="margin-top:4px">Si ya la tenés, se suma y se recalcula el costo promedio</p>
+    <form class="inline" id="add-form">
+      <div class="field"><label for="f-sym">Símbolo</label><input id="f-sym" required maxlength="10" placeholder="Ej: VOO"></div>
+      <div class="field"><label for="f-qty">Cantidad</label><input id="f-qty" type="number" step="any" min="0" required placeholder="Ej: 5"></div>
+      <div class="field"><label for="f-avg">Precio promedio (USD)</label><input id="f-avg" type="number" step="any" min="0" placeholder="Ej: 410.50"></div>
+      <button class="btn" type="submit">Agregar</button>
+    </form><div id="add-msg" style="margin-top:12px"></div>
+    <p class="faint small" style="margin-top:12px">También podés escribirle al bot: “agregá 5 VOO a 410,50”.</p></section>
+  <section class="card glass" id="watchlist"><div class="card-head"><div><h2>Watchlist</h2><p>Activos que seguís sin tenerlos</p></div></div><ul class="list" id="i-watch"></ul>
+    <form class="inline" id="watch-form"><div class="field"><label for="f-wsym">Seguir un activo nuevo</label><input id="f-wsym" maxlength="10" required placeholder="Ej: AMZN"></div><button class="btn ghost" type="submit">Seguir</button></form>
+    <div id="explain" style="margin-top:14px"></div></section>
+</div>

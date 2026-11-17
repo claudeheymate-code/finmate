@@ -36,7 +36,16 @@
       <a href="{{ url_for('panel.feedback') }}" aria-label="Feedback" title="Feedback" {% if page == 'feedback' %}aria-current="page"{% endif %}>{{ icon('feedback') }}<span class="tab-label">Feedback</span></a>
     </nav>
     <main id="main">
-      {% block content %}{% endblock %}
+      {# Las 5 pestañas van lado a lado: en el celular se desliza entre ellas sin
+         recargar la página (la siguiente ya está visible mientras arrastras).
+         En computador solo se muestra la activa. #}
+      <div class="pager" id="pager"><div class="track" id="track">
+      {% for p in panes %}
+        <section class="pane{% if p == page %} active{% endif %}" data-pane="{{ p }}"{% if p != page %} aria-hidden="true"{% endif %}>
+          {% include "panel/_pane_" ~ p ~ ".html" %}
+        </section>
+      {% endfor %}
+      </div></div>
     </main>
   </div>
   <div class="quickbar"><nav class="glass-strong" aria-label="Acciones rápidas">
