@@ -25,6 +25,7 @@ from finmate.agent.finance_tools import (
     tool_add_expense,
     tool_get_monthly_summary,
     tool_get_recent_transactions,
+    tool_manage_expense_categories,
 )
 from finmate.agent.macro_tools import (
     tool_get_chile_indicators,
@@ -183,13 +184,13 @@ TOOLS = [
     # ── Finanzas personales (Plan Fase 5) ──────────────────────────────────
     {
         "name": "add_expense",
-        "description": "Registra un gasto o ingreso personal. Usar cuando el usuario diga algo como 'gasté X en Y', 'pagué X', 'cobré X', 'ingresé X'. Extraé el monto, la categoría, una descripción corta y, si la menciona, la ocasión (ej: 'cumpleaños de la Cata', 'aniversario'). Si no queda clara la categoría, preguntá antes de registrar ofreciendo las opciones: Evento Social, Polola, Copete, Comidas, Regalos, Viajes u Otros.",
+        "description": "Registra un gasto o ingreso personal. Usar cuando el usuario diga algo como 'gasté X en Y', 'pagué X', 'cobré X', 'ingresé X'. Extraé el monto, la categoría, una descripción corta y, si la menciona, la ocasión (ej: 'cumpleaños de la Cata', 'aniversario'). Categorías por defecto: Comidas, Carretes, Asados, Regalos, Suscripciones, Polola, Copete, Bets y Otros; cada usuario puede tener además categorías propias o haber sacado alguna (si dudás, llamá antes a manage_expense_categories con action=list). Si no queda clara la categoría, preguntá antes de registrar ofreciendo sus opciones.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "tipo":        {"type": "string",  "enum": ["gasto", "ingreso"], "description": "gasto (gasté, pagué, compré) o ingreso (cobré, me pagaron, ingresé)"},
                 "amount":      {"type": "number",  "description": "Monto — negativo para gasto, positivo para ingreso"},
-                "category":    {"type": "string",  "enum": ["Evento Social", "Polola", "Copete", "Comidas", "Regalos", "Viajes", "Otros"], "description": "Categoría del gasto"},
+                "category":    {"type": "string",  "description": "Categoría del gasto: una de las del usuario (por defecto Comidas, Carretes, Asados, Regalos, Suscripciones, Polola, Copete, Bets u Otros, más las propias que haya agregado)"},
                 "occasion":    {"type": "string",  "description": "Ocasión del gasto si el usuario la dice (ej: cumpleaños de la Cata). Opcional"},
                 "merchant":    {"type": "string",  "description": "Comercio o lugar (ej: Café Altura). Opcional"},
                 "description": {"type": "string",  "description": "Descripción corta (ej: almuerzo, uber, netflix)"},
@@ -197,6 +198,18 @@ TOOLS = [
                 "raw_text":    {"type": "string",  "description": "Texto original del usuario (opcional)"},
             },
             "required": ["tipo", "amount", "category", "description"],
+        },
+    },
+    {
+        "name": "manage_expense_categories",
+        "description": "Lista, agrega o saca categorías de gasto del usuario (afecta solo su cuenta). Usar cuando pregunte qué categorías tiene, o pida 'agregá la categoría X' / 'sacá la categoría Y'. Sacar una no borra los gastos que ya tenía ahí. 'Otros' no se puede sacar.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["list", "add", "remove"], "description": "list (ver), add (agregar o volver a poner) o remove (sacar)"},
+                "name":   {"type": "string", "description": "Nombre de la categoría (para add/remove)"},
+            },
+            "required": ["action"],
         },
     },
     {
@@ -357,6 +370,7 @@ _USER_SCOPED_TOOLS = {
     "add_expense":               tool_add_expense,
     "get_monthly_summary":       tool_get_monthly_summary,
     "get_recent_transactions":   lambda user_id, _input: tool_get_recent_transactions(user_id),
+    "manage_expense_categories": tool_manage_expense_categories,
     # Noticias e indicadores
     "get_my_news_topics":        lambda user_id, _input: tool_get_my_news_topics(user_id),
     "follow_news_topic":         tool_follow_news_topic,
