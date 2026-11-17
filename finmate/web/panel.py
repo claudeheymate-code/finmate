@@ -27,7 +27,7 @@ def _render(page: str):
         return redirect(url_for("panel.acceso"))
     title, template = _PAGES[page]
     return render_template(template, page=page, title=title, phone=mask_phone(user.phone),
-                           initial=(user.name or "F")[:1].upper())
+                           initial=(user.name or "F")[:1].upper(), panes=list(_PAGES))
 
 
 @panel_bp.get("/")
