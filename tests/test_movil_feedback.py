@@ -88,3 +88,18 @@ def test_formsubmit_usa_alias_y_origen(monkeypatch):
     monkeypatch.setattr(settings, "FEEDBACK_FORMSUBMIT_ID", "abc123alias")
     fb.send_email("a", "b", {})
     assert calls["url"].endswith("/ajax/abc123alias")
+
+
+def test_iconos_para_pantalla_de_inicio(client, app):
+    import json
+    html = client.get("/panel/").get_data(as_text=True)
+    assert 'rel="apple-touch-icon"' in html and "apple-touch-icon.png" in html
+    assert 'rel="manifest"' in html and 'apple-mobile-web-app-title" content="Finmate"' in html
+    acceso = app.test_client().get("/panel/acceso").get_data(as_text=True)
+    assert 'rel="apple-touch-icon"' in acceso
+    m = app.test_client().get("/panel/static/manifest.json")
+    assert m.status_code == 200
+    data = json.loads(m.get_data(as_text=True))
+    assert data["name"] == "Finmate" and data["display"] == "standalone"
+    for icon in data["icons"]:
+        assert app.test_client().get(icon["src"]).status_code == 200, icon["src"]
