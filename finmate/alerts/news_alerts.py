@@ -57,13 +57,13 @@ def _load_state() -> dict:
     return {}
 
 
-def _save_state(state: dict) -> None:
+def _save_state(state: dict, today: str = None) -> None:
     try:
         seen = state.get("seen", {})
         if len(seen) > MAX_SEEN:
             for k in list(seen.keys())[: len(seen) - MAX_SEEN]:
                 del seen[k]
-        today = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+        today = today or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
         state["daily"] = {k: v for k, v in state.get("daily", {}).items() if k.endswith(today)}
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f)
@@ -230,7 +230,7 @@ def check_news_alerts(
                 daily[dkey] = daily.get(dkey, 0) + 1
                 sent += 1
 
-    _save_state(state)
+    _save_state(state, today)
     logger.info(f"Chequeo de noticias: {len(items)} revisadas, {sent} mensajes enviados"
                 + (" (corrida de calentamiento)" if warmup else ""))
     return sent
