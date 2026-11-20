@@ -13,8 +13,10 @@
 <meta name="application-name" content="Finmate">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#061A36">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FFFFFF">
+
+<script src="i18n.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="panel.css">
@@ -23,12 +25,12 @@
 <div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
 <div class="shell">
   <header class="topbar glass">
-    <a class="brand" href="index.html"><img src="finmate-icon-white.png" alt=""><span>finmate</span></a>
+    <a class="brand" href="index.html"><img src="finmate-icon.png" alt=""><span>finmate</span></a>
     <form class="ask" id="ask-form" autocomplete="off">
       <span class="up" style="display:flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>
 </svg></span>
-      <label for="ask-input" class="sr-only">Preguntale a Finmate</label>
-      <input id="ask-input" type="text" maxlength="1000" placeholder="Preguntale a Finmate… ej: ¿por qué bajó Apple hoy?">
+      <label for="ask-input" class="sr-only">Pregúntale a Finmate</label>
+      <input id="ask-input" type="text" maxlength="1000" placeholder="Pregúntale a Finmate… ej: ¿por qué bajó Apple hoy?">
       <button class="icon-btn primary" type="submit" aria-label="Enviar pregunta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>
 </svg></button>
     </form>
@@ -68,7 +70,7 @@
   <section class="card glass"><div class="card-head"><div><h2>Tus activos</h2><p>Principales posiciones y tu watchlist</p></div><a class="small strong" href="inversiones.html">Ver todo</a></div><ul class="list tight" id="r-assets"></ul></section>
   <section class="card glass"><div class="card-head"><div><h2>Lo último en WhatsApp</h2><p>El panel y el chat comparten la misma memoria</p></div></div><div class="chat" id="r-chat"></div></section>
 </div>
-<section class="card glass"><div class="card-head"><div><h2>Lo que seguís</h2><p>Indicadores y temas de noticias</p></div><a class="small strong" href="ajustes.html">Editar</a></div><ul class="list tight" id="r-follows"></ul></section>
+<section class="card glass"><div class="card-head"><div><h2>Lo que sigues</h2><p>Indicadores y temas de noticias</p></div><a class="small strong" href="ajustes.html">Editar</a></div><ul class="list tight" id="r-follows"></ul></section>
         </section>
       
         <section class="pane" data-pane="inversiones" aria-hidden="true">
@@ -88,15 +90,15 @@
   <div class="table-wrap"><table><thead><tr><th>Activo</th><th class="r">Cantidad</th><th class="r">Costo promedio</th><th class="r">Precio</th><th class="r">Hoy</th><th class="r">Valor</th><th class="r">Ganancia</th><th class="r">Peso</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody id="i-rows"></tbody></table></div>
 </section>
 <div class="row">
-  <section class="card glass" id="agregar"><h2>Agregar o actualizar posición</h2><p class="faint small" style="margin-top:4px">Si ya la tenés, se suma y se recalcula el costo promedio</p>
+  <section class="card glass" id="agregar"><h2>Agregar o actualizar posición</h2><p class="faint small" style="margin-top:4px">Si ya la tienes, se suma y se recalcula el costo promedio</p>
     <form class="inline" id="add-form">
       <div class="field"><label for="f-sym">Símbolo</label><input id="f-sym" required maxlength="10" placeholder="Ej: VOO"></div>
       <div class="field"><label for="f-qty">Cantidad</label><input id="f-qty" type="number" step="any" min="0" required placeholder="Ej: 5"></div>
       <div class="field"><label for="f-avg">Precio promedio (USD)</label><input id="f-avg" type="number" step="any" min="0" placeholder="Ej: 410.50"></div>
       <button class="btn" type="submit">Agregar</button>
     </form><div id="add-msg" style="margin-top:12px"></div>
-    <p class="faint small" style="margin-top:12px">También podés escribirle al bot: “agregá 5 VOO a 410,50”.</p></section>
-  <section class="card glass" id="watchlist"><div class="card-head"><div><h2>Watchlist</h2><p>Activos que seguís sin tenerlos</p></div></div><ul class="list" id="i-watch"></ul>
+    <p class="faint small" style="margin-top:12px">También puedes escribirle al bot: “agrega 5 VOO a 410,50”.</p></section>
+  <section class="card glass" id="watchlist"><div class="card-head"><div><h2>Watchlist</h2><p>Activos que sigues sin tenerlos</p></div></div><ul class="list" id="i-watch"></ul>
     <form class="inline" id="watch-form"><div class="field"><label for="f-wsym">Seguir un activo nuevo</label><input id="f-wsym" maxlength="10" required placeholder="Ej: AMZN"></div><button class="btn ghost" type="submit">Seguir</button></form>
     <div id="explain" style="margin-top:14px"></div></section>
 </div>
@@ -107,14 +109,14 @@
 <div class="page-head"><div><p class="muted small strong">Finanzas personales</p><h1>Mis gastos</h1></div></div>
 <div class="stats" id="g-stats"><p class="faint">Cargando…</p></div>
 <div class="row">
-  <section class="card glass"><div class="card-head"><div><h2 id="g-cur-title">Este mes</h2><p>Tocá una categoría para ver sus gastos</p></div></div><div class="donut-wrap" id="g-cur"></div></section>
+  <section class="card glass"><div class="card-head"><div><h2 id="g-cur-title">Este mes</h2><p>Toca una categoría para ver sus gastos</p></div></div><div class="donut-wrap" id="g-cur"></div></section>
   <section class="card glass"><div class="card-head"><div><h2 id="g-ytd-title">En lo que va del año</h2><p>Gastos desde el 1 de enero</p></div></div><div class="donut-wrap" id="g-ytd"></div></section>
 </div>
 <section class="card glass"><div class="card-head"><div><h2>Este mes vs. mes pasado</h2><p>Por categoría, una al lado de la otra</p></div></div>
   <div class="table-wrap cmp-wrap"><table class="cmp"><thead><tr><th>Categoría</th><th class="r" id="g-th-cur">Este mes</th><th class="r" id="g-th-prev">Lst Mth</th><th class="r" title="Diferencia">Dif.</th></tr></thead><tbody id="g-cmp"></tbody><tfoot id="g-cmp-total"></tfoot></table></div>
 </section>
 <div class="row">
-  <section class="card glass"><div class="card-head"><div><h2 id="g-list-title">Todos los gastos</h2><p>Tocá un gasto para ver el detalle</p></div><button class="btn ghost" type="button" id="g-all">Ver todos</button></div><ul class="tx-list" id="g-list"></ul></section>
+  <section class="card glass"><div class="card-head"><div><h2 id="g-list-title">Todos los gastos</h2><p>Toca un gasto para ver el detalle</p></div><button class="btn ghost" type="button" id="g-all">Ver todos</button></div><ul class="tx-list" id="g-list"></ul></section>
   <section class="card glass-strong" id="g-detail" aria-live="polite"></section>
 </div>
 <section class="card glass" id="categorias">
@@ -124,7 +126,7 @@
   <div id="c-msg" style="margin-top:10px"></div>
 </section>
 <section class="card glass" id="boleta">
-  <div class="card-head"><div><h2>Registrar un gasto</h2><p>Contanos la ocasión y elegí la categoría. Pronto vas a poder subir la foto de la boleta y Finmate leerá el monto solo.</p></div><span class="faint small">También por WhatsApp: “gasté 8 lucas en el almuerzo”</span></div>
+  <div class="card-head"><div><h2>Registrar un gasto</h2><p>Cuéntanos la ocasión y elige la categoría. Pronto podrás subir la foto de la boleta y Finmate leerá el monto solo.</p></div><span class="faint small">También por WhatsApp: “gasté 8 lucas en el almuerzo”</span></div>
   <form id="tx-form">
     <div class="steps">
       <div class="drop"><span class="strong">Foto de la boleta</span><span class="small faint">Próximamente: la lectura automática llega en la etapa 5</span></div>
@@ -147,6 +149,12 @@
         <section class="pane active" data-pane="ajustes">
           
 <div class="page-head"><div><p class="muted small strong">Ajustes</p><h1>Tu Finmate, a tu manera</h1></div></div>
+<section class="card glass lang-card" id="idioma"><div class="card-head"><div><h2>Idioma de la app</h2><p>Cómo ves los textos del panel en este dispositivo</p></div>
+  <div class="chips" role="group" aria-label="Idioma / Language" data-no-i18n>
+    <button type="button" class="chip solid" data-lang="es" aria-pressed="true">Español</button>
+    <button type="button" class="chip solid" data-lang="en" aria-pressed="false">English</button>
+  </div></div>
+  <p class="faint small" style="margin-top:10px">El bot de WhatsApp sigue respondiendo en español.</p></section>
 <div class="row">
   <section class="card glass"><h2>Personalidad del bot</h2><p class="faint small" style="margin-top:4px">Cambia cómo te habla, nunca la calidad del análisis</p>
     <form id="p-form" style="display:flex;flex-direction:column;gap:22px;margin-top:20px">
@@ -166,7 +174,7 @@
     <div class="chat"><p class="bubble me">¿cómo va mi portafolio hoy?</p><p class="bubble bot" id="p-preview"></p></div></section>
 </div>
 <div class="row">
-  <section class="card glass"><h2>Lo que seguís</h2><p class="faint small" style="margin-top:4px">Temas de noticias e indicadores económicos</p>
+  <section class="card glass"><h2>Lo que sigues</h2><p class="faint small" style="margin-top:4px">Temas de noticias e indicadores económicos</p>
     <p class="label-sm" style="margin-top:18px">Temas de noticias</p><div class="chips" id="s-temas" style="margin-top:8px"></div>
     <p class="label-sm" style="margin-top:18px">Indicadores</p><div class="chips" id="s-inds" style="margin-top:8px"></div>
     <form class="inline" id="s-form">
@@ -233,6 +241,6 @@
 </div>
 <script src="demo-api.js"></script>
 <script src="panel.js"></script>
-<div id="demo-banner" style="position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);white-space:nowrap;z-index:9999;background:rgba(20,22,35,.92);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font:500 12px/1.4 Inter,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center;max-width:94vw"><span>Versión de prueba · datos de ejemplo</span><button type="button" id="demo-reset" style="all:unset;cursor:pointer;text-decoration:underline">Reiniciar</button></div>
+<div id="demo-banner" style="position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);white-space:nowrap;z-index:9999;background:rgba(20,22,35,.92);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font:500 12px/1.4 Inter,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center;max-width:94vw"><span>Versión de prueba · datos de ejemplo</span><button type="button" id="demo-reset" style="all:unset;cursor:pointer;text-decoration:underline">Reiniciar</button></div><style>body[data-page="acceso"] #demo-banner{bottom:calc(14px + env(safe-area-inset-bottom))!important}</style>
 </body>
 </html>

@@ -6,7 +6,7 @@
 
   const CAT_COLORS = {
     "Comidas": "#FFB37A", "Carretes": "#009B77", "Asados": "#E2725B", "Regalos": "#3DDBB0",
-    "Suscripciones": "#5AA9FF", "Polola": "#FF8FB1", "Copete": "#A99BFF", "Bets": "#F4D35E", "Otros": "#C3CCDB",
+    "Suscripciones": "#5AA9FF", "Polola": "#FF8FB1", "Copete": "#A99BFF", "Bets": "#E9B949", "Otros": "#94A3B8",
   };
   // Las categorías propias de cada usuario reciben un color estable según su nombre
   const EXTRA_COLORS = ["#7FDBDA", "#B8E986", "#FF9F9F", "#9FB4FF", "#E0A3FF", "#FFD39F", "#8FE3B0", "#A7C7E7"];
@@ -15,7 +15,7 @@
     let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     return EXTRA_COLORS[h % EXTRA_COLORS.length];
   }
-  const PALETTE = ["#009B77", "#5AA9FF", "#3DDBB0", "#A99BFF", "#FFB37A", "#FF8FB1", "#C3CCDB", "#7FA7D9"];
+  const PALETTE = ["#009B77", "#2F7FD8", "#3DDBB0", "#8B7CF0", "#F59E5B", "#F27BA0", "#94A3B8", "#082448"];
   const CLASS_COLORS = { "Renta variable": "#009B77", "Renta fija": "#5AA9FF" };
   const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
@@ -45,7 +45,7 @@
     if (r.status === 401 && document.body.dataset.page !== "acceso") { location.href = "acceso.html"; throw new Error("no_autenticado"); }
     let data = null;
     try { data = await r.json(); } catch (e) { data = null; }
-    if (!r.ok) throw new Error((data && data.error) || "Algo falló. Probá de nuevo.");
+    if (!r.ok) throw new Error((data && data.error) || "Algo falló. Intenta de nuevo.");
     return data;
   }
 
@@ -62,7 +62,7 @@
       const a = (acc / total) * 100; acc += p.value; const b = (acc / total) * 100;
       stops.push(p.color + " " + a.toFixed(2) + "% " + b.toFixed(2) + "%");
     });
-    const bg = stops.length ? "conic-gradient(" + stops.join(", ") + ")" : "rgba(255,255,255,0.08)";
+    const bg = stops.length ? "conic-gradient(" + stops.join(", ") + ")" : "#EDF1F5";
     const aria = (opts.centerLabel || "Distribución") + ": " + parts.map((p) => p.name + " " + pct(total ? (p.value / total) * 100 : 0, false)).join(", ");
     const items = parts.map((p) => {
       const inner = '<span class="dot" style="background:' + p.color + '"></span><span class="name">' + esc(p.name) + '</span><span class="faint small">' + esc(money(p.value)) + '</span><span class="pct">' + esc(pct(total ? (p.value / total) * 100 : 0, false)) + "</span>";
@@ -77,6 +77,15 @@
     if (opts.onPick) {
       el.querySelectorAll("button[data-name]").forEach((b) => b.addEventListener("click", () => opts.onPick(b.dataset.name)));
     }
+  }
+
+  // ---------- idioma de la app (ver i18n.js) ----------
+  function initLang() {
+    const i18n = window.FinmateI18n; if (!i18n) return;
+    const btns = document.querySelectorAll("[data-lang]");
+    const paint = () => btns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === i18n.get())));
+    btns.forEach((b) => b.addEventListener("click", () => { i18n.set(b.dataset.lang); paint(); }));
+    paint();
   }
 
   // ---------- comunes: preguntar al bot y salir ----------
@@ -111,24 +120,24 @@
     const stat = (label, value, sub) => '<section class="card glass stat"><p class="label">' + esc(label) + '</p><p class="value">' + esc(value) + '</p><div class="sub">' + sub + "</div></section>";
     const diffTxt = f.prev_total_gastos ? (f.diff <= 0 ? clp(-f.diff) + " menos que el mes pasado" : clp(f.diff) + " más que el mes pasado") : f.count + " gastos registrados";
     $("#r-stats").innerHTML =
-      stat("Valor del portafolio", t.count ? usd(t.value) : "—", t.count ? delta(usd(t.day_change, true) + " hoy (" + pct(t.day_change_pct) + ")", t.day_change >= 0) : '<span>Todavía no cargaste posiciones</span>') +
-      stat("Ganancia total", t.pnl != null ? usd(t.pnl, true) : "—", t.pnl != null ? delta(pct(t.pnl_pct) + " sobre lo invertido", t.pnl >= 0) : "<span>Cargá el precio promedio para calcularla</span>") +
+      stat("Valor del portafolio", t.count ? usd(t.value) : "—", t.count ? delta(usd(t.day_change, true) + " hoy (" + pct(t.day_change_pct) + ")", t.day_change >= 0) : '<span>Todavía no has cargado posiciones</span>') +
+      stat("Ganancia total", t.pnl != null ? usd(t.pnl, true) : "—", t.pnl != null ? delta(pct(t.pnl_pct) + " sobre lo invertido", t.pnl >= 0) : "<span>Carga el precio promedio para calcularla</span>") +
       stat("Gastos de " + MONTHS[f.month - 1], clp(f.total_gastos), "<span>" + esc(diffTxt) + (f.top_category ? " · más en " + esc(f.top_category) : "") + "</span>") +
-      stat("Alertas activas", String(d.watchlist.length), "<span>" + (d.watchlist.length ? "Watchlist, si algo se mueve más de " + esc(pct(d.avisos.watchlist_threshold_pct, false)) : "Seguí un activo para recibir alertas") + "</span>");
+      stat("Alertas activas", String(d.watchlist.length), "<span>" + (d.watchlist.length ? "Watchlist, si algo se mueve más de " + esc(pct(d.avisos.watchlist_threshold_pct, false)) : "Sigue un activo para recibir alertas") + "</span>");
 
     const rows = [];
     d.portfolio.top_positions.forEach((p) => rows.push(assetRow(p.symbol, "En tu portafolio · " + sep(p.quantity, p.quantity % 1 ? 2 : 0) + " u.", p.price, p.change_pct)));
     d.watchlist.forEach((w) => rows.push(assetRow(w.symbol, "En tu watchlist", w.price, w.change_pct)));
-    $("#r-assets").innerHTML = rows.join("") || '<li class="empty">Agregá posiciones o seguí activos desde Mis inversiones.</li>';
+    $("#r-assets").innerHTML = rows.join("") || '<li class="empty">Agrega posiciones o sigue activos desde Mis inversiones.</li>';
 
     $("#r-chat").innerHTML = d.chat.length
       ? d.chat.map((m) => '<p class="bubble ' + (m.role === "user" ? "me" : "bot") + '">' + esc(m.content.length > 280 ? m.content.slice(0, 280) + "…" : m.content) + "</p>").join("")
-      : '<p class="faint">Todavía no hay conversación. Escribile a Finmate por WhatsApp o desde la barra de arriba.</p>';
+      : '<p class="faint">Todavía no hay conversación. Escríbele a Finmate por WhatsApp o desde la barra de arriba.</p>';
 
     const s = d.seguimientos; const fl = [];
     s.indicadores.forEach((i) => fl.push('<li><div class="grow"><p class="strong">' + esc(i.name) + '</p><p class="faint small">' + esc(i.freq) + " · relevancia " + esc(i.relevance) + '</p></div><span class="muted small">Indicador</span></li>'));
     s.temas.forEach((t2) => fl.push('<li><div class="grow"><p class="strong">' + esc(t2.valor) + '</p><p class="faint small">Tema de noticias · ' + esc(t2.tipo) + '</p></div><span class="muted small">Siguiendo</span></li>'));
-    $("#r-follows").innerHTML = fl.join("") || '<li class="empty">No seguís nada todavía. Agregalo en Ajustes.</li>';
+    $("#r-follows").innerHTML = fl.join("") || '<li class="empty">No sigues nada todavía. Agrégalo en Ajustes.</li>';
   }
   function assetRow(sym, sub, price, chg) {
     return '<li><span class="ticker">' + esc(sym.slice(0, 5)) + '</span><div class="grow"><p class="strong">' + esc(sym) + '</p><p class="faint small">' + esc(sub) + '</p></div><div class="right"><p class="strong">' + esc(usd(price)) + "</p>" + (chg != null ? delta(pct(chg), chg >= 0) : "") + "</div></li>";
@@ -144,7 +153,7 @@
       const mover = (p, i) => '<li><span class="faint num" style="width:18px">' + (i + 1) + '</span><span class="ticker">' + esc(p.symbol.slice(0, 5)) + '</span><div class="grow"><p class="strong">' + esc(p.symbol) + '</p><p class="faint small">' + esc(usd(p.pnl, true)) + "</p></div>" + delta(pct(p.pnl_pct), p.pnl_pct >= 0) + "</li>";
       $("#i-winners").innerHTML = d.top_winners.map(mover).join("") || '<li class="empty">Ninguna posición en ganancia todavía.</li>';
       $("#i-losers").innerHTML = d.top_losers.map(mover).join("") || '<li class="empty">Ninguna posición en pérdida. Bien ahí.</li>';
-      donut($("#i-class"), d.by_class.map((g) => ({ name: g.name, value: g.value, color: CLASS_COLORS[g.name] || "#C3CCDB" })), { centerLabel: "Tipo de activo", center: d.by_class.length + (d.by_class.length === 1 ? " grupo" : " grupos") });
+      donut($("#i-class"), d.by_class.map((g) => ({ name: g.name, value: g.value, color: CLASS_COLORS[g.name] || "#94A3B8" })), { centerLabel: "Tipo de activo", center: d.by_class.length + (d.by_class.length === 1 ? " grupo" : " grupos") });
       donut($("#i-sector"), d.by_sector.map((g, i) => ({ name: g.name, value: g.value, color: PALETTE[i % PALETTE.length] })), { centerLabel: "Sectores", center: d.by_sector.length + (d.by_sector.length === 1 ? " sector" : " sectores") });
       $("#i-totals").innerHTML =
         '<div><p class="faint small">Valor total</p><p class="num strong" style="font-size:22px">' + esc(usd(t.value)) + "</p></div>" +
@@ -156,12 +165,12 @@
         '<td class="r">' + (p.change_pct != null ? delta(pct(p.change_pct), p.change_pct >= 0) : "—") + '</td><td class="r strong">' + esc(usd(p.value)) + "</td>" +
         '<td class="r">' + (p.pnl != null ? delta(usd(p.pnl, true) + " · " + pct(p.pnl_pct), p.pnl >= 0) : "—") + '</td><td class="r">' + esc(p.weight_pct != null ? pct(p.weight_pct, false) : "—") + "</td>" +
         '<td class="r"><button class="icon-btn" type="button" data-del="' + esc(p.symbol) + '" aria-label="Quitar ' + esc(p.symbol) + ' del portafolio">✕</button></td></tr>'
-      ).join("") || '<tr><td colspan="9" class="empty">Todavía no cargaste posiciones. Usá el formulario de abajo o escribile al bot.</td></tr>';
+      ).join("") || '<tr><td colspan="9" class="empty">Todavía no has cargado posiciones. Usa el formulario de abajo o escríbele al bot.</td></tr>';
       document.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
         if (!window.confirm("¿Quitar " + b.dataset.del + " de tu portafolio?")) return;
         try { await api("DELETE", "/portafolio/" + encodeURIComponent(b.dataset.del)); load(); } catch (e) { $("#i-error").innerHTML = box("error-box", e.message); }
       }));
-      $("#i-updated").textContent = "Actualizado " + new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+      $("#i-updated").textContent = "Actualizado " + new Date().toLocaleTimeString(document.documentElement.lang === "en" ? "en-US" : "es-CL", { hour: "2-digit", minute: "2-digit" });
     }
     async function loadWatch() {
       try {
@@ -169,7 +178,7 @@
         $("#i-watch").innerHTML = w.items.map((it) =>
           '<li><span class="ticker">' + esc(it.symbol.slice(0, 5)) + '</span><div class="grow"><p class="strong">' + esc(it.symbol) + '</p><p class="faint small">Aviso si se mueve más de ' + esc(pct(it.threshold_pct, false)) + ' en el día</p></div><div class="right"><p class="strong">' + esc(usd(it.price)) + "</p>" + (it.change_pct != null ? delta(pct(it.change_pct), it.change_pct >= 0) : "") +
           '</div><button class="btn ghost" type="button" data-why="' + esc(it.symbol) + '">¿Por qué se movió?</button><button class="icon-btn" type="button" data-unwatch="' + esc(it.symbol) + '" aria-label="Dejar de seguir ' + esc(it.symbol) + '">✕</button></li>'
-        ).join("") || '<li class="empty">No seguís ningún activo todavía.</li>';
+        ).join("") || '<li class="empty">No sigues ningún activo todavía.</li>';
         document.querySelectorAll("[data-unwatch]").forEach((b) => b.addEventListener("click", async () => { await api("DELETE", "/watchlist/" + encodeURIComponent(b.dataset.unwatch)); loadWatch(); }));
         document.querySelectorAll("[data-why]").forEach((b) => b.addEventListener("click", async () => {
           const el = $("#explain"); el.innerHTML = '<p class="faint">Buscando noticias…</p>';
@@ -245,7 +254,7 @@
     function renderDetail() {
       const t = state.items.find((x) => x.id === state.sel);
       const el = $("#g-detail");
-      if (!t) { el.innerHTML = '<div class="empty" style="text-align:center;min-height:300px;display:flex;align-items:center;justify-content:center"><p>Tocá un gasto para ver el detalle y cambiarle la categoría.</p></div>'; return; }
+      if (!t) { el.innerHTML = '<div class="empty" style="text-align:center;min-height:300px;display:flex;align-items:center;justify-content:center"><p>Toca un gasto para ver el detalle y cambiarle la categoría.</p></div>'; return; }
       const opts = (state.cats.indexOf(t.category) < 0 ? [t.category].concat(state.cats) : state.cats).map((c) => '<option value="' + esc(c) + '"' + (c === t.category ? " selected" : "") + ">" + esc(c) + "</option>").join("");
       el.innerHTML =
         "<h2>" + esc(t.description || t.occasion || "Gasto") + '</h2><p class="faint small" style="margin:4px 0 16px">' + esc(fmtDate(t.date)) + " · " + esc(clp(-t.amount)) + "</p>" +
@@ -318,16 +327,18 @@
     const KEYS = ["humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador"];
     const st = {};
     function preview() {
-      let base = "Tu portafolio vale USD 14.773 y vas ganando 14% sobre lo invertido.";
-      if (st.tono === "profesional") base = "Su portafolio se valoriza en USD 14.773, con una ganancia acumulada de 14,3% sobre el costo.";
-      if (st.tono === "amigo") base = "Tu portafolio anda bien: vale USD 14.773 y vas arriba un 14% desde que empezaste.";
+      const en = window.FinmateI18n && window.FinmateI18n.get() === "en";
+      let base = en ? "Your portfolio is worth USD 14,773 and you're up 14% on what you invested." : "Tu portafolio vale USD 14.773 y vas ganando 14% sobre lo invertido.";
+      if (st.tono === "profesional") base = en ? "Your portfolio is valued at USD 14,773, with a cumulative gain of 14.3% over cost." : "Su portafolio se valoriza en USD 14.773, con una ganancia acumulada de 14,3% sobre el costo.";
+      if (st.tono === "amigo") base = en ? "Your portfolio is doing well: it's worth USD 14,773 and you're up 14% since you started." : "Tu portafolio anda bien: vale USD 14.773 y vas arriba un 14% desde que empezaste.";
       let extra = "";
-      if (st.humor >= 7 && st.frecuencia_chistes >= 5) extra = " Si sigue así, te invito yo el café.";
-      else if (st.sarcasmo >= 7) extra = " Nada mal para alguien que revisa la app cada cinco minutos.";
-      if (st.nivel_conversador >= 7) extra += " ¿Querés que te cuente qué movió más hoy?";
-      if (st.nivel_conversador <= 2) base = base.split(",")[0] + ".";
+      if (st.humor >= 7 && st.frecuencia_chistes >= 5) extra = en ? " If it keeps this up, coffee's on me." : " Si sigue así, te invito yo el café.";
+      else if (st.sarcasmo >= 7) extra = en ? " Not bad for someone who checks the app every five minutes." : " Nada mal para alguien que revisa la app cada cinco minutos.";
+      if (st.nivel_conversador >= 7) extra += en ? " Want me to tell you what moved the most today?" : " ¿Quieres que te cuente qué movió más hoy?";
+      if (st.nivel_conversador <= 2) base = base.split(/[,:]/)[0] + ".";
       $("#p-preview").textContent = base + extra;
     }
+    document.addEventListener("finmate:lang", () => { if (st.tono) preview(); });
     function paintTono() { document.querySelectorAll("[data-tono]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tono === st.tono))); }
     try {
       const p = await api("GET", "/personalidad");
@@ -613,5 +624,5 @@
   const MODULES = { resumen: pageResumen, inversiones: pageInversiones, gastos: pageGastos, ajustes: pageAjustes, feedback: pageFeedback };
   preventZoom();
   if (page === "acceso") pageAcceso();
-  else { initShell(); (MODULES[page] || function () {})(); initTabs(MODULES); initAutoHideRail(); }
+  else { initShell(); initLang(); (MODULES[page] || function () {})(); initTabs(MODULES); initAutoHideRail(); }
 })();

@@ -161,7 +161,7 @@
 
     if (path === "/auth/dev-login" && method === "POST") {
       var digits = String(body.phone || "").replace(/[^\d+]/g, "");
-      if (digits.replace("+", "").length < 8) return err("Número inválido. Usá el formato +56 9 1234 5678.");
+      if (digits.replace("+", "").length < 8) return err("Número inválido. Usa el formato +56 9 1234 5678.");
       S.logged = true; S.phone = digits.charAt(0) === "+" ? digits : "+" + digits; save(S); return json(200, { ok: true });
     }
     if (path === "/auth/logout") { S.logged = false; save(S); return json(200, { ok: true }); }
@@ -203,7 +203,7 @@
     if ((mo = path.match(/^\/portafolio\/(.+)$/))) {
       var ps = sym(decodeURIComponent(mo[1]));
       var idx = S.positions.findIndex(function (p) { return p.symbol === ps; });
-      if (idx < 0) return err("No tenés esa posición.", 404);
+      if (idx < 0) return err("No tienes esa posición.", 404);
       if (method === "DELETE") { S.positions.splice(idx, 1); save(S); return json(200, { ok: true }); }
       if (method === "PATCH") {
         if (body.asset_class) S.positions[idx].asset_class = body.asset_class;
@@ -269,7 +269,7 @@
       if (tipo !== "gasto" && tipo !== "ingreso") return err("Tipo inválido (gasto o ingreso).");
       if (amt === null || amt <= 0) return err("El monto tiene que ser mayor a cero.");
       var rc = resolveCat(category);
-      if (tipo === "gasto" && !rc) return err("Elegí una categoría.");
+      if (tipo === "gasto" && !rc) return err("Elige una categoría.");
       category = rc || FALLBACK;
       var tx = { id: S.nextId++, date: body.date || SEED.today, amount: tipo === "gasto" ? -Math.abs(amt) : Math.abs(amt),
         category: category, description: String(body.description || "").trim().slice(0, 500),
@@ -337,8 +337,8 @@
     if (path === "/feedback" && method === "POST") {
       var ftipos = { idea: "💡 Idea", problema: "🐞 Problema", me_gusta: "❤️ Me gusta", otro: "💬 Otro" };
       var fmsg = String(body.message || "").trim();
-      if (!ftipos[body.tipo]) return err("Elegí de qué se trata (idea, problema, me gusta u otro).");
-      if (fmsg.length < 5) return err("Escribí un poco más para que podamos entenderte.");
+      if (!ftipos[body.tipo]) return err("Elige de qué se trata (idea, problema, me gusta u otro).");
+      if (fmsg.length < 5) return err("Escribe un poco más para que podamos entenderte.");
       if (fmsg.length > 2000) return err("El mensaje es demasiado largo (máximo 2000 caracteres).");
       if (!realFetch) return err("No se pudo enviar el mensaje.", 502);
       var subject = "[Finmate · versión de prueba] Feedback: " + ftipos[body.tipo] + (body.rating ? " · " + body.rating + "/5" : "");
@@ -352,7 +352,7 @@
         var fd = {}; try { fd = await fr.json(); } catch (e) {}
         if (fr.ok && String(fd.success) === "true") return json(201, { ok: true });
         if (/activ/i.test(fd.message || "")) return json(201, { ok: true, pending_activation: true });
-        return err("No se pudo enviar el mensaje. Probá de nuevo en un rato.", 502);
+        return err("No se pudo enviar el mensaje. Intenta de nuevo en un rato.", 502);
       } catch (e) {
         return err("No se pudo enviar el mensaje desde aquí (sin conexión con el servicio de correo).", 502);
       }
@@ -360,7 +360,7 @@
 
     if (path === "/chat" && method === "POST") {
       var msg = String(body.message || "").trim();
-      if (!msg) return err("Escribí una pregunta.");
+      if (!msg) return err("Escribe una pregunta.");
       return json(200, { reply: chatReply(msg) });
     }
     return err("Ruta no disponible en la versión de prueba.", 404);
