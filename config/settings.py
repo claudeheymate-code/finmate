@@ -42,6 +42,21 @@ WHATSAPP_RECIPIENTS = [
 ]
 
 # ============================================================
+# META — WhatsApp Cloud API (alternativa a Twilio, sin intermediario)
+# ============================================================
+# Si META_WHATSAPP_TOKEN y META_PHONE_NUMBER_ID están cargadas, el bot usa
+# Meta directo; si no, sigue usando Twilio como hasta ahora. Se puede forzar
+# con WHATSAPP_PROVIDER=meta o WHATSAPP_PROVIDER=twilio.
+META_WHATSAPP_TOKEN = _key("META_WHATSAPP_TOKEN")      # token permanente (usuario del sistema)
+META_PHONE_NUMBER_ID = _key("META_PHONE_NUMBER_ID")    # "Identificador del número de teléfono" (15 dígitos)
+META_VERIFY_TOKEN = _key("META_VERIFY_TOKEN")          # texto que inventas tú; el mismo va en la config del webhook en Meta
+META_APP_SECRET = _key("META_APP_SECRET")              # "Clave secreta de la app": valida que el webhook venga de Meta
+META_GRAPH_VERSION = os.getenv("META_GRAPH_VERSION", "v25.0")
+META_TEMPLATE_LANG = os.getenv("META_TEMPLATE_LANG", "es")
+WHATSAPP_PROVIDER = (os.getenv("WHATSAPP_PROVIDER", "").strip().lower()
+                     or ("meta" if META_WHATSAPP_TOKEN and META_PHONE_NUMBER_ID else "twilio"))
+
+# ============================================================
 # APIs Financieras (gratuitas)
 # ============================================================
 FINNHUB_API_KEY = _key("FINNHUB_API_KEY")
@@ -117,6 +132,22 @@ WATCHLIST_ALERT_THRESHOLD_PCT = float(os.getenv("WATCHLIST_ALERT_THRESHOLD_PCT",
 TWILIO_TEMPLATE_WATCHLIST_ALERT_SID = os.getenv("TWILIO_TEMPLATE_WATCHLIST_ALERT_SID", "")
 TWILIO_TEMPLATE_MARKET_NOTIFY_SID = os.getenv("TWILIO_TEMPLATE_MARKET_NOTIFY_SID", "")
 TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID = os.getenv("TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID", "")
+
+# Con Meta directo las plantillas se identifican por su NOMBRE (el que se le
+# pone en WhatsApp Manager), no por un SID. Mismas reglas: vacías = texto libre.
+META_TEMPLATE_WATCHLIST_ALERT = os.getenv("META_TEMPLATE_WATCHLIST_ALERT", "")
+META_TEMPLATE_MARKET_NOTIFY = os.getenv("META_TEMPLATE_MARKET_NOTIFY", "")
+META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY = os.getenv("META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY", "")
+
+# Lo que usa el resto del código: el identificador de plantilla del proveedor activo.
+if WHATSAPP_PROVIDER == "meta":
+    TEMPLATE_WATCHLIST_ALERT = META_TEMPLATE_WATCHLIST_ALERT
+    TEMPLATE_MARKET_NOTIFY = META_TEMPLATE_MARKET_NOTIFY
+    TEMPLATE_WEEKLY_SUMMARY_NOTIFY = META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY
+else:
+    TEMPLATE_WATCHLIST_ALERT = TWILIO_TEMPLATE_WATCHLIST_ALERT_SID
+    TEMPLATE_MARKET_NOTIFY = TWILIO_TEMPLATE_MARKET_NOTIFY_SID
+    TEMPLATE_WEEKLY_SUMMARY_NOTIFY = TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID
 
 # ============================================================
 # Zona horaria
