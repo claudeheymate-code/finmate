@@ -135,3 +135,23 @@ def parse_incoming(payload: dict) -> list[dict]:
                     text = ((it.get("button_reply") or it.get("list_reply") or {}).get("title", ""))
                 out.append({"id": m.get("id", ""), "from": m.get("from", ""), "type": mtype, "text": text.strip()})
     return out
+
+
+def parse_statuses(payload: dict) -> list[dict]:
+    """Avisos de estado de mensajes enviados (sent/delivered/read/failed).
+    Los fallidos traen el motivo en `errors` (código + título), útil para
+    saber por qué Meta no entregó un mensaje."""
+    out = []
+    if not isinstance(payload, dict) or payload.get("object") != "whatsapp_business_account":
+        return out
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            for st in (change.get("value") or {}).get("statuses") or []:
+                errs = st.get("errors") or []
+                out.append({
+                    "status": st.get("status", ""),
+                    "to": st.get("recipient_id", ""),
+                    "errors": [f"{e.get('code')} {e.get('title') or ''} {((e.get('error_data') or {}).get('details') or '')}".strip()
+                               for e in errs],
+                })
+    return out

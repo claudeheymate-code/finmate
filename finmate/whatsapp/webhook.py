@@ -322,7 +322,15 @@ def _incoming_meta():
     if not meta_cloud.valid_signature(raw, request.headers.get("X-Hub-Signature-256")):
         logger.warning("Webhook de Meta con firma inválida: se ignora.")
         abort(403)
-    for msg in meta_cloud.parse_incoming(request.get_json(silent=True) or {}):
+    payload = request.get_json(silent=True) or {}
+    for st in meta_cloud.parse_statuses(payload):
+        if st["status"] == "failed":
+            logger.warning(f"Meta: mensaje a {st['to']} FALLÓ: {'; '.join(st['errors']) or 'sin detalle'}")
+        else:
+            logger.info(f"Meta: estado {st['status']} para {st['to']}")
+    if not payload:
+        logger.info("Webhook de Meta sin contenido JSON")
+    for msg in meta_cloud.parse_incoming(payload):
         if not _first_time(msg["id"]):
             continue
         logger.info(f"Mensaje recibido (Meta) de {msg['from']}: {msg['text'] or '[' + msg['type'] + ']'}")
