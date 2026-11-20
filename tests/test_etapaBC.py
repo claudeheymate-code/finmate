@@ -75,7 +75,7 @@ def test_alerta_en_tiempo_real_usa_mismo_estado_que_el_chequeo(tmp_path, monkeyp
     from finmate.alerts import watchlist_alerts as wa
 
     monkeypatch.setattr(wa, "STATE_FILE", str(tmp_path / "wl.json"))
-    monkeypatch.setattr(wa, "TWILIO_TEMPLATE_WATCHLIST_ALERT_SID", "")
+    monkeypatch.setattr(wa, "TEMPLATE_WATCHLIST_ALERT", "")
     monkeypatch.setattr(wa, "get_all_watchlist_entries", lambda: [(99999, "whatsapp:+7", "NVDA"),
                                                                   (99999, "whatsapp:+7", "AAPL")])
     s, clock = _stream()
@@ -142,7 +142,7 @@ def pod_state(tmp_path, monkeypatch):
     from finmate.podcasts import digest
 
     monkeypatch.setattr(digest, "STATE_FILE", str(tmp_path / "pod.json"))
-    monkeypatch.setattr(digest, "TWILIO_TEMPLATE_MARKET_NOTIFY_SID", "")
+    monkeypatch.setattr(digest, "TEMPLATE_MARKET_NOTIFY", "")
     return digest
 
 

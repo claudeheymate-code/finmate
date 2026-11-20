@@ -161,7 +161,7 @@ def news_state(tmp_path, monkeypatch):
     from finmate.alerts import news_alerts
 
     monkeypatch.setattr(news_alerts, "STATE_FILE", str(tmp_path / "news.json"))
-    monkeypatch.setattr(news_alerts, "TWILIO_TEMPLATE_MARKET_NOTIFY_SID", "")
+    monkeypatch.setattr(news_alerts, "TEMPLATE_MARKET_NOTIFY", "")
     return news_alerts
 
 
@@ -207,7 +207,7 @@ def test_noticias_con_template_encola(news_state, monkeypatch, tmp_path):
     na = news_state
     from finmate.alerts import pending
 
-    monkeypatch.setattr(na, "TWILIO_TEMPLATE_MARKET_NOTIFY_SID", "HXtest")
+    monkeypatch.setattr(na, "TEMPLATE_MARKET_NOTIFY", "HXtest")
     if hasattr(pending, "STATE_FILE"):
         monkeypatch.setattr(pending, "STATE_FILE", str(tmp_path / "pending.json"))
     tracked = [(1, "whatsapp:+1", "AAPL")]
