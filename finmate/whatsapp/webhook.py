@@ -1,6 +1,13 @@
 """
-Finmate - Webhook de WhatsApp (Twilio)
+Finmate - Webhook de WhatsApp (Meta Cloud API o Twilio)
 Recibe mensajes entrantes y responde con información financiera.
+
+La misma ruta /whatsapp/webhook atiende a los dos proveedores:
+  - Meta: GET para verificar el webhook (una vez, al configurarlo) y POST
+    con JSON. Se responde 200 al tiro y la respuesta del bot se manda
+    aparte, en un hilo, porque Meta reintenta si tarda unos segundos y el
+    agente puede demorar más (se ignoran los reintentos por id de mensaje).
+  - Twilio: POST con formulario; se responde con TwiML, como siempre.
 
 Fase 0: el enrutado por palabra exacta (hola/ayuda/mercados/...) se
 reemplazó por el orquestador del agente (finmate.agent.orchestrator), que
@@ -12,13 +19,17 @@ las herramientas del agente.
 
 import logging
 import os
+import threading
+import time
+from collections import OrderedDict
 from datetime import datetime, timezone
 
 import httpx
-from flask import Blueprint, request
+from flask import Blueprint, abort, request
 from twilio.twiml.messaging_response import MessagingResponse
 
-from config.settings import FINNHUB_API_KEY, ALPHA_VANTAGE_API_KEY
+from config.settings import FINNHUB_API_KEY, ALPHA_VANTAGE_API_KEY, META_VERIFY_TOKEN
+from finmate.whatsapp import meta_cloud
 
 logger = logging.getLogger(__name__)
 
@@ -257,9 +268,78 @@ def _get_context_news() -> str:
         return f"Error consultando noticias: {type(e).__name__} - {str(e)[:100]}"
 
 
+@whatsapp_bp.route("/webhook", methods=["GET"])
+def verify_webhook():
+    """Meta llama a esta URL una vez al configurar el webhook: si el token
+    coincide con META_VERIFY_TOKEN, hay que devolver el `hub.challenge`."""
+    mode = request.args.get("hub.mode")
+    token = request.args.get("hub.verify_token", "")
+    challenge = request.args.get("hub.challenge", "")
+    if mode == "subscribe" and META_VERIFY_TOKEN and token == META_VERIFY_TOKEN:
+        logger.info("Webhook de Meta verificado.")
+        return challenge, 200
+    logger.warning("Verificación de webhook de Meta rechazada (token distinto o META_VERIFY_TOKEN vacío).")
+    abort(403)
+
+
+# Ids de mensajes de Meta ya atendidos (Meta reintenta el mismo webhook).
+_SEEN: "OrderedDict[str, float]" = OrderedDict()
+_SEEN_LOCK = threading.Lock()
+_SEEN_MAX = 2000
+RUN_IN_BACKGROUND = True  # los tests lo apagan para correr todo en el mismo hilo
+
+
+def _first_time(msg_id: str) -> bool:
+    if not msg_id:
+        return True
+    with _SEEN_LOCK:
+        if msg_id in _SEEN:
+            return False
+        _SEEN[msg_id] = time.time()
+        while len(_SEEN) > _SEEN_MAX:
+            _SEEN.popitem(last=False)
+        return True
+
+
+def _answer_meta(msg: dict) -> None:
+    from finmate.agent.orchestrator import handle_message
+    from finmate.whatsapp.messenger import WhatsAppMessenger
+
+    phone = meta_cloud.to_internal(msg["from"])
+    try:
+        meta_cloud.mark_as_read(msg["id"])
+        if not msg["text"]:
+            reply = "Por ahora solo puedo leer mensajes de texto. Escríbeme tu pregunta y te respondo."
+        else:
+            reply = handle_message(phone, msg["text"])
+        WhatsAppMessenger().send_message(phone, reply)
+    except Exception as e:
+        logger.error(f"Error respondiendo a {phone} por Meta: {e}", exc_info=True)
+
+
+def _incoming_meta():
+    raw = request.get_data()
+    if not meta_cloud.valid_signature(raw, request.headers.get("X-Hub-Signature-256")):
+        logger.warning("Webhook de Meta con firma inválida: se ignora.")
+        abort(403)
+    for msg in meta_cloud.parse_incoming(request.get_json(silent=True) or {}):
+        if not _first_time(msg["id"]):
+            continue
+        logger.info(f"Mensaje recibido (Meta) de {msg['from']}: {msg['text'] or '[' + msg['type'] + ']'}")
+        if RUN_IN_BACKGROUND:
+            threading.Thread(target=_answer_meta, args=(msg,), daemon=True).start()
+        else:
+            _answer_meta(msg)
+    return "ok", 200  # siempre 200 rápido; los avisos de estado (entregado/leído) también llegan acá
+
+
 @whatsapp_bp.route("/webhook", methods=["POST"])
 def incoming_message():
     """Procesa mensajes entrantes de WhatsApp vía el orquestador del agente."""
+    if request.is_json:
+        return _incoming_meta()
+
+    # Twilio (formulario + respuesta TwiML).
     # Import diferido: evita el ciclo de imports (agent.tools importa de este
     # mismo módulo para reusar _get_market_data).
     from finmate.agent.orchestrator import handle_message
@@ -272,7 +352,7 @@ def incoming_message():
     logger.info(f"Mensaje recibido de {from_number}: {incoming_msg}")
 
     if not incoming_msg:
-        msg.body("No recibí ningún texto. Escribime algo y te respondo.")
+        msg.body("No recibí ningún texto. Escríbeme algo y te respondo.")
         return str(resp)
 
     reply_text = handle_message(from_number, incoming_msg)

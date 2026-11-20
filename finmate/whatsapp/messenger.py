@@ -1,6 +1,11 @@
 """
-Finmate - Mensajería WhatsApp via Twilio
+Finmate - Mensajería WhatsApp (Meta directo o Twilio)
 Envía mensajes formateados a los destinatarios configurados.
+
+El proveedor sale de WHATSAPP_PROVIDER (config/settings.py): "meta" usa la
+WhatsApp Cloud API sin intermediario (finmate/whatsapp/meta_cloud.py);
+"twilio" sigue funcionando igual que antes. El resto del código no cambia:
+siempre llama a send_message / broadcast / send_template.
 """
 
 import json
@@ -13,8 +18,10 @@ from config.settings import (
     TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN,
     TWILIO_WHATSAPP_FROM,
+    WHATSAPP_PROVIDER,
     WHATSAPP_RECIPIENTS,
 )
+from finmate.whatsapp import meta_cloud
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +30,21 @@ MAX_MESSAGE_LENGTH = 1500
 
 
 class WhatsAppMessenger:
-    """Envía mensajes por WhatsApp usando Twilio."""
+    """Envía mensajes por WhatsApp usando Meta (Cloud API) o Twilio."""
 
     def __init__(self):
+        self.provider = WHATSAPP_PROVIDER
+        self.from_number = TWILIO_WHATSAPP_FROM
+        if self.provider == "meta":
+            self.client = None
+            if not meta_cloud.is_configured():
+                logger.error("WHATSAPP_PROVIDER=meta pero faltan META_WHATSAPP_TOKEN o META_PHONE_NUMBER_ID")
+            return
         if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
             logger.error("Twilio credentials no configuradas")
             self.client = None
         else:
             self.client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        self.from_number = TWILIO_WHATSAPP_FROM
 
     def _split_message(self, text: str) -> list[str]:
         """
@@ -62,6 +75,14 @@ class WhatsAppMessenger:
 
     def send_message(self, to: str, body: str) -> bool:
         """Envía un mensaje a un número específico."""
+        if self.provider == "meta":
+            parts = self._split_message(body)
+            ok = True
+            for i, part in enumerate(parts):
+                if len(parts) > 1:
+                    part = f"({i + 1}/{len(parts)})\n{part}"
+                ok = meta_cloud.send_text(to, part) and ok
+            return ok
         if not self.client:
             logger.error("Twilio client no inicializado")
             return False
@@ -116,7 +137,10 @@ class WhatsAppMessenger:
     def send_template(
         self, to: str, content_sid: str, content_variables: Optional[dict] = None
     ) -> bool:
-        """Envía un mensaje usando un Content Template aprobado por Meta."""
+        """Envía un mensaje usando una plantilla aprobada por Meta. Con Meta
+        directo, `content_sid` es el NOMBRE de la plantilla en WhatsApp Manager."""
+        if self.provider == "meta":
+            return meta_cloud.send_template(to, content_sid, content_variables)
         if not self.client:
             logger.error("Twilio client no inicializado")
             return False
