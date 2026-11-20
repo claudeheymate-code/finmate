@@ -40,6 +40,8 @@ BANNER = (
     'align-items:center;max-width:94vw"><span>Versión de prueba · datos de ejemplo</span>'
     '<button type="button" id="demo-reset" style="all:unset;cursor:pointer;text-decoration:underline">'
     "Reiniciar</button></div>"
+    # En la página de entrada no hay menú abajo: el aviso baja para no tapar el botón "Entrar al panel"
+    '<style>body[data-page="acceso"] #demo-banner{bottom:calc(14px + env(safe-area-inset-bottom))!important}</style>'
 )
 
 
@@ -83,6 +85,19 @@ def main():
         js = f.read()
     with open(os.path.join(OUT, "panel.js"), "w", encoding="utf-8") as f:
         f.write(demo_js(js))
+    # i18n.js (idioma), íconos y manifest propio de la demo (GitHub Pages sirve en /finmate/demo_panel/)
+    import json
+    import shutil
+    for name in ("i18n.js", "finmate-icon.png", "apple-touch-icon.png", "favicon-32.png", "favicon-48.png",
+                 "icon-192.png", "icon-512.png", "icon-maskable-512.png"):
+        shutil.copy(os.path.join(static, name), OUT)
+    with open(os.path.join(static, "manifest.json"), encoding="utf-8") as f:
+        man = json.load(f)
+    man["id"] = "/finmate/"; man["start_url"] = "/finmate/demo_panel/index.html"; man["scope"] = "/finmate/"
+    for ic in man["icons"]:
+        ic["src"] = "/finmate/demo_panel/" + ic["src"].rsplit("/", 1)[-1]
+    with open(os.path.join(OUT, "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(man, f, ensure_ascii=False, indent=2)
     print("Demo regenerada en", OUT)
 
 
