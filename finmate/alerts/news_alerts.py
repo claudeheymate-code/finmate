@@ -32,7 +32,7 @@ import httpx
 from config.settings import (
     FINNHUB_API_KEY,
     NEWS_ALERTS_MAX_PER_USER_PER_DAY,
-    TWILIO_TEMPLATE_MARKET_NOTIFY_SID,
+    TEMPLATE_MARKET_NOTIFY,
 )
 from finmate.data_sources import marketaux
 
@@ -216,10 +216,10 @@ def check_news_alerts(
             msg = _format_message(user_items[:MAX_ITEMS_PER_MESSAGE])
             phone = phones[user_id]
             try:
-                if TWILIO_TEMPLATE_MARKET_NOTIFY_SID:
+                if TEMPLATE_MARKET_NOTIFY:
                     from finmate.alerts.pending import queue_pending
                     queue_pending(phone, msg)
-                    ok = messenger.send_template(phone, TWILIO_TEMPLATE_MARKET_NOTIFY_SID,
+                    ok = messenger.send_template(phone, TEMPLATE_MARKET_NOTIFY,
                                                  {"1": "Noticias de tus activos"})
                 else:
                     ok = messenger.send_message(phone, msg)

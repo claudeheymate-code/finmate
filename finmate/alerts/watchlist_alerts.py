@@ -14,7 +14,7 @@ la nota en CLAUDE.md sobre por qué esto quedó pendiente en la pasada de
 Fase 1.
 
 Fase 1.6: si hay un Content Template aprobado configurado
-(TWILIO_TEMPLATE_WATCHLIST_ALERT_SID), la alerta se manda como template
+(TEMPLATE_WATCHLIST_ALERT), la alerta se manda como template
 (symbol, variación % y precio como variables — es corta y estructurada,
 entra bien en un template). Si no está configurado, se cae al mensaje de
 texto libre de siempre (sirve para sandbox/desarrollo). Ver
@@ -29,7 +29,7 @@ from typing import Callable, Optional
 
 import httpx
 
-from config.settings import TWILIO_TEMPLATE_WATCHLIST_ALERT_SID, WATCHLIST_ALERT_THRESHOLD_PCT
+from config.settings import TEMPLATE_WATCHLIST_ALERT, WATCHLIST_ALERT_THRESHOLD_PCT
 from finmate.db.repository import get_all_watchlist_entries
 from finmate.whatsapp.messenger import WhatsAppMessenger
 from finmate.whatsapp.webhook import _change_emoji, _format_number, _get_finnhub_quote
@@ -153,10 +153,10 @@ def _check_watchlist_alerts(
             price_fmt = _format_number(quote["price"], prefix="$")
 
             try:
-                if TWILIO_TEMPLATE_WATCHLIST_ALERT_SID:
+                if TEMPLATE_WATCHLIST_ALERT:
                     ok = messenger.send_template(
                         phone,
-                        TWILIO_TEMPLATE_WATCHLIST_ALERT_SID,
+                        TEMPLATE_WATCHLIST_ALERT,
                         {"1": symbol, "2": change_fmt, "3": price_fmt},
                     )
                 else:

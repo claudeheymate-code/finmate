@@ -6,8 +6,8 @@ Mantiene estado de lo ya notificado para evitar duplicados.
 Fase 1.6: el resumen semanal y las alertas de earnings/macro/noticias son
 mensajes largos y dinámicos (listas de longitud variable) — no entran en
 un Content Template de WhatsApp Business aprobado por Meta. Si hay
-templates de aviso configurados (TWILIO_TEMPLATE_MARKET_NOTIFY_SID /
-TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID), se manda ese template corto y
+templates de aviso configurados (TEMPLATE_MARKET_NOTIFY /
+TEMPLATE_WEEKLY_SUMMARY_NOTIFY), se manda ese template corto y
 el contenido real se encola (finmate/alerts/pending.py) para cuando el
 usuario responda. Si no están configurados, se sigue mandando todo como
 texto libre, igual que hasta ahora (sandbox/desarrollo).
@@ -21,8 +21,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from config.settings import (
-    TWILIO_TEMPLATE_MARKET_NOTIFY_SID,
-    TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID,
+    TEMPLATE_MARKET_NOTIFY,
+    TEMPLATE_WEEKLY_SUMMARY_NOTIFY,
     WHATSAPP_RECIPIENTS,
 )
 from finmate.alerts.pending import queue_pending
@@ -104,11 +104,11 @@ class AlertEngine:
         Business), manda el template corto y encola el contenido completo
         para cuando el usuario responda (ver finmate/alerts/pending.py). Si
         no, cae a mensaje de texto libre directo, como hasta ahora."""
-        if TWILIO_TEMPLATE_MARKET_NOTIFY_SID:
+        if TEMPLATE_MARKET_NOTIFY:
             for phone in WHATSAPP_RECIPIENTS:
                 queue_pending(phone, msg)
                 self.messenger.send_template(
-                    phone, TWILIO_TEMPLATE_MARKET_NOTIFY_SID, {"1": category_label}
+                    phone, TEMPLATE_MARKET_NOTIFY, {"1": category_label}
                 )
         else:
             self.messenger.broadcast(msg)
@@ -211,10 +211,10 @@ class AlertEngine:
             from finmate.db.settings_repo import weekly_summary_enabled_for_phone
 
             recipients = [p for p in WHATSAPP_RECIPIENTS if weekly_summary_enabled_for_phone(p)]
-            if TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID:
+            if TEMPLATE_WEEKLY_SUMMARY_NOTIFY:
                 for phone in recipients:
                     queue_pending(phone, message)
-                    self.messenger.send_template(phone, TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID)
+                    self.messenger.send_template(phone, TEMPLATE_WEEKLY_SUMMARY_NOTIFY)
             elif recipients:
                 self.messenger.broadcast(message, recipients=recipients)
 
