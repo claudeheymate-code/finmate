@@ -352,6 +352,18 @@ celular). Sin desplegar todavía (Railway sigue pausado).
   cambio (66 correos "build failed"). No es Railway; Joaco debería pausarlo
   o borrarlo si no lo usa.
 
+## Cambio del 20 nov 2026 — WhatsApp por Meta directo (sin Twilio)
+
+Twilio no dejó verificar la cuenta. El bot ahora soporta la **WhatsApp Cloud
+API de Meta** directo (sin cuota mensual ni recargo por mensaje); Twilio
+queda como respaldo. Se elige solo: con `META_WHATSAPP_TOKEN` +
+`META_PHONE_NUMBER_ID` cargadas usa Meta. Detalle completo, variables y pasos:
+`docs/08_WHATSAPP_META_CLOUD_API.md`. Código: `finmate/whatsapp/meta_cloud.py`,
+`messenger.py`, `webhook.py` (GET de verificación + POST JSON, respuesta en
+hilo con dedupe por id). Las variables de plantillas del código se renombraron
+a `TEMPLATE_*`. 81/81 tests. Pendiente (Joaco): crear la app en
+developers.facebook.com, número de prueba, luego el prepago chileno.
+
 ## Cambios del 18 nov 2026 — tema blanco, ícono nuevo e idioma (no subidos aún)
 
 - **Tema blanco** en el panel y la demo: `panel.css` con fondo #FFFFFF, tarjetas
