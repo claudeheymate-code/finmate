@@ -32,7 +32,7 @@ from config.settings import (
     ANTHROPIC_MODEL_DEFAULT,
     OPENAI_API_KEY,
     TRANSCRIBE_MODEL,
-    TWILIO_TEMPLATE_MARKET_NOTIFY_SID,
+    TEMPLATE_MARKET_NOTIFY,
     WHATSAPP_RECIPIENTS,
 )
 from finmate.podcasts.catalog import PODCASTS
@@ -232,10 +232,10 @@ def check_podcast_digests(messenger=None, now: Optional[dt.datetime] = None,
             messenger = WhatsAppMessenger()
         for phone in phones:
             try:
-                if TWILIO_TEMPLATE_MARKET_NOTIFY_SID:
+                if TEMPLATE_MARKET_NOTIFY:
                     from finmate.alerts.pending import queue_pending
                     queue_pending(phone, msg)
-                    ok = messenger.send_template(phone, TWILIO_TEMPLATE_MARKET_NOTIFY_SID,
+                    ok = messenger.send_template(phone, TEMPLATE_MARKET_NOTIFY,
                                                  {"1": f"Resumen de {meta['name']}"})
                 else:
                     ok = messenger.send_message(phone, msg)
