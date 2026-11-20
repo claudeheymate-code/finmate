@@ -105,3 +105,12 @@ def test_twilio_sigue_funcionando(anon, monkeypatch):
     monkeypatch.setattr(orch, "handle_message", lambda phone, text: "hola desde twilio")
     r = anon.post("/whatsapp/webhook", data={"Body": "hola", "From": "whatsapp:+56900000000"})
     assert r.status_code == 200 and "hola desde twilio" in r.get_data(as_text=True)
+
+
+def test_estado_fallido_queda_en_el_log(anon, captured, caplog):
+    st = {"object": "whatsapp_business_account", "entry": [{"changes": [{"value": {"statuses": [
+        {"id": "x", "status": "failed", "recipient_id": "56954161465",
+         "errors": [{"code": 131030, "title": "Recipient phone number not in allowed list"}]}]}}]}]}
+    with caplog.at_level("WARNING"):
+        assert anon.post("/whatsapp/webhook", json=st).status_code == 200
+    assert "131030" in caplog.text and "FALLÓ" in caplog.text
