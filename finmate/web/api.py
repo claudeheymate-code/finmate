@@ -77,7 +77,7 @@ def dev_login():
         return _err("deshabilitado", 404)
     phone = normalize_phone(_body().get("phone", ""))
     if not phone:
-        return _err("Número inválido. Usá el formato +56 9 1234 5678.")
+        return _err("Número inválido. Usa el formato +56 9 1234 5678.")
     user = repository.get_or_create_user(phone)
     login_user(user)
     return jsonify({"ok": True})
@@ -173,14 +173,14 @@ def portafolio_classify(symbol):
     if asset_class and asset_class not in portfolio_service.ASSET_CLASSES:
         return _err("Clase de activo inválida (Renta variable o Renta fija).")
     ok = repository.set_holding_classification(g.user.id, _symbol(symbol), asset_class, sector)
-    return jsonify({"ok": True}) if ok else _err("No tenés esa posición.", 404)
+    return jsonify({"ok": True}) if ok else _err("No tienes esa posición.", 404)
 
 
 @api_bp.delete("/portafolio/<symbol>")
 @api_login_required
 def portafolio_delete(symbol):
     ok = repository.remove_holding(g.user.id, _symbol(symbol))
-    return jsonify({"ok": True}) if ok else _err("No tenés esa posición.", 404)
+    return jsonify({"ok": True}) if ok else _err("No tienes esa posición.", 404)
 
 
 @api_bp.get("/watchlist")
@@ -297,7 +297,7 @@ def finanzas_crear():
         return _err("El monto tiene que ser mayor a cero.")
     resolved = finance_repo.resolve_category(g.user.id, category)
     if tipo == "gasto" and not resolved:
-        return _err("Elegí una categoría.")
+        return _err("Elige una categoría.")
     category = resolved or finance_repo.FALLBACK_CATEGORY
     date = None
     if b.get("date"):
@@ -465,9 +465,9 @@ def feedback_enviar():
     message = (b.get("message") or "").strip()
     rating = b.get("rating")
     if tipo not in fb.TIPOS:
-        return _err("Elegí de qué se trata (idea, problema, me gusta u otro).")
+        return _err("Elige de qué se trata (idea, problema, me gusta u otro).")
     if len(message) < 5:
-        return _err("Escribí un poco más para que podamos entenderte.")
+        return _err("Escribe un poco más para que podamos entenderte.")
     if len(message) > 2000:
         return _err("El mensaje es demasiado largo (máximo 2000 caracteres).")
     if rating is not None:
@@ -478,7 +478,7 @@ def feedback_enviar():
         if not 1 <= rating <= 5:
             return _err("La calificación va de 1 a 5.")
     if fb.rate_limited(g.user.id):
-        return _err("Ya mandaste varios mensajes en la última hora. Probá un poco más tarde.", 429)
+        return _err("Ya mandaste varios mensajes en la última hora. Intenta un poco más tarde.", 429)
     fb_id = fb.guardar_y_enviar(g.user.id, g.user.phone.replace("whatsapp:", ""), tipo, rating, message,
                                 bool(b.get("contact")))
     return jsonify({"ok": True, "id": fb_id}), 201
@@ -491,7 +491,7 @@ def chat():
 
     msg = (_body().get("message") or "").strip()
     if not msg:
-        return _err("Escribí una pregunta.")
+        return _err("Escribe una pregunta.")
     if len(msg) > 1000:
         return _err("La pregunta es demasiado larga (máximo 1000 caracteres).")
     reply = handle_message(g.user.phone, msg)
