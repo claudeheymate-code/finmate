@@ -321,6 +321,77 @@ celular). Sin desplegar todavía (Railway sigue pausado).
 - **Antes de desplegar:** cargar `FLASK_SECRET_KEY` en Railway. Pendiente: etapa 4 (login por
   código de WhatsApp), 5 (boletas con foto) y 6 (lanzamiento).
 
+## Cambios del 16 nov 2026 (noche) — subidos a GitHub, no desplegados en Railway
+
+- **Deslizar entre pestañas sin recargar:** las 5 pestañas viven en la misma
+  página (`templates/panel/_pane_*.html` + `base.html`); `initTabs` en
+  `panel.js` mueve un "riel" con el dedo y usa `history.pushState`.
+- **Barra de abajo se esconde al bajar y vuelve al subir** (`initAutoHideRail`).
+- **Sin zoom en el celular:** viewport `maximum-scale=1, user-scalable=no`,
+  `touch-action: pan-x pan-y`, bloqueo de pellizco/doble toque en JS y campos
+  a 16px (iOS hace zoom al tocar campos más chicos).
+- **Gastos:** categorías por defecto Comidas, Carretes, Asados, Regalos,
+  Suscripciones, Polola, Copete, Bets (+ "Otros" fijo). Cada usuario puede
+  sacar las por defecto (tabla nueva `hidden_categories`) y agregar propias
+  (`budget_categories` con `user_id`), solo para su cuenta — en el panel
+  ("Mis categorías") y por WhatsApp (tool `manage_expense_categories`).
+  Gastos en categorías sacadas siguen apareciendo en los totales.
+  La pestaña Gastos ahora tiene torta del mes + torta del año (YTD) y una
+  tabla "Este mes vs. Lst Mth" por categoría (`/api/finanzas/resumen` trae
+  `anio`).
+- **Feedback:** la tarjeta de abajo quedó en una sola frase.
+- **Demo pública:** se regenera con `python scripts/build_demo.py` (no toca
+  `demo-api.js`, que tiene los datos de ejemplo; su clave de localStorage es
+  `finmate-demo-v2`).
+- **Ideas de feedback:** se leen desde claude.heymate@gmail.com (correos de
+  FormSubmit). Última revisión: 16 nov 2026 — implementadas las 3 ideas
+  (tabla comparativa + YTD, barra que se esconde, texto de feedback).
+  Pendiente de conversar: botón/íconos de WhatsApp. Revisión 18 nov:
+  idioma (sin voseo + selector inglés) y fondo blanco, ver sección abajo.
+- **Ojo:** hay un servicio "finmate" en Render que falla al compilar con cada
+  cambio (66 correos "build failed"). No es Railway; Joaco debería pausarlo
+  o borrarlo si no lo usa.
+
+## Cambios del 18 nov 2026 — tema blanco, ícono nuevo e idioma (no subidos aún)
+
+- **Tema blanco** en el panel y la demo: `panel.css` con fondo #FFFFFF, tarjetas
+  blancas con borde #E3E8EF + sombra suave, texto azul marino, subidas #00805F y
+  bajadas #C2410C (contraste sobre blanco), sin "orbs". Pestaña activa azul con
+  ícono blanco. `theme-color`/manifest en #FFFFFF y barra de estado iOS "default".
+- **Ícono de pantalla de inicio**: fondo blanco, F azul, línea verde, generado
+  desde `docs/marca/finmate-icono.png` (todos los tamaños + maskable). Logo del
+  encabezado: `finmate-icon.png` (se borró `finmate-icon-white.png`). Quien ya
+  lo tenía en el celular debe quitarlo y volver a agregarlo.
+- **Idioma**: tarjeta "Idioma de la app" (Español/English) en Ajustes.
+  `static/panel/i18n.js` (se carga en `<head>` vía `_app_head.html`) traduce en
+  el navegador textos y atributos, incluso lo que agrega `panel.js`
+  (MutationObserver). Textos nuevos → agregarlos a `DICT` o `RULES` en
+  `i18n.js`. Preferencia por dispositivo (localStorage `finmate-lang`). El bot
+  sigue en español. Montos mantienen formato chileno.
+- **Sin voseo** en todo el panel y mensajes de `web/api.py` (tú, español
+  neutro). El bot de WhatsApp (orchestrator + tools) **todavía** usa voseo.
+- Demo: `scripts/build_demo.py` ahora copia `i18n.js`, íconos y manifest; el
+  aviso "versión de prueba" ya no tapa el botón de entrar.
+- Tests: `tests/test_idioma_tema.py`. 73/73 pasan.
+
+## Tareas pendientes (anotadas 16 nov 2026)
+
+- **Rentabilidad de fondos chilenos (CMF):** prueba exitosa el 16 nov 2026 desde
+  el computador de Joaco con LarrainVial Enfoque (RUN 8723-8) y Monetario (RUN
+  8177-9). Fuente: export Excel de la CMF,
+  `fm.fm_bpr_dia.php?admins=<RUT>&tipofondo=0&moneda=0&dia_select=<DIA>&mes_peri=<MES>&anio_peri=<AÑO>&lang=es&out=excel`
+  (`dia_select` = día del mes; publica con 1 día de retraso; si no hay datos
+  devuelve HTML "No se encuentran datos"). Columnas: nombre, RUN, tipo, admin,
+  serie, moneda, patrimonio, partícipes, valor cuota. Códigos: LarrainVial AM
+  96955500, Banchile 96767630, Scotia AGF 96634320. Falta: (1) confirmar que la
+  CMF responde desde Railway (desde la nube de Claude dio 403); (2) módulo con
+  descarga diaria, rentabilidad 1d (vs último día hábil)/1m/YTD/12m, sección
+  "Fondos" en el panel y tool del bot; (3) preguntar a Joaco su serie (A o APV).
+  Morningstar descartado (solo enterprise); Fintual pide token para valores diarios.
+- **Login real del panel con código por WhatsApp ("etapa 4"):** no está hecho.
+  Hoy solo existe `dev-login` (entra con el número, sin verificar) — nunca
+  activarlo en producción.
+
 ## Arquitectura
 
 ```
