@@ -24,5 +24,5 @@ def test_paginas_con_sesion(client):
 
 
 def test_archivos_estaticos(client):
-    for f in ("panel.css", "panel.js", "finmate-icon-white.png"):
+    for f in ("panel.css", "panel.js", "i18n.js", "finmate-icon.png"):
         assert client.get("/panel/static/" + f).status_code == 200

@@ -103,7 +103,7 @@ def test_iconos_para_pantalla_de_inicio(client, app):
     assert data["name"] == "Finmate" and data["display"] == "standalone"
     assert data["start_url"].startswith(data["scope"])  # si no, iOS abre Safari
     assert 'apple-mobile-web-app-capable" content="yes"' in html
-    assert 'status-bar-style" content="black-translucent"' in html and "viewport-fit=cover" in acceso
+    assert 'status-bar-style" content="default"' in html and "viewport-fit=cover" in acceso
     for icon in data["icons"]:
         assert app.test_client().get(icon["src"]).status_code == 200, icon["src"]
 
