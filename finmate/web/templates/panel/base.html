@@ -13,11 +13,11 @@
 <div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
 <div class="shell">
   <header class="topbar glass">
-    <a class="brand" href="{{ url_for('panel.resumen') }}"><img src="{{ url_for('panel.static', filename='finmate-icon-white.png') }}" alt=""><span>finmate</span></a>
+    <a class="brand" href="{{ url_for('panel.resumen') }}"><img src="{{ url_for('panel.static', filename='finmate-icon.png') }}" alt=""><span>finmate</span></a>
     <form class="ask" id="ask-form" autocomplete="off">
       <span class="up" style="display:flex">{{ icon('spark', 18) }}</span>
-      <label for="ask-input" class="sr-only">Preguntale a Finmate</label>
-      <input id="ask-input" type="text" maxlength="1000" placeholder="Preguntale a Finmate… ej: ¿por qué bajó Apple hoy?">
+      <label for="ask-input" class="sr-only">Pregúntale a Finmate</label>
+      <input id="ask-input" type="text" maxlength="1000" placeholder="Pregúntale a Finmate… ej: ¿por qué bajó Apple hoy?">
       <button class="icon-btn primary" type="submit" aria-label="Enviar pregunta">{{ icon('send', 16) }}</button>
     </form>
     <div style="display:flex;align-items:center;gap:10px">

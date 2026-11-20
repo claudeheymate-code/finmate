@@ -11,9 +11,9 @@
 <div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
 <div class="login">
   <div style="flex:1 1 420px;max-width:520px;min-width:0">
-    <div class="brand"><img src="{{ url_for('panel.static', filename='finmate-icon-white.png') }}" alt="" style="width:56px;height:56px"><span style="font-size:44px">finmate</span></div>
+    <div class="brand"><img src="{{ url_for('panel.static', filename='finmate-icon.png') }}" alt="" style="width:56px;height:56px"><span style="font-size:44px">finmate</span></div>
     <h1 style="margin-top:28px;font-size:44px">Tu asistente financiero, ahora también en la web</h1>
-    <p class="muted" style="margin-top:18px;font-size:17px;line-height:1.6">Mirá tu portafolio, tus gastos y tus alertas de un vistazo. Lo que cambies acá se refleja en tu chat de WhatsApp.</p>
+    <p class="muted" style="margin-top:18px;font-size:17px;line-height:1.6">Mira tu portafolio, tus gastos y tus alertas de un vistazo. Lo que cambies acá se refleja en tu chat de WhatsApp.</p>
   </div>
   <section class="card glass-strong" style="flex:0 1 420px;padding:32px;border-radius:28px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="up" style="display:flex">{{ icon('lock') }}</span><h2 style="font-size:24px">Entrar</h2></div>
@@ -25,7 +25,7 @@
       <div id="login-msg"></div>
     </form>
     {% else %}
-    <p class="faint" style="line-height:1.6">El acceso con un código que te llega por WhatsApp se está terminando. Mientras tanto, seguí usando Finmate desde el chat.</p>
+    <p class="faint" style="line-height:1.6">El acceso con un código que te llega por WhatsApp se está terminando. Mientras tanto, sigue usando Finmate desde el chat.</p>
     {% endif %}
   </section>
 </div>

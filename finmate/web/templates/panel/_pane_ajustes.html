@@ -1,5 +1,11 @@
 {# Contenido de la pestaña "ajustes". Se incluye en todas las páginas del panel (ver base.html). #}
 <div class="page-head"><div><p class="muted small strong">Ajustes</p><h1>Tu Finmate, a tu manera</h1></div></div>
+<section class="card glass lang-card" id="idioma"><div class="card-head"><div><h2>Idioma de la app</h2><p>Cómo ves los textos del panel en este dispositivo</p></div>
+  <div class="chips" role="group" aria-label="Idioma / Language" data-no-i18n>
+    <button type="button" class="chip solid" data-lang="es" aria-pressed="true">Español</button>
+    <button type="button" class="chip solid" data-lang="en" aria-pressed="false">English</button>
+  </div></div>
+  <p class="faint small" style="margin-top:10px">El bot de WhatsApp sigue respondiendo en español.</p></section>
 <div class="row">
   <section class="card glass"><h2>Personalidad del bot</h2><p class="faint small" style="margin-top:4px">Cambia cómo te habla, nunca la calidad del análisis</p>
     <form id="p-form" style="display:flex;flex-direction:column;gap:22px;margin-top:20px">
@@ -19,7 +25,7 @@
     <div class="chat"><p class="bubble me">¿cómo va mi portafolio hoy?</p><p class="bubble bot" id="p-preview"></p></div></section>
 </div>
 <div class="row">
-  <section class="card glass"><h2>Lo que seguís</h2><p class="faint small" style="margin-top:4px">Temas de noticias e indicadores económicos</p>
+  <section class="card glass"><h2>Lo que sigues</h2><p class="faint small" style="margin-top:4px">Temas de noticias e indicadores económicos</p>
     <p class="label-sm" style="margin-top:18px">Temas de noticias</p><div class="chips" id="s-temas" style="margin-top:8px"></div>
     <p class="label-sm" style="margin-top:18px">Indicadores</p><div class="chips" id="s-inds" style="margin-top:8px"></div>
     <form class="inline" id="s-form">
