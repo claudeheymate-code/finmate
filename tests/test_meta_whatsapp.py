@@ -114,3 +114,23 @@ def test_estado_fallido_queda_en_el_log(anon, captured, caplog):
     with caplog.at_level("WARNING"):
         assert anon.post("/whatsapp/webhook", json=st).status_code == 200
     assert "131030" in caplog.text and "FALLÓ" in caplog.text
+
+
+def test_revision_al_arrancar(monkeypatch, caplog):
+    monkeypatch.setattr(meta_cloud, "META_WHATSAPP_TOKEN", "tok")
+    monkeypatch.setattr(meta_cloud, "META_PHONE_NUMBER_ID", "123")
+    monkeypatch.setattr(meta_cloud, "META_WABA_ID", "999")
+    calls = []
+
+    class R:
+        def __init__(self, data):
+            self.status_code, self.text, self._d = 200, "{}", data
+        def json(self):
+            return self._d
+
+    monkeypatch.setattr(meta_cloud.httpx, "get", lambda url, **k: calls.append(("GET", url)) or R({"display_phone_number": "+1 555", "verified_name": "Finmate"}))
+    monkeypatch.setattr(meta_cloud.httpx, "post", lambda url, **k: calls.append(("POST", url)) or R({"success": True}))
+    with caplog.at_level("INFO"):
+        meta_cloud.startup_check()
+    assert ("POST", "https://graph.facebook.com/v25.0/999/subscribed_apps") in calls
+    assert "token OK" in caplog.text and "suscrita" in caplog.text
