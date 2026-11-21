@@ -24,6 +24,7 @@ from config.settings import (
     META_GRAPH_VERSION,
     META_PHONE_NUMBER_ID,
     META_TEMPLATE_LANG,
+    META_WABA_ID,
     META_WHATSAPP_TOKEN,
 )
 
@@ -56,7 +57,8 @@ def _post(payload: dict) -> bool:
         return False
     if r.status_code >= 400:
         # El cuerpo trae el motivo (token vencido, número no permitido, plantilla no aprobada...)
-        logger.error(f"Meta: envío rechazado ({r.status_code}) a {payload.get('to')}: {r.text[:500]}")
+        destino = payload.get("to") or ("marcar como leído" if payload.get("status") == "read" else "?")
+        logger.error(f"Meta: envío rechazado ({r.status_code}) a {destino}: {r.text[:500]}")
         return False
     try:
         msg_id = (r.json().get("messages") or [{}])[0].get("id", "?")
@@ -155,3 +157,37 @@ def parse_statuses(payload: dict) -> list[dict]:
                                for e in errs],
                 })
     return out
+
+
+def startup_check() -> None:
+    """Al arrancar: confirma que el token sirve y deja en el log el número y
+    su estado; si hay META_WABA_ID, suscribe la app a esa cuenta de WhatsApp
+    (sin esa suscripción Meta no avisa de los mensajes entrantes). Nunca
+    lanza errores: solo informa en el log."""
+    if not is_configured():
+        return
+    headers = {"Authorization": f"Bearer {META_WHATSAPP_TOKEN}"}
+    base = f"{GRAPH_BASE}/{META_GRAPH_VERSION}"
+    try:
+        r = httpx.get(f"{base}/{META_PHONE_NUMBER_ID}", headers=headers, timeout=15,
+                      params={"fields": "display_phone_number,verified_name,code_verification_status,quality_rating"})
+        if r.status_code >= 400:
+            logger.error(f"Meta (arranque): el token o el número no sirven ({r.status_code}): {r.text[:300]}")
+            return
+        d = r.json()
+        logger.info(f"Meta (arranque): token OK · número {d.get('display_phone_number')} "
+                    f"'{d.get('verified_name')}' · verificación {d.get('code_verification_status')} · calidad {d.get('quality_rating')}")
+    except Exception as e:
+        logger.error(f"Meta (arranque): no se pudo consultar el número: {e}")
+        return
+    if not META_WABA_ID:
+        logger.info("Meta (arranque): sin META_WABA_ID, no se revisa la suscripción de la cuenta de WhatsApp.")
+        return
+    try:
+        r = httpx.post(f"{base}/{META_WABA_ID}/subscribed_apps", headers=headers, timeout=15)
+        if r.status_code >= 400:
+            logger.error(f"Meta (arranque): no se pudo suscribir la app a la cuenta {META_WABA_ID} ({r.status_code}): {r.text[:300]}")
+        else:
+            logger.info(f"Meta (arranque): app suscrita a la cuenta de WhatsApp {META_WABA_ID} (avisos de mensajes activos).")
+    except Exception as e:
+        logger.error(f"Meta (arranque): error suscribiendo la cuenta de WhatsApp: {e}")
