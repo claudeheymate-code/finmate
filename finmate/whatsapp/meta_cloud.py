@@ -127,6 +127,8 @@ def parse_incoming(payload: dict) -> list[dict]:
     for entry in payload.get("entry") or []:
         for change in entry.get("changes") or []:
             value = change.get("value") or {}
+            names = {c.get("wa_id"): ((c.get("profile") or {}).get("name") or "").strip()
+                     for c in value.get("contacts") or []}
             for m in value.get("messages") or []:
                 mtype = m.get("type", "")
                 text = ""
@@ -137,7 +139,8 @@ def parse_incoming(payload: dict) -> list[dict]:
                 elif mtype == "interactive":
                     it = m.get("interactive") or {}
                     text = ((it.get("button_reply") or it.get("list_reply") or {}).get("title", ""))
-                out.append({"id": m.get("id", ""), "from": m.get("from", ""), "type": mtype, "text": text.strip()})
+                out.append({"id": m.get("id", ""), "from": m.get("from", ""), "type": mtype,
+                            "text": text.strip(), "name": names.get(m.get("from"), "")})
     return out
 
 
