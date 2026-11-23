@@ -179,6 +179,8 @@ def _all_users_with_settings():
         )
         out = []
         for user, ns in rows:
+            if (getattr(user, "access_status", None) or "approved") != "approved":
+                continue  # sin acceso aprobado no recibe avisos
             d = _defaults()
             if ns is not None:
                 d["weekly_summary_enabled"] = bool(ns.weekly_summary_enabled)

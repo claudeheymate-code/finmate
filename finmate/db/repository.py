@@ -19,12 +19,14 @@ logger = logging.getLogger(__name__)
 MAX_HISTORY_TURNS = 12
 
 
-def get_or_create_user(phone: str) -> User:
+def get_or_create_user(phone: str, new_status: Optional[str] = None) -> User:
+    """`new_status` se usa solo si el usuario no existía (p. ej. "pending"
+    cuando escribe por primera vez al bot y el acceso requiere aprobación)."""
     session = get_session()
     try:
         user = session.query(User).filter_by(phone=phone).one_or_none()
         if user is None:
-            user = User(phone=phone)
+            user = User(phone=phone, access_status=new_status)
             session.add(user)
             session.commit()
             session.refresh(user)
@@ -298,5 +300,25 @@ def find_user_by_phone(phone: str) -> Optional[User]:
     session = get_session()
     try:
         return session.query(User).filter_by(phone=phone).one_or_none()
+    finally:
+        session.close()
+
+
+def is_approved(user: User) -> bool:
+    return (getattr(user, "access_status", None) or "approved") == "approved"
+
+
+def set_access_status(user_id: int, status: str) -> Optional[User]:
+    if status not in ("pending", "approved", "denied"):
+        raise ValueError("Estado inválido")
+    session = get_session()
+    try:
+        user = session.get(User, user_id)
+        if user is None:
+            return None
+        user.access_status = status
+        session.commit()
+        session.refresh(user)
+        return user
     finally:
         session.close()

@@ -43,6 +43,9 @@ class User(Base):
     # Número de WhatsApp tal como lo entrega Twilio, ej: "whatsapp:+56912345678"
     phone = Column(String(32), unique=True, nullable=False, index=True)
     name = Column(String(120), nullable=True)
+    # Acceso (panel admin → Inbox): "pending" | "approved" | "denied".
+    # None = usuario de antes de que existiera la aprobación → aprobado.
+    access_status = Column(String(12), nullable=True)
     timezone = Column(String(64), nullable=False, default="America/Santiago")
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
@@ -261,6 +264,8 @@ class Feedback(Base):
     message = Column(Text, nullable=False)
     contact_ok = Column(Boolean, nullable=False, default=False)
     emailed = Column(Boolean, nullable=False, default=False)
+    status = Column(String(12), nullable=True)      # panel admin: nuevo | en_curso | resuelto | descartado
+    admin_note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
 
@@ -325,6 +330,8 @@ def _ensure_engine() -> None:
 # perder datos). Cuando esto crezca, conviene pasar a Alembic.
 _ADDED_COLUMNS = {
     "portfolio_holdings": {"asset_class": "VARCHAR(30)", "sector": "VARCHAR(60)"},
+    "users": {"access_status": "VARCHAR(12)"},
+    "feedback": {"status": "VARCHAR(12)", "admin_note": "TEXT"},
     "notification_settings": {
         "news_max_per_day": "INTEGER",
         "earnings_alerts": "VARCHAR(10)",
