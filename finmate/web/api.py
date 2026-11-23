@@ -95,6 +95,8 @@ def request_code():
     user = repository.find_user_by_phone(phone)
     if user is None:
         return _err("Ese número todavía no usa Finmate. Escríbele \"hola\" a Finmate por WhatsApp y vuelve a intentar.", 404)
+    if not repository.is_approved(user):
+        return _err("Tu acceso a Finmate todavía no está aprobado. Te avisaremos por WhatsApp.", 403)
     code = login_codes.create_code(phone)
     if code is None:
         return _err("Ya te mandamos un código. Espera un minuto antes de pedir otro.", 429)

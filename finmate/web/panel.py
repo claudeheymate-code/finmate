@@ -77,7 +77,9 @@ def entrar():
         user = s.get(User, uid)
     finally:
         s.close()
-    if user is None:
+    from finmate.db.repository import is_approved
+
+    if user is None or not is_approved(user):
         return redirect(url_for("panel.acceso"))
     login_user(user)
     return redirect(url_for("panel.resumen"))
