@@ -1,7 +1,7 @@
 """API JSON del panel web (/api/*).
 
 Cada endpoint reutiliza las mismas funciones de `finmate/db/` y
-`finmate/services/` que usan las tools del bot, así que lo que se cambia acá
+`finmate/services/` que usan las tools del bot, así que lo que se cambia aquí
 lo ve el bot en el próximo mensaje y al revés. Todas las consultas se filtran
 por el usuario de la sesión: nadie ve datos de otro.
 """
