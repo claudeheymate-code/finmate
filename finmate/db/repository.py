@@ -292,3 +292,11 @@ def set_user_name_if_empty(user_id: int, name: str) -> None:
             session.commit()
     finally:
         session.close()
+
+
+def find_user_by_phone(phone: str) -> Optional[User]:
+    session = get_session()
+    try:
+        return session.query(User).filter_by(phone=phone).one_or_none()
+    finally:
+        session.close()
