@@ -247,7 +247,7 @@ def get_all_watchlist_entries() -> List[Tuple[int, str, str]]:
     watchlist, sin importar a quién pertenece cada ítem. Usado por el chequeo
     periódico de alertas de watchlist (ver finmate/alerts/watchlist_alerts.py),
     separado a propósito de `get_watchlist` (que es por-usuario, para cuando
-    el agente responde "mostrame mi watchlist" por chat)."""
+    el agente responde "muéstrame mi watchlist" por chat)."""
     session = get_session()
     try:
         rows = (

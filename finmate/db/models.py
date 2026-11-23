@@ -291,8 +291,8 @@ def _ensure_engine() -> None:
     if _engine is None:
         if not DATABASE_URL:
             raise RuntimeError(
-                "DATABASE_URL no está configurada — provisioná Postgres "
-                "(ver plan, decisión 02) y agregá la variable en Railway."
+                "DATABASE_URL no está configurada — provisiona Postgres "
+                "(ver plan, decisión 02) y agrega la variable en Railway."
             )
         if DATABASE_URL.startswith("sqlite"):
             _engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
