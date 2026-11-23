@@ -14,6 +14,15 @@ logging.basicConfig(
 
 from main import app, start_scheduler
 
+# Cargar de entrada (en el hilo principal) lo que usan las respuestas de
+# WhatsApp y los procesos de fondo. Si se importan por primera vez desde
+# varios hilos a la vez, los imports pueden trabarse entre sí.
+import finmate.agent.orchestrator  # noqa: E402,F401
+import finmate.whatsapp.messenger  # noqa: E402,F401
+import finmate.alerts.watchlist_alerts  # noqa: E402,F401
+import finmate.alerts.news_alerts  # noqa: E402,F401
+import finmate.services.quotes  # noqa: E402,F401
+
 # Iniciar scheduler al cargar el módulo. Sin --preload: corre dentro del
 # único worker, así la base y los clientes HTTP no se heredan de un fork.
 scheduler = start_scheduler()
