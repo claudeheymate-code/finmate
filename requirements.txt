@@ -36,3 +36,7 @@ redis==5.2.1
 
 # --- Etapa B: precios en tiempo real (WebSocket de Finnhub) ---
 websocket-client==1.8.0
+
+# --- Noticias con contenido completo (texto de los artículos) ---
+trafilatura==2.0.0
+lxml_html_clean==0.4.6
