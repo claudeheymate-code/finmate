@@ -50,6 +50,18 @@ def is_configured() -> bool:
 
 
 def _post(payload: dict) -> bool:
+    ok = _do_post(payload)
+    try:
+        from finmate.services.usage import record_whatsapp
+
+        kind = "read" if payload.get("status") == "read" else payload.get("type", "text")
+        record_whatsapp(kind, ok)
+    except Exception:
+        pass
+    return ok
+
+
+def _do_post(payload: dict) -> bool:
     url = f"{GRAPH_BASE}/{META_GRAPH_VERSION}/{META_PHONE_NUMBER_ID}/messages"
     try:
         r = httpx.post(url, json=payload, timeout=15,
@@ -66,7 +78,8 @@ def _post(payload: dict) -> bool:
         msg_id = (r.json().get("messages") or [{}])[0].get("id", "?")
     except Exception:
         msg_id = "?"
-    logger.info(f"Meta: mensaje enviado a {payload.get('to')} (id {msg_id})")
+    if payload.get("status") != "read":
+        logger.info(f"Meta: mensaje enviado a {payload.get('to')} (id {msg_id})")
     return True
 
 
