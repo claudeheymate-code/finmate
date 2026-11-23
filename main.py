@@ -100,6 +100,10 @@ from finmate.web.panel import panel_bp
 app.register_blueprint(api_bp, url_prefix="/api")
 app.register_blueprint(panel_bp, url_prefix="/panel")
 
+from finmate.web.admin import admin_bp  # noqa: E402
+
+app.register_blueprint(admin_bp, url_prefix="/admin")
+
 
 @app.route("/")
 def index():
