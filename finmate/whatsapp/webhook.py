@@ -312,7 +312,8 @@ def _answer_meta(msg: dict) -> None:
             reply = "Por ahora solo puedo leer mensajes de texto. Escríbeme tu pregunta y te respondo."
         else:
             reply = handle_message(phone, msg["text"])
-        WhatsAppMessenger().send_message(phone, reply)
+        ok = WhatsAppMessenger().send_message(phone, reply)
+        logger.info(f"Respuesta a {msg['from']} {'enviada' if ok else 'NO enviada'} ({len(reply)} caracteres)")
     except Exception as e:
         logger.error(f"Error respondiendo a {phone} por Meta: {e}", exc_info=True)
 
