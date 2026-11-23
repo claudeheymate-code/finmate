@@ -166,10 +166,10 @@
   let USERS = [], UFILTER = "all";
   function renderUsers() {
     const q = ($("#us-q").value || "").toLowerCase();
-    const rows = USERS.filter((u) => (UFILTER === "all" || u.status === UFILTER) && (!q || (u.name + " " + u.phone).toLowerCase().includes(q)));
+    const rows = USERS.filter((u) => (UFILTER === "all" || u.status === UFILTER) && (!q || (u.name + " " + u.phone + " " + (u.email || "")).toLowerCase().includes(q)));
     const tb = $("#us-rows");
     tb.innerHTML = rows.length ? rows.map((u) => `<tr>
-      <td><p class="cell-title">${esc(u.name || "Sin nombre")}</p></td>
+      <td><p class="cell-title">${esc(u.name || "Sin nombre")}</p>${u.email ? `<p class="cell-sub"><a href="mailto:${esc(u.email)}">${esc(u.email)}</a></p>` : '<p class="cell-sub faint">Sin correo</p>'}</td>
       <td class="nowrap">+${esc(u.phone.replace(/^\+/, ""))}</td>
       <td class="nowrap">${fmtDate(u.created_at)}</td>
       <td class="nowrap" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}</td>
@@ -222,7 +222,8 @@
     if (!reqs.length) { ul.innerHTML = '<li class="empty">No hay solicitudes. Cuando un número nuevo le escriba a Finmate, aparecerá aquí.</li>'; return; }
     const item = (r) => `<li><div class="inbox-item">
         <p class="strong">${esc(r.name || "Sin nombre")} <span class="faint">· +${esc(r.phone.replace(/^\+/, ""))}</span></p>
-        <div class="meta">${stPill(r.status)}<span>Escribió por primera vez ${fmtDate(r.created_at, true)}</span></div>
+        ${r.email ? `<p class="small"><a href="mailto:${esc(r.email)}">${esc(r.email)}</a></p>` : ""}
+        <div class="meta">${stPill(r.status)}${r.registered ? "" : '<span class="st muted">Aún no da nombre y correo</span>'}<span>Escribió por primera vez ${fmtDate(r.created_at, true)}</span></div>
         ${(r.messages || []).map((m) => `<div class="quote">${esc(m.text)}</div>`).join("")}
       </div><div class="row-actions">${actionButtons(r)}</div></li>`;
     ul.innerHTML = pend.map(item).join("") + (den.length ? `<li class="faint small" style="border-top:0;padding-top:20px">Rechazados (${den.length})</li>` + den.map(item).join("") : "");
