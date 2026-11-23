@@ -83,6 +83,47 @@ def dev_login():
     return jsonify({"ok": True})
 
 
+@api_bp.post("/auth/request-code")
+def request_code():
+    """Manda un código de 6 dígitos al WhatsApp del usuario."""
+    from finmate.web import login_codes
+    from finmate.whatsapp.messenger import WhatsAppMessenger
+
+    phone = normalize_phone(_body().get("phone", ""))
+    if not phone:
+        return _err("Número inválido. Usa el formato +56 9 1234 5678.")
+    user = repository.find_user_by_phone(phone)
+    if user is None:
+        return _err("Ese número todavía no usa Finmate. Escríbele \"hola\" a Finmate por WhatsApp y vuelve a intentar.", 404)
+    code = login_codes.create_code(phone)
+    if code is None:
+        return _err("Ya te mandamos un código. Espera un minuto antes de pedir otro.", 429)
+    ok = WhatsAppMessenger().send_message(
+        phone, f"Tu código para entrar al panel de Finmate es *{code}*. Vence en 10 minutos. Si no lo pediste, ignora este mensaje.")
+    if not ok:
+        return _err("No pude mandarte el código. Escríbele \"hola\" a Finmate por WhatsApp (WhatsApp solo deja "
+                    "mandarte mensajes si le escribiste en las últimas 24 horas) y vuelve a intentar.", 502)
+    return jsonify({"ok": True, "phone": mask_phone(phone)})
+
+
+@api_bp.post("/auth/verify-code")
+def verify_code():
+    from finmate.web import login_codes
+
+    b = _body()
+    phone = normalize_phone(b.get("phone", ""))
+    code = str(b.get("code", "")).strip()
+    if not phone or not code.isdigit() or len(code) != 6:
+        return _err("Escribe el código de 6 dígitos que te llegó por WhatsApp.")
+    if not login_codes.verify_code(phone, code):
+        return _err("Código incorrecto o vencido. Pide uno nuevo.", 401)
+    user = repository.find_user_by_phone(phone)
+    if user is None:
+        return _err("No encontré tu cuenta.", 404)
+    login_user(user)
+    return jsonify({"ok": True})
+
+
 @api_bp.post("/auth/logout")
 def logout():
     logout_user()
