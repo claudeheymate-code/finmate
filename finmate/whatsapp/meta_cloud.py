@@ -24,6 +24,7 @@ from config.settings import (
     META_GRAPH_VERSION,
     META_PHONE_NUMBER_ID,
     META_TEMPLATE_LANG,
+    META_TEST_RECIPIENT,
     META_WABA_ID,
     META_WHATSAPP_TOKEN,
 )
@@ -180,6 +181,9 @@ def startup_check() -> None:
     except Exception as e:
         logger.error(f"Meta (arranque): no se pudo consultar el número: {e}")
         return
+    if META_TEST_RECIPIENT:
+        ok = send_template(META_TEST_RECIPIENT, "hello_world", None, lang="en_US")
+        logger.info(f"Meta (arranque): mensaje de prueba hello_world a {to_meta(META_TEST_RECIPIENT)}: {'enviado' if ok else 'falló (ver error arriba)'}")
     if not META_WABA_ID:
         logger.info("Meta (arranque): sin META_WABA_ID, no se revisa la suscripción de la cuenta de WhatsApp.")
         return
