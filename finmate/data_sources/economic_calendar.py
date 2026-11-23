@@ -51,5 +51,5 @@ def format_catalog_for_whatsapp() -> str:
     for item in cl_items:
         lines.append(f"  • `{item['code']}` — {item['name']} ({item['freq']})")
     lines.append("")
-    lines.append("Decime 'seguime el CPI_US' para recibir avisos cuando se publique.")
+    lines.append("Dime 'seguime el CPI_US' para recibir avisos cuando se publique.")
     return "\n".join(lines)
