@@ -1,0 +1,319 @@
+/* Finmate — panel de administrador. */
+(function () {
+  "use strict";
+  const $ = (s, el) => (el || document).querySelector(s);
+  const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+  const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const box = (cls, msg) => `<div class="${cls}">${esc(msg)}</div>`;
+  const okMsg = (msg) => `<span class="up small">${esc(msg)}</span>`;
+  const page = document.body.dataset.page || "";
+
+  async function api(method, path, body) {
+    const opts = { method, headers: { "X-Finmate": "1" }, credentials: "same-origin" };
+    if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    const r = await fetch("/admin/api" + path, opts);
+    if (r.status === 401 && page !== "admin-login") { location.href = "/admin/login"; throw new Error("no_autenticado"); }
+    let data = {};
+    try { data = await r.json(); } catch (e) { /* sin cuerpo */ }
+    if (!r.ok) throw new Error(data.error || ("Error " + r.status));
+    return data;
+  }
+
+  const fmtDate = (iso, withTime) => {
+    if (!iso) return "—";
+    const d = new Date(iso + (iso.endsWith("Z") || iso.includes("+") ? "" : "Z"));
+    const opts = withTime ? { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short", year: "numeric" };
+    return d.toLocaleString("es-CL", opts);
+  };
+  const ago = (iso) => {
+    if (!iso) return "nunca";
+    const d = new Date(iso + (iso.endsWith("Z") || iso.includes("+") ? "" : "Z"));
+    const m = Math.round((Date.now() - d.getTime()) / 60000);
+    if (m < 1) return "recién"; if (m < 60) return `hace ${m} min`;
+    const h = Math.round(m / 60); if (h < 24) return `hace ${h} h`;
+    const days = Math.round(h / 24); return days < 30 ? `hace ${days} d` : fmtDate(iso);
+  };
+  const money = (v, cur) => {
+    if (v == null) return "—";
+    if (cur === "CLP") return "$" + Math.round(v).toLocaleString("es-CL") + " CLP";
+    return "US$" + Number(v).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: v < 1 && v > 0 ? 4 : 2 });
+  };
+  const num = (v) => (v == null ? "—" : Number(v).toLocaleString("es-CL"));
+  const STATUS = { approved: ["ok", "Con acceso"], pending: ["wait", "Pendiente"], denied: ["no", "Rechazado"] };
+  const stPill = (s) => { const [c, t] = STATUS[s] || ["muted", s]; return `<span class="st ${c}">${t}</span>`; };
+
+  // ---------- Común ----------
+  function initCommon() {
+    const out = $("#logout");
+    if (out) out.addEventListener("click", async () => { try { await api("POST", "/logout"); } catch (e) {} location.href = "/admin/login"; });
+    const badge = $("#inbox-badge");
+    if (badge) api("GET", "/resumen").then((d) => {
+      const n = ((d.users || {}).pending || 0) + (d.feedback_new || 0);
+      if (n > 0) { badge.textContent = n > 99 ? "99+" : n; badge.hidden = false; }
+      if (page === "admin-costos") renderCostos(d);
+    }).catch(() => {});
+  }
+
+  // ---------- Login ----------
+  function pageLogin() {
+    const f = $("#admin-dev-login"); if (!f) return;
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try { await api("POST", "/dev-login", { email: $("#admin-email").value }); location.href = "/admin/"; }
+      catch (err) { $("#login-msg").innerHTML = box("error-box", err.message); }
+    });
+  }
+
+  // ---------- Costos ----------
+  let SUBS = [];
+  function renderCostos(d) {
+    SUBS = d.subscriptions || [];
+    const fx = d.monthly_fixed || {};
+    $("#st-fixed").textContent = money(fx.USD, "USD");
+    $("#st-fixed-sub").textContent = fx.CLP ? "+ " + money(fx.CLP, "CLP") + " · sin contar prepagos ni uso" : "Sin contar prepagos ni consumo por uso";
+    const u = d.usage || {};
+    $("#st-claude").textContent = money(u.claude_cost_usd, "USD");
+    const calls = (u.claude || []).reduce((a, m) => a + (m.calls || 0), 0);
+    $("#st-claude-sub").textContent = `${num(calls)} respuestas del modelo${u.claude_cost_complete === false ? " · falta precio de algún modelo" : ""}`;
+    const wa = u.whatsapp || {};
+    $("#st-wa").textContent = num((wa.text || 0) + (wa.template || 0)) + " msj";
+    $("#st-wa-sub").textContent = `${num(wa.template || 0)} con plantilla (se cobran)${wa.cost_usd != null ? " · " + money(wa.cost_usd, "USD") : ""}`;
+    const us = d.users || {};
+    $("#st-users").textContent = num(us.approved);
+    $("#st-users-sub").textContent = `${num(us.active_7d)} activos en 7 días · ${num(us.pending)} pendientes`;
+    renderSubs(d.monthly_fixed);
+    renderUsage(u);
+  }
+
+  function renderSubs() {
+    const tb = $("#sub-rows"); if (!tb) return;
+    if (!SUBS.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">No hay suscripciones. Agrega la primera.</td></tr>'; return; }
+    tb.innerHTML = SUBS.map((s) => `<tr class="clickable" data-id="${esc(s.id)}">
+      <td><p class="cell-title">${esc(s.name)}${s.essential ? '<span class="ess">esencial</span>' : ""}</p><p class="cell-sub">${esc(s.detail)}</p></td>
+      <td class="nowrap">${esc(s.cycle)}</td>
+      <td class="r">${s.cycle === "gratis" ? "Gratis" : money(s.cost, s.currency)}</td>
+      <td class="nowrap">${s.renews_on ? fmtDate(s.renews_on) : "—"}</td>
+      <td><span class="cell-sub">${esc(s.notes)}</span></td>
+      <td class="r">${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Facturación ↗</a>` : ""}</td></tr>`).join("");
+    $$("tr.clickable", tb).forEach((tr) => tr.addEventListener("click", () => openSubForm(SUBS.find((s) => s.id === tr.dataset.id))));
+  }
+
+  function openSubForm(s) {
+    const f = $("#sub-form"); f.hidden = false;
+    s = s || { id: "", name: "", detail: "", cost: 0, currency: "USD", cycle: "mensual", renews_on: "", url: "", notes: "", essential: false };
+    $("#sf-id").value = s.id || ""; $("#sf-name").value = s.name; $("#sf-detail").value = s.detail || "";
+    $("#sf-cost").value = s.cost; $("#sf-currency").value = s.currency; $("#sf-cycle").value = s.cycle;
+    $("#sf-renews").value = s.renews_on || ""; $("#sf-url").value = s.url || ""; $("#sf-notes").value = s.notes || "";
+    $("#sf-essential").checked = !!s.essential; $("#sf-delete").hidden = !s.id; $("#sf-msg").innerHTML = "";
+    f.scrollIntoView({ behavior: "smooth", block: "center" }); $("#sf-name").focus();
+  }
+
+  function renderUsage(u) {
+    if ($("#u-month")) $("#u-month").textContent = `Mes ${u.month || ""}: lo que el bot usó de Claude y de WhatsApp.`;
+    const tb = $("#u-claude");
+    if (tb) {
+      const rows = u.claude || [];
+      tb.innerHTML = rows.length ? rows.map((m) => `<tr>
+        <td class="nowrap"><span class="cell-title">${esc(m.model)}</span></td>
+        <td class="r">${num(m.calls)}</td><td class="r">${num(m.input_tokens)}</td><td class="r">${num(m.output_tokens)}</td>
+        <td class="r nowrap"><input class="price-in" data-model="${esc(m.model)}" data-k="in" type="number" min="0" step="0.01" value="${m.price_in ?? ""}" aria-label="Precio entrada"> /
+          <input class="price-in" data-model="${esc(m.model)}" data-k="out" type="number" min="0" step="0.01" value="${m.price_out ?? ""}" aria-label="Precio salida"></td>
+        <td class="r">${m.cost_usd == null ? '<span class="faint">falta precio</span>' : money(m.cost_usd, "USD")}</td></tr>`).join("")
+        : '<tr><td colspan="6" class="empty">Todavía no hay consumo registrado este mes.</td></tr>';
+      $$(".price-in", tb).forEach((inp) => inp.addEventListener("change", async () => {
+        const model = inp.dataset.model;
+        const pin = $(`.price-in[data-model="${model}"][data-k="in"]`, tb).value, pout = $(`.price-in[data-model="${model}"][data-k="out"]`, tb).value;
+        if (pin === "" || pout === "") return;
+        try { renderUsage(await api("PUT", "/precios", { model, in: pin, out: pout })); } catch (e) { alertBox(e.message); }
+      }));
+    }
+    const wa = u.whatsapp || {};
+    const ul = $("#u-wa");
+    if (ul) ul.innerHTML = `
+      <li><div class="grow"><p class="strong">Respuestas y mensajes de texto</p><p class="faint small">Gratis dentro de las 24 h desde que el usuario escribió</p></div><span class="num">${num(wa.text)}</span></li>
+      <li><div class="grow"><p class="strong">Avisos con plantilla</p><p class="faint small">Los que inicia el bot fuera de la ventana de 24 h; Meta los cobra</p></div><span class="num">${num(wa.template)}${wa.cost_usd != null ? " · " + money(wa.cost_usd, "USD") : ""}</span></li>
+      <li><div class="grow"><p class="strong">Fallidos</p><p class="faint small">Mensajes que Meta rechazó</p></div><span class="num ${wa.failed ? "down" : ""}">${num(wa.failed)}</span></li>`;
+    const wp = $("#wa-price-in"); if (wp && wa.template_price_usd != null && document.activeElement !== wp) wp.value = wa.template_price_usd;
+  }
+
+  function alertBox(msg) { const m = $("#sf-msg") || $("#us-msg"); if (m) m.innerHTML = box("error-box", msg); }
+
+  function pageCostos() {
+    $("#sub-add").addEventListener("click", () => openSubForm(null));
+    $("#sf-cancel").addEventListener("click", () => { $("#sub-form").hidden = true; });
+    $("#sub-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = { id: $("#sf-id").value || undefined, name: $("#sf-name").value, detail: $("#sf-detail").value, cost: $("#sf-cost").value,
+        currency: $("#sf-currency").value, cycle: $("#sf-cycle").value, renews_on: $("#sf-renews").value, url: $("#sf-url").value,
+        notes: $("#sf-notes").value, essential: $("#sf-essential").checked };
+      try { const d = await api("POST", "/suscripciones", body); SUBS = d.subscriptions; renderSubs(); $("#sub-form").hidden = true; refreshStats(); }
+      catch (err) { $("#sf-msg").innerHTML = box("error-box", err.message); }
+    });
+    $("#sf-delete").addEventListener("click", async () => {
+      const id = $("#sf-id").value; if (!id) return;
+      try { const d = await api("DELETE", "/suscripciones/" + encodeURIComponent(id)); SUBS = d.subscriptions; renderSubs(); $("#sub-form").hidden = true; refreshStats(); }
+      catch (err) { $("#sf-msg").innerHTML = box("error-box", err.message); }
+    });
+    $("#wa-price").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try { renderUsage(await api("PUT", "/precios", { whatsapp_template_usd: $("#wa-price-in").value })); $("#wa-msg").innerHTML = okMsg("Guardado."); }
+      catch (err) { $("#wa-msg").innerHTML = box("error-box", err.message); }
+    });
+  }
+  async function refreshStats() { try { renderCostos(await api("GET", "/resumen")); } catch (e) {} }
+
+  // ---------- Usuarios ----------
+  let USERS = [], UFILTER = "all";
+  function renderUsers() {
+    const q = ($("#us-q").value || "").toLowerCase();
+    const rows = USERS.filter((u) => (UFILTER === "all" || u.status === UFILTER) && (!q || (u.name + " " + u.phone).toLowerCase().includes(q)));
+    const tb = $("#us-rows");
+    tb.innerHTML = rows.length ? rows.map((u) => `<tr>
+      <td><p class="cell-title">${esc(u.name || "Sin nombre")}</p></td>
+      <td class="nowrap">+${esc(u.phone.replace(/^\+/, ""))}</td>
+      <td class="nowrap">${fmtDate(u.created_at)}</td>
+      <td class="nowrap" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}</td>
+      <td class="r">${num(u.messages)}</td><td class="r">${num(u.watchlist)}</td><td class="r">${num(u.portfolio)}</td>
+      <td>${stPill(u.status)}</td>
+      <td><div class="row-actions">${actionButtons(u)}</div></td></tr>`).join("")
+      : '<tr><td colspan="9" class="empty">No hay usuarios con ese filtro.</td></tr>';
+    bindAccess(tb, loadUsers, "#us-msg");
+  }
+  function actionButtons(u) {
+    if (u.status === "approved") return `<button class="btn ghost sm danger" data-uid="${u.id}" data-act="deny">Quitar acceso</button>`;
+    if (u.status === "pending") return `<button class="btn sm" data-uid="${u.id}" data-act="approve">Aprobar</button><button class="btn ghost sm danger" data-uid="${u.id}" data-act="deny">Rechazar</button>`;
+    return `<button class="btn ghost sm" data-uid="${u.id}" data-act="approve">Dar acceso</button>`;
+  }
+  function bindAccess(root, reload, msgSel) {
+    $$("button[data-act]", root).forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      try {
+        const r = await api("POST", `/usuarios/${b.dataset.uid}/acceso`, { action: b.dataset.act });
+        let msg = r.status === "approved" ? "Acceso aprobado." : r.status === "denied" ? "Acceso rechazado." : "Listo.";
+        if (r.status === "approved") msg += r.notified ? " Se le avisó por WhatsApp." : " No se pudo avisar por WhatsApp (pasaron más de 24 h desde su último mensaje); se enterará cuando vuelva a escribir.";
+        $(msgSel).innerHTML = okMsg(msg);
+        await reload();
+      } catch (e) { $(msgSel).innerHTML = box("error-box", e.message); b.disabled = false; }
+    }));
+  }
+  async function loadUsers() {
+    const d = await api("GET", "/usuarios");
+    USERS = d.users || [];
+    const c = d.counts || {};
+    $("#us-approved").textContent = num(c.approved); $("#us-active").textContent = num(c.active_7d);
+    $("#us-pending").textContent = num(c.pending); $("#us-msgs").textContent = num(c.messages);
+    renderUsers();
+  }
+  function pageUsuarios() {
+    $("#us-q").addEventListener("input", renderUsers);
+    $$("#us-filter .chip").forEach((ch) => ch.addEventListener("click", () => {
+      $$("#us-filter .chip").forEach((x) => x.setAttribute("aria-pressed", "false")); ch.setAttribute("aria-pressed", "true");
+      UFILTER = ch.dataset.f; renderUsers();
+    }));
+    loadUsers().catch((e) => { $("#us-rows").innerHTML = `<tr><td colspan="9">${box("error-box", e.message)}</td></tr>`; });
+  }
+
+  // ---------- Inbox ----------
+  let FB = [], FFILTER = "open";
+  const TIPOS = { idea: "Idea", problema: "Problema", me_gusta: "Me gusta", otro: "Otro" };
+  function renderRequests(reqs) {
+    const ul = $("#ib-req");
+    const pend = reqs.filter((r) => r.status === "pending"), den = reqs.filter((r) => r.status === "denied");
+    if (!reqs.length) { ul.innerHTML = '<li class="empty">No hay solicitudes. Cuando un número nuevo le escriba a Finmate, aparecerá aquí.</li>'; return; }
+    const item = (r) => `<li><div class="inbox-item">
+        <p class="strong">${esc(r.name || "Sin nombre")} <span class="faint">· +${esc(r.phone.replace(/^\+/, ""))}</span></p>
+        <div class="meta">${stPill(r.status)}<span>Escribió por primera vez ${fmtDate(r.created_at, true)}</span></div>
+        ${(r.messages || []).map((m) => `<div class="quote">${esc(m.text)}</div>`).join("")}
+      </div><div class="row-actions">${actionButtons(r)}</div></li>`;
+    ul.innerHTML = pend.map(item).join("") + (den.length ? `<li class="faint small" style="border-top:0;padding-top:20px">Rechazados (${den.length})</li>` + den.map(item).join("") : "");
+    if (!pend.length && den.length) ul.insertAdjacentHTML("afterbegin", '<li class="empty">No hay solicitudes pendientes.</li>');
+    bindAccess(ul, loadInbox, "#ib-req-msg");
+  }
+  function renderFeedback() {
+    const ul = $("#ib-fb");
+    const rows = FB.filter((f) => FFILTER === "all" || (FFILTER === "open" ? ["nuevo", "en_curso"].includes(f.status) : f.status === FFILTER));
+    if (!rows.length) { ul.innerHTML = '<li class="empty">Nada por aquí.</li>'; return; }
+    ul.innerHTML = rows.map((f) => `<li data-fid="${f.id}"><div class="inbox-item">
+        <div class="meta"><span class="tipo">${esc(TIPOS[f.tipo] || f.tipo)}</span>${f.rating ? `<span>${"★".repeat(f.rating)}${"☆".repeat(5 - f.rating)}</span>` : ""}
+          <span>${fmtDate(f.created_at, true)}</span><span>· ${esc(f.user.name || "Sin nombre")}${f.user.phone ? " (+" + esc(f.user.phone.replace(/^\+/, "")) + ")" : ""}</span>
+          ${f.contact_ok ? '<span class="st ok">Acepta que lo contacten</span>' : ""}</div>
+        <div class="quote">${esc(f.message)}</div></div>
+      <div class="fb-tools">
+        <div class="field"><label class="sr-only" for="fs-${f.id}">Estado</label><select id="fs-${f.id}" data-k="status">
+          ${["nuevo", "en_curso", "resuelto", "descartado"].map((s) => `<option value="${s}" ${s === f.status ? "selected" : ""}>${{ nuevo: "Nuevo", en_curso: "En curso", resuelto: "Resuelto", descartado: "Descartado" }[s]}</option>`).join("")}</select></div>
+        <div class="field"><label class="sr-only" for="fn-${f.id}">Nota interna</label><textarea id="fn-${f.id}" data-k="note" placeholder="Nota interna (qué vas a hacer)">${esc(f.note)}</textarea></div>
+        <span class="small fb-msg"></span></div></li>`).join("");
+    $$("li[data-fid]", ul).forEach((li) => {
+      const fid = li.dataset.fid;
+      $$("[data-k]", li).forEach((el) => el.addEventListener("change", async () => {
+        const body = { [el.dataset.k]: el.value };
+        try { await api("PUT", "/feedback/" + fid, body); const f = FB.find((x) => String(x.id) === fid); f[el.dataset.k] = el.value; $(".fb-msg", li).innerHTML = okMsg("Guardado."); if (el.dataset.k === "status") setTimeout(renderFeedback, 600); }
+        catch (e) { $(".fb-msg", li).innerHTML = box("error-box", e.message); }
+      }));
+    });
+  }
+  async function loadInbox() {
+    const d = await api("GET", "/inbox");
+    FB = d.feedback || [];
+    renderRequests(d.requests || []);
+    renderFeedback();
+  }
+  function pageInbox() {
+    $$("#fb-filter .chip").forEach((ch) => ch.addEventListener("click", () => {
+      $$("#fb-filter .chip").forEach((x) => x.setAttribute("aria-pressed", "false")); ch.setAttribute("aria-pressed", "true");
+      FFILTER = ch.dataset.f; renderFeedback();
+    }));
+    loadInbox().catch((e) => { $("#ib-req").innerHTML = `<li>${box("error-box", e.message)}</li>`; });
+  }
+
+  // ---------- Fuentes ----------
+  function renderSources(list) {
+    const g = $("#src-grid");
+    g.innerHTML = list.map((s) => `<article class="card glass src-card" data-sid="${esc(s.id)}">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div><p class="kind">${esc(s.kind)}</p><h3>${esc(s.name)}</h3></div>
+        ${s.configured ? (s.needs_key ? '<span class="st ok">Configurada</span>' : '<span class="st ok">Sin clave</span>') : '<span class="st wait">Falta clave</span>'}</div>
+      <dl><div><dt>Qué entrega</dt><dd>${esc(s.gives)}</dd></div><div><dt>Para qué la usa Finmate</dt><dd>${esc(s.used_for)}</dd></div>
+        <div><dt>Plan y límites</dt><dd>${esc(s.plan)}${s.env ? ` · <code>${esc(s.env)}</code>` : ""}</dd></div></dl>
+      <div class="field"><label class="sr-only" for="sn-${esc(s.id)}">Notas</label><textarea id="sn-${esc(s.id)}" placeholder="Notas o ideas sobre esta fuente">${esc(s.note)}</textarea></div>
+      <p class="test faint"></p>
+      <div class="foot"><button class="btn ghost sm" type="button" data-test>Probar</button>${s.url ? `<a class="small" href="${esc(s.url)}" target="_blank" rel="noopener">Documentación ↗</a>` : ""}</div>
+    </article>`).join("");
+    $$(".src-card", g).forEach((card) => {
+      const sid = card.dataset.sid;
+      $("[data-test]", card).addEventListener("click", () => testSource(card));
+      $("textarea", card).addEventListener("change", async (e) => {
+        try { await api("PUT", `/fuentes/${sid}/nota`, { note: e.target.value }); $(".test", card).innerHTML = okMsg("Nota guardada."); }
+        catch (err) { $(".test", card).innerHTML = box("error-box", err.message); }
+      });
+    });
+  }
+  async function testSource(card) {
+    const t = $(".test", card), b = $("[data-test]", card);
+    b.disabled = true; t.className = "test faint"; t.textContent = "Probando…";
+    try {
+      const r = await api("POST", `/fuentes/${card.dataset.sid}/probar`);
+      t.className = "test " + (r.ok ? "up" : "down");
+      t.textContent = (r.ok ? "✓ Funciona" : "✗ Falló") + (r.detail ? " — " + r.detail : "") + (r.ms != null ? ` (${r.ms} ms)` : "");
+    } catch (e) { t.className = "test down"; t.textContent = e.message; }
+    b.disabled = false;
+  }
+  function pageFuentes() {
+    api("GET", "/fuentes").then((d) => { renderSources(d.sources || []); $("#src-ideas").value = d.ideas || ""; })
+      .catch((e) => { $("#src-grid").innerHTML = box("error-box", e.message); });
+    $("#src-test-all").addEventListener("click", async () => { for (const c of $$(".src-card")) await testSource(c); });
+    $("#src-ideas-save").addEventListener("click", async () => {
+      try { await api("PUT", "/fuentes/_ideas/nota", { note: $("#src-ideas").value }); $("#src-ideas-msg").innerHTML = okMsg("Ideas guardadas."); }
+      catch (e) { $("#src-ideas-msg").innerHTML = box("error-box", e.message); }
+    });
+  }
+
+  if (page === "admin-login") pageLogin();
+  else {
+    initCommon();
+    if (page === "admin-costos") pageCostos();
+    if (page === "admin-usuarios") pageUsuarios();
+    if (page === "admin-inbox") pageInbox();
+    if (page === "admin-fuentes") pageFuentes();
+  }
+})();
