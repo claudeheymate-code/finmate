@@ -46,6 +46,9 @@ class User(Base):
     # Acceso (panel admin → Inbox): "pending" | "approved" | "denied".
     # None = usuario de antes de que existiera la aprobación → aprobado.
     access_status = Column(String(12), nullable=True)
+    # Registro: nombre y correo que el usuario le da al bot antes de pedir acceso.
+    email = Column(String(160), nullable=True)
+    registered_at = Column(DateTime, nullable=True)
     timezone = Column(String(64), nullable=False, default="America/Santiago")
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
@@ -330,7 +333,7 @@ def _ensure_engine() -> None:
 # perder datos). Cuando esto crezca, conviene pasar a Alembic.
 _ADDED_COLUMNS = {
     "portfolio_holdings": {"asset_class": "VARCHAR(30)", "sector": "VARCHAR(60)"},
-    "users": {"access_status": "VARCHAR(12)"},
+    "users": {"access_status": "VARCHAR(12)", "email": "VARCHAR(160)", "registered_at": "TIMESTAMP"},
     "feedback": {"status": "VARCHAR(12)", "admin_note": "TEXT"},
     "notification_settings": {
         "news_max_per_day": "INTEGER",

@@ -322,3 +322,19 @@ def set_access_status(user_id: int, status: str) -> Optional[User]:
         return user
     finally:
         session.close()
+
+
+def save_registration(user_id: int, name: str, email: str) -> None:
+    """Guarda el nombre y correo que el usuario le dio al bot al registrarse."""
+    import datetime as _dt
+
+    session = get_session()
+    try:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.name = (name or "").strip()[:120] or user.name
+            user.email = (email or "").strip().lower()[:160] or user.email
+            user.registered_at = _dt.datetime.utcnow()
+            session.commit()
+    finally:
+        session.close()
