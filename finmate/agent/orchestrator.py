@@ -266,28 +266,26 @@ def handle_message(phone: str, user_message: str, name: str = None) -> str:
     return final_text
 
 
-_PENDING_FIRST = ("¡Hola{nombre}! Soy Finmate, un asistente financiero por WhatsApp. "
-                  "Tu acceso está pendiente de aprobación; te aviso por aquí apenas esté listo.")
+_ASK_DATA = ("¡Hola{nombre}! Soy Finmate, un asistente financiero por WhatsApp. "
+             "Para pedir tu acceso necesito dos datos: tu *nombre y apellido* y tu *correo*. "
+             "Puedes mandarlos en un solo mensaje.")
+_ASK_AGAIN = "Para pedir tu acceso necesito tu *nombre y apellido* y tu *correo*. ¿Me los mandas?"
+_ASK_EMAIL = "Gracias, {nombre}. ¿Me das tu *correo*?"
+_ASK_NAME = "Gracias. ¿Y tu *nombre y apellido*?"
+_REGISTERED = ("¡Listo, {nombre}! Ya registré tus datos. Tu acceso está pendiente de aprobación; "
+               "te aviso por aquí apenas esté listo.")
 _PENDING_AGAIN = "Tu acceso a Finmate sigue pendiente de aprobación. Te escribo apenas esté listo."
 _DENIED = "Por ahora este número no tiene acceso a Finmate. Si crees que es un error, avísale a quien te invitó."
 
 
 def _handle_without_access(user, phone: str, user_message: str, name, status: str, first: bool) -> str:
-    """Responde sin usar el agente y deja la solicitud en el Inbox del admin."""
-    try:
-        from finmate.db.repository import set_user_name_if_empty
-
-        if name:
-            set_user_name_if_empty(user.id, name)
-    except Exception:
-        pass
+    """Responde sin usar el agente: pide nombre y correo y deja la solicitud en el Inbox del admin."""
     if status == "denied":
         reply = _DENIED
-    elif first:
-        reply = _PENDING_FIRST.format(nombre=f" {name.split()[0]}" if name else "")
-        _notify_admin_new_request(phone, name)
-    else:
+    elif getattr(user, "registered_at", None):
         reply = _PENDING_AGAIN
+    else:
+        reply = _collect_signup(user, phone, user_message, name, first)
     try:
         save_turn(user.id, "user", user_message)
         save_turn(user.id, "assistant", reply)
@@ -296,17 +294,63 @@ def _handle_without_access(user, phone: str, user_message: str, name, status: st
     return reply
 
 
-def _notify_admin_new_request(phone: str, name) -> None:
-    """Avisa por WhatsApp a los administradores (si WhatsApp lo permite)."""
+def _collect_signup(user, phone: str, user_message: str, profile_name, first: bool) -> str:
+    """Junta nombre y correo (pueden llegar en mensajes distintos). Al tenerlos, avisa al admin."""
+    from finmate.agent.signup import parse_signup
+    from finmate.db.state_store import load_json, save_json
+
+    key = f"signup:{user.id}"
+    draft = load_json(key, {}) or {}
+    got_name, got_email = parse_signup(user_message)
+    if got_email:
+        draft["email"] = got_email
+    # El primer "hola" no trae datos; un nombre suelto solo se toma si ya se pidió.
+    if got_name and (not first or got_email):
+        draft["name"] = got_name
+    save_json(key, draft)
+
+    first_name = (draft.get("name") or "").split(" ")[0]
+    if draft.get("name") and draft.get("email"):
+        try:
+            from finmate.db.repository import save_registration
+
+            save_registration(user.id, draft["name"], draft["email"])
+        except Exception as e:
+            logger.error(f"No se pudo guardar el registro de {phone}: {e}")
+        _notify_admin_new_request(phone, draft["name"], draft["email"])
+        return _REGISTERED.format(nombre=first_name)
+    if first:
+        hi = (profile_name or "").split(" ")[0]
+        return _ASK_DATA.format(nombre=f" {hi}" if hi else "")
+    if draft.get("name"):
+        return _ASK_EMAIL.format(nombre=first_name)
+    if draft.get("email"):
+        return _ASK_NAME
+    return _ASK_AGAIN
+
+
+def _notify_admin_new_request(phone: str, name, email=None) -> None:
+    """Avisa a los administradores por WhatsApp y por correo del nuevo registro."""
+    from config.settings import PANEL_BASE_URL
+
+    number = phone.replace("whatsapp:", "")
+    link = f"{PANEL_BASE_URL.rstrip('/')}/admin/inbox"
+    lines = ["Nueva solicitud de acceso a Finmate", f"Nombre: {name or '—'}", f"Correo: {email or '—'}",
+             f"WhatsApp: {number}"]
     try:
-        from config.settings import PANEL_BASE_URL, WHATSAPP_RECIPIENTS
+        from config.settings import WHATSAPP_RECIPIENTS
         from finmate.whatsapp.messenger import WhatsAppMessenger
 
-        who = f"{name} ({phone.replace('whatsapp:', '')})" if name else phone.replace("whatsapp:", "")
-        msg = (f"Nueva solicitud de acceso a Finmate: {who}. "
-               f"Apruébala o recházala en {PANEL_BASE_URL.rstrip('/')}/admin/inbox")
+        msg = "*" + lines[0] + "*\n" + "\n".join(lines[1:]) + f"\n\nApruébala o recházala en {link}"
         m = WhatsAppMessenger()
         for admin in WHATSAPP_RECIPIENTS:
             m.send_message(admin, msg)
     except Exception as e:
-        logger.info(f"No pude avisar al admin de la nueva solicitud: {e}")
+        logger.info(f"No pude avisar al admin por WhatsApp de la nueva solicitud: {e}")
+    try:
+        from finmate.services.feedback import send_email
+
+        send_email(f"Finmate: nuevo registro — {name or number}", "\n".join(lines[1:]) + f"\n\nInbox: {link}",
+                   {"nombre": name or "", "correo": email or "", "whatsapp": number})
+    except Exception as e:
+        logger.info(f"No pude avisar al admin por correo de la nueva solicitud: {e}")
