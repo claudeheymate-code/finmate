@@ -98,20 +98,31 @@ class AlertEngine:
     # ----------------------------------------------------------
     # Envío (Fase 1.6: template de aviso + cola si está configurado)
     # ----------------------------------------------------------
-    def _broadcast_or_queue(self, msg: str, category_label: str) -> None:
+    @staticmethod
+    def _recipients(kind: str, symbol: str = None) -> list:
+        """Quién recibe cada aviso general: lo elige cada usuario en su panel
+        (Ajustes → Avisos) o por chat. Ya no se usa la lista fija."""
+        from finmate.db.settings_repo import recipients_for
+
+        return recipients_for(kind, symbol)
+
+    def _broadcast_or_queue(self, msg: str, category_label: str, phones: list = None) -> None:
         """Envía `msg` a todos los destinatarios. Si hay un template de aviso
         de mercado configurado (requerido para producción real de WhatsApp
         Business), manda el template corto y encola el contenido completo
         para cuando el usuario responda (ver finmate/alerts/pending.py). Si
         no, cae a mensaje de texto libre directo, como hasta ahora."""
+        phones = list(phones or [])
+        if not phones:
+            return
         if TEMPLATE_MARKET_NOTIFY:
-            for phone in WHATSAPP_RECIPIENTS:
+            for phone in phones:
                 queue_pending(phone, msg)
                 self.messenger.send_template(
                     phone, TEMPLATE_MARKET_NOTIFY, {"1": category_label}
                 )
         else:
-            self.messenger.broadcast(msg)
+            self.messenger.broadcast(msg, recipients=phones)
 
     # ----------------------------------------------------------
     # Chequeo de alertas en tiempo real
@@ -147,7 +158,8 @@ class AlertEngine:
                         and earning_id not in self.state["sent_earnings"]
                     ):
                         msg = format_earnings_alert(e)
-                        self._broadcast_or_queue(msg, "Resultados corporativos")
+                        self._broadcast_or_queue(msg, "Resultados corporativos",
+                                                 self._recipients("earnings", e.get("symbol")))
                         self.state["sent_earnings"].append(earning_id)
                         alerts_sent += 1
                         logger.info(f"Alerta earnings enviada: {e.get('symbol')}")
@@ -162,7 +174,7 @@ class AlertEngine:
                         and event_id not in self.state["sent_economic"]
                     ):
                         msg = format_economic_alert(ev)
-                        self._broadcast_or_queue(msg, "Dato macroeconómico")
+                        self._broadcast_or_queue(msg, "Dato macroeconómico", self._recipients("macro"))
                         self.state["sent_economic"].append(event_id)
                         alerts_sent += 1
                         logger.info(f"Alerta macro enviada: {ev.get('event')}")
@@ -171,6 +183,7 @@ class AlertEngine:
             # Solo las primeras 3 noticias más recientes no enviadas
             if isinstance(news, list):
                 news_alerts = 0
+                news_phones = self._recipients("market_news")
                 for item in news:
                     news_id = item.get("title", "")[:80]
                     if (
@@ -179,7 +192,7 @@ class AlertEngine:
                         and news_alerts < 3
                     ):
                         msg = format_breaking_news_alert(item)
-                        self._broadcast_or_queue(msg, "Noticia de mercado")
+                        self._broadcast_or_queue(msg, "Noticia de mercado", news_phones)
                         self.state["sent_news"].append(news_id)
                         alerts_sent += 1
                         news_alerts += 1
@@ -208,9 +221,7 @@ class AlertEngine:
             # cola si está configurado; si no, texto libre como hasta ahora)
             message = format_weekly_summary(data)
             # Panel web → Ajustes: quien apagó el resumen semanal no lo recibe.
-            from finmate.db.settings_repo import weekly_summary_enabled_for_phone
-
-            recipients = [p for p in WHATSAPP_RECIPIENTS if weekly_summary_enabled_for_phone(p)]
+            recipients = self._recipients("weekly")
             if TEMPLATE_WEEKLY_SUMMARY_NOTIFY:
                 for phone in recipients:
                     queue_pending(phone, message)
