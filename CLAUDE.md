@@ -468,3 +468,27 @@ archivos quedan escritos en disco y Joaco los commitea/pushea él mismo.
 - Pendiente: borrar `META_TEST_RECIPIENT` en Railway (hello_world falla con 131058 en números
   reales), borrar variables de Twilio, método de pago en WhatsApp Manager (solo necesario para
   mensajes iniciados por el bot / plantillas), crear plantillas de Meta y cargar `META_TEMPLATE_*`.
+
+## 23 nov 2026 (tarde) — plantillas de Meta, tuteo y avisos sin repetir
+
+- **Plantillas de Meta enviadas a revisión (categoría Utilidad, idioma Spanish `es`):**
+  `finmate_watchlist_alert` ({{1}} símbolo, {{2}} variación, {{3}} precio),
+  `finmate_market_notify` ({{1}} tipo de novedad) y `finmate_weekly_summary_notify` (sin
+  variables). Textos redactados como "Aviso de tu cuenta Finmate…" porque Meta marcaba los
+  primeros borradores como Marketing. **Cuando estén aprobadas**, cargar en Railway:
+  `META_TEMPLATE_WATCHLIST_ALERT=finmate_watchlist_alert`,
+  `META_TEMPLATE_MARKET_NOTIFY=finmate_market_notify`,
+  `META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY=finmate_weekly_summary_notify`. No cargarlas antes.
+- **Bot en tuteo chileno:** se sacó el voseo de prompt y textos de tools/alertas; el system
+  prompt lo pide explícito. Test `tests/test_bot_sin_voseo.py`.
+- **Avisos repetidos tras cada redeploy (arreglado):** el estado de dedup/colas vivía en
+  archivos JSON del contenedor y Railway los borra al redeployar (NVDA llegó 10 veces). Ahora
+  vive en la tabla `kv_state` (`finmate/db/state_store.py`); sin base cae al archivo.
+  Afecta watchlist, noticias, motor broadcast, podcasts y cola de pendientes.
+- **Movimientos extremos en vivo (≥15%)** se confirman con la cotización REST antes de avisar
+  (`EXTREME_MOVE_PCT` en `watchlist_alerts.py`). Ojo: la alerta de NVDA decía ~+34%; NVDA
+  cerraba ~US$151 a mediados de nov. Revisar de dónde sale el cierre anterior (`pc`) si se repite.
+- `META_TEST_RECIPIENT` ya no está en Railway. Clave de Claude: `finmate-railway-prod`, sin
+  vencimiento (Joaco). Render: el servicio "finmate" sigue fallando; requiere que Joaco
+  inicie sesión y lo suspenda.
+- 90/90 tests.
