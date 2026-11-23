@@ -160,6 +160,7 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str, personality
         tools=TOOLS,
         messages=messages,
     )
+    _record_usage(model, response)
 
     rounds = 0
     while response.stop_reason == "tool_use" and rounds < _MAX_TOOL_ROUNDS:
@@ -183,9 +184,19 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str, personality
             tools=TOOLS,
             messages=messages,
         )
+        _record_usage(model, response)
 
     final_text = "".join(block.text for block in response.content if block.type == "text").strip()
     return final_text or "No pude generar una respuesta esta vez. Prueba de nuevo en un momento."
+
+
+def _record_usage(model: str, response) -> None:
+    try:
+        from finmate.services.usage import record_claude
+
+        record_claude(model, getattr(response, "usage", None))
+    except Exception:
+        pass
 
 
 def handle_message(phone: str, user_message: str, name: str = None) -> str:
@@ -198,11 +209,21 @@ def handle_message(phone: str, user_message: str, name: str = None) -> str:
     # provisionó DATABASE_URL), se avisa con claridad en vez de que el
     # webhook rompa silenciosamente.
     try:
-        user = get_or_create_user(phone)
+        from config.settings import ACCESS_APPROVAL_REQUIRED, WHATSAPP_RECIPIENTS
+
+        if ACCESS_APPROVAL_REQUIRED and phone not in WHATSAPP_RECIPIENTS:
+            user = get_or_create_user(phone, new_status="pending")
+        else:
+            user = get_or_create_user(phone, new_status="approved")
         history = get_recent_history(user.id)
     except Exception as e:
         logger.error(f"Error de base de datos accediendo a memoria de {phone}: {e}", exc_info=True)
         return _NO_MEMORY_MSG
+
+    # Acceso: números nuevos esperan aprobación en el panel admin (Inbox).
+    status = getattr(user, "access_status", None) or "approved"
+    if status != "approved":
+        return _handle_without_access(user, phone, user_message, name, status, first=not history)
 
     messages = [{"role": role, "content": content} for role, content in history]
     messages.append({"role": "user", "content": user_message})
@@ -243,3 +264,49 @@ def handle_message(phone: str, user_message: str, name: str = None) -> str:
         logger.error(f"No se pudo guardar el turno de conversación de {phone}: {e}", exc_info=True)
 
     return final_text
+
+
+_PENDING_FIRST = ("¡Hola{nombre}! Soy Finmate, un asistente financiero por WhatsApp. "
+                  "Tu acceso está pendiente de aprobación; te aviso por aquí apenas esté listo.")
+_PENDING_AGAIN = "Tu acceso a Finmate sigue pendiente de aprobación. Te escribo apenas esté listo."
+_DENIED = "Por ahora este número no tiene acceso a Finmate. Si crees que es un error, avísale a quien te invitó."
+
+
+def _handle_without_access(user, phone: str, user_message: str, name, status: str, first: bool) -> str:
+    """Responde sin usar el agente y deja la solicitud en el Inbox del admin."""
+    try:
+        from finmate.db.repository import set_user_name_if_empty
+
+        if name:
+            set_user_name_if_empty(user.id, name)
+    except Exception:
+        pass
+    if status == "denied":
+        reply = _DENIED
+    elif first:
+        reply = _PENDING_FIRST.format(nombre=f" {name.split()[0]}" if name else "")
+        _notify_admin_new_request(phone, name)
+    else:
+        reply = _PENDING_AGAIN
+    try:
+        save_turn(user.id, "user", user_message)
+        save_turn(user.id, "assistant", reply)
+    except Exception as e:
+        logger.error(f"No se pudo guardar el mensaje de {phone} (sin acceso): {e}")
+    return reply
+
+
+def _notify_admin_new_request(phone: str, name) -> None:
+    """Avisa por WhatsApp a los administradores (si WhatsApp lo permite)."""
+    try:
+        from config.settings import PANEL_BASE_URL, WHATSAPP_RECIPIENTS
+        from finmate.whatsapp.messenger import WhatsAppMessenger
+
+        who = f"{name} ({phone.replace('whatsapp:', '')})" if name else phone.replace("whatsapp:", "")
+        msg = (f"Nueva solicitud de acceso a Finmate: {who}. "
+               f"Apruébala o recházala en {PANEL_BASE_URL.rstrip('/')}/admin/inbox")
+        m = WhatsAppMessenger()
+        for admin in WHATSAPP_RECIPIENTS:
+            m.send_message(admin, msg)
+    except Exception as e:
+        logger.info(f"No pude avisar al admin de la nueva solicitud: {e}")
