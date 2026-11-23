@@ -1,0 +1,45 @@
+{% from "panel/_icons.html" import icon %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Finmate Admin — Entrar</title>
+{% include "panel/_app_head.html" %}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css') }}">
+<link rel="stylesheet" href="{{ url_for('panel.static', filename='admin.css') }}">
+</head>
+<body data-page="admin-login" class="admin">
+<div class="login">
+  <div style="flex:1 1 420px;max-width:520px;min-width:0">
+    <div class="brand"><img src="{{ url_for('panel.static', filename='finmate-icon.png') }}" alt="" style="width:56px;height:56px"><span style="font-size:44px">finmate</span><span class="admin-tag" style="font-size:16px">admin</span></div>
+    <h1 style="margin-top:28px;font-size:44px">Panel de administrador</h1>
+    <p class="muted" style="margin-top:18px;font-size:17px;line-height:1.6">Costos del sistema, usuarios, solicitudes de acceso, feedback y fuentes de información en un solo lugar.</p>
+  </div>
+  <section class="card glass-strong" style="flex:0 1 420px;padding:32px;border-radius:28px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="up" style="display:flex">{{ icon('lock') }}</span><h2 style="font-size:24px">Entrar</h2></div>
+    {% if error %}<div class="error-box" style="margin:12px 0">{{ error }}</div>{% endif %}
+    {% if configured %}
+      <p class="faint small" style="margin-bottom:22px;line-height:1.6">Solo con la cuenta de Google autorizada ({{ admin_email }}).</p>
+      <a class="btn google-btn" href="{{ url_for('admin.login_google') }}">{{ icon('google', 18) }}<span>Entrar con Google</span></a>
+    {% else %}
+      <div class="ok-box" style="margin-top:12px;line-height:1.6;color:var(--text)">
+        <p class="strong">Falta conectar Google</p>
+        <p class="small" style="margin-top:6px">Crea un «ID de cliente de OAuth» (aplicación web) en Google Cloud y carga en Railway
+          <code>GOOGLE_OAUTH_CLIENT_ID</code> y <code>GOOGLE_OAUTH_CLIENT_SECRET</code>.</p>
+        <p class="small" style="margin-top:6px">URI de redirección autorizado:<br><code>{{ redirect_uri }}</code></p>
+      </div>
+    {% endif %}
+    {% if dev_login %}
+      <form id="admin-dev-login" style="display:flex;flex-direction:column;gap:12px;margin-top:20px">
+        <p class="faint small">Modo desarrollo (sin Google)</p>
+        <div class="field"><label for="admin-email">Correo</label><input id="admin-email" type="email" required value="{{ admin_email }}"></div>
+        <button class="btn ghost" type="submit">Entrar (desarrollo)</button>
+        <div id="login-msg"></div>
+      </form>
+    {% endif %}
+  </section>
+</div>
+<script src="{{ url_for('panel.static', filename='admin.js') }}"></script>
+</body>
+</html>

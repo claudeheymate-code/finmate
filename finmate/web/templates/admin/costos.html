@@ -1,0 +1,48 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="page-head"><div><p class="faint small">Panel de administrador</p><h1>Costos del sistema</h1>
+  <p class="muted" style="margin-top:6px">Lo que cuesta mantener Finmate funcionando y lo que se está consumiendo este mes.</p></div></div>
+
+<section class="stats admin-stats" id="c-stats">
+  <div class="card glass stat"><p class="label">Costo fijo mensual</p><p class="value num" id="st-fixed">—</p><p class="sub" id="st-fixed-sub"></p></div>
+  <div class="card glass stat"><p class="label">Claude este mes (estimado)</p><p class="value num" id="st-claude">—</p><p class="sub" id="st-claude-sub"></p></div>
+  <div class="card glass stat"><p class="label">WhatsApp este mes</p><p class="value num" id="st-wa">—</p><p class="sub" id="st-wa-sub"></p></div>
+  <div class="card glass stat"><p class="label">Usuarios</p><p class="value num" id="st-users">—</p><p class="sub" id="st-users-sub"></p></div>
+</section>
+
+<section class="card glass">
+  <div class="card-head"><div><h2>Suscripciones</h2><p>Servicios que usa Finmate. Toca uno para editarlo.</p></div>
+    <button class="btn" type="button" id="sub-add">Agregar suscripción</button></div>
+  <div class="table-wrap"><table class="admin-table"><thead><tr>
+    <th>Servicio</th><th>Ciclo</th><th class="r">Costo</th><th>Renueva</th><th>Notas</th><th></th></tr></thead>
+    <tbody id="sub-rows"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table></div>
+  <form id="sub-form" class="sub-form" hidden>
+    <input type="hidden" id="sf-id">
+    <div class="form-grid">
+      <div class="field"><label for="sf-name">Servicio</label><input id="sf-name" required maxlength="80"></div>
+      <div class="field"><label for="sf-detail">Para qué se usa</label><input id="sf-detail" maxlength="140"></div>
+      <div class="field"><label for="sf-cost">Costo</label><input id="sf-cost" type="number" min="0" step="0.01"></div>
+      <div class="field"><label for="sf-currency">Moneda</label><select id="sf-currency"><option>USD</option><option>CLP</option></select></div>
+      <div class="field"><label for="sf-cycle">Ciclo</label><select id="sf-cycle"><option value="mensual">Mensual</option><option value="anual">Anual</option><option value="prepago">Prepago</option><option value="por uso">Por uso</option><option value="gratis">Gratis</option></select></div>
+      <div class="field"><label for="sf-renews">Próxima renovación</label><input id="sf-renews" type="date"></div>
+      <div class="field wide"><label for="sf-url">Link de facturación</label><input id="sf-url" type="url" placeholder="https://"></div>
+      <div class="field wide"><label for="sf-notes">Notas</label><textarea id="sf-notes" rows="2" maxlength="500"></textarea></div>
+      <label class="check wide"><input id="sf-essential" type="checkbox"> Esencial (si se corta, el bot deja de funcionar)</label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Guardar</button><button class="btn ghost" type="button" id="sf-cancel">Cancelar</button>
+      <button class="btn ghost danger" type="button" id="sf-delete">Eliminar</button><span id="sf-msg"></span></div>
+  </form>
+</section>
+
+<section class="card glass">
+  <div class="card-head"><div><h2>Consumo medido</h2><p id="u-month">El bot cuenta lo que usa de Claude y de WhatsApp.</p></div></div>
+  <h3 class="sub-h">Claude (por modelo)</h3>
+  <div class="table-wrap"><table class="admin-table"><thead><tr>
+    <th>Modelo</th><th class="r">Llamadas</th><th class="r">Tokens entrada</th><th class="r">Tokens salida</th><th class="r">Precio (USD/millón)</th><th class="r">Costo estimado</th></tr></thead>
+    <tbody id="u-claude"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table></div>
+  <p class="faint small" style="margin-top:8px">Estimación con los precios que configures aquí. El cobro real está en la <a href="https://platform.claude.com/settings/billing" target="_blank" rel="noopener">consola de Claude</a>.</p>
+  <h3 class="sub-h">WhatsApp</h3>
+  <ul class="list" id="u-wa"><li class="empty">Cargando…</li></ul>
+  <form id="wa-price" class="inline-form"><div class="field"><label for="wa-price-in">Precio por mensaje de plantilla (USD)</label><input id="wa-price-in" type="number" min="0" step="0.0001" placeholder="ej: 0.02"></div><button class="btn ghost" type="submit">Guardar precio</button><span id="wa-msg"></span></form>
+</section>
+{% endblock %}

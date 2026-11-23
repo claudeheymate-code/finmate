@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="page-head"><div><p class="faint small">Panel de administrador</p><h1>Fuentes de información</h1>
+  <p class="muted" style="margin-top:6px">De dónde se informa Finmate. Pruébalas en vivo y anota ideas para mejorar.</p></div>
+  <button class="btn ghost" type="button" id="src-test-all">Probar todas</button></div>
+<section class="src-grid" id="src-grid"><p class="empty">Cargando…</p></section>
+<section class="card glass">
+  <div class="card-head"><div><h2>Ideas e innovaciones</h2><p>Fuentes nuevas que quieres probar, mejoras, pendientes.</p></div></div>
+  <div class="field" style="margin-top:12px"><label for="src-ideas" class="sr-only">Ideas</label><textarea id="src-ideas" rows="6" maxlength="2000" placeholder="Ej: probar noticias de Bloomberg Línea, sumar CMF para fondos chilenos…"></textarea></div>
+  <div class="form-actions"><button class="btn" type="button" id="src-ideas-save">Guardar ideas</button><span id="src-ideas-msg"></span></div>
+</section>
+{% endblock %}
