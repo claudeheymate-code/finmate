@@ -450,3 +450,21 @@ Opciones: (1) editor web de GitHub
 (`https://github.com/claudeheymate-code/finmate/edit/main/RUTA`), Railway
 redeploya solo; (2) si la sesión tiene la carpeta local conectada, los
 archivos quedan escritos en disco y Joaco los commitea/pushea él mismo.
+
+## 23 nov 2026 — Bot de WhatsApp por Meta FUNCIONANDO en producción
+
+- Número propio +56 9 4061 3812 ("Finmate", VERIFIED), phone id `1409562878916070`, WABA
+  `932895863123752`. Recibe y responde por la Cloud API (Twilio queda solo de respaldo).
+- Por qué no respondía (3 causas, todas resueltas):
+  1. `--preload` en el Procfile: base de datos y clientes HTTP se heredaban por fork y el hilo
+     de respuesta se colgaba sin log. Se sacó (1 solo worker, así que el scheduler no se duplica).
+  2. Imports perezosos desde varios hilos a la vez (respuesta + precios + alertas) podían
+     trabarse: `wsgi.py` ahora importa al arrancar orquestador, messenger, alertas y quotes.
+  3. `ANTHROPIC_API_KEY` inválida en Railway (401) y saldo USD 0: Joaco creó la clave
+     `finmate-railway-2` (vence 23 dic 2026, renovarla antes) y cargó USD 5.
+- Diagnóstico nuevo en el log: "Procesando respuesta para…", "Respuesta a … enviada/NO enviada",
+  estados de Meta (sent/delivered/FALLÓ) y volcado de hilos si una respuesta tarda más de 90 s.
+- Timeouts: Claude 60 s (2 reintentos), Postgres `connect_timeout=10` + `pool_recycle=300`.
+- Pendiente: borrar `META_TEST_RECIPIENT` en Railway (hello_world falla con 131058 en números
+  reales), borrar variables de Twilio, método de pago en WhatsApp Manager (solo necesario para
+  mensajes iniciados por el bot / plantillas), crear plantillas de Meta y cargar `META_TEMPLATE_*`.
