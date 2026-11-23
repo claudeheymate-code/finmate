@@ -56,6 +56,12 @@ logger = logging.getLogger("finmate")
 try:
     init_db()
     logger.info("Base de datos inicializada (tablas creadas si no existían).")
+    try:
+        from finmate.db.settings_repo import migrate_legacy_recipients
+
+        migrate_legacy_recipients(settings.WHATSAPP_RECIPIENTS)
+    except Exception as _e:  # noqa: BLE001
+        logger.warning(f"No pude migrar la lista fija de destinatarios: {_e}")
 except Exception as e:
     logger.error(f"No se pudo inicializar la base de datos — ¿falta DATABASE_URL? Detalle: {e}")
 
