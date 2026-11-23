@@ -128,7 +128,7 @@ WATCHLIST_ALERT_THRESHOLD_PCT = float(os.getenv("WATCHLIST_ALERT_THRESHOLD_PCT",
 # Mientras estas variables no estén configuradas, el bot sigue mandando
 # los mensajes como texto libre (así funciona hoy en el sandbox de Twilio,
 # que no exige templates) — no se rompe nada existente. En cuanto Joaco
-# cree los templates en Twilio y pegue acá sus SIDs, el envío pasa a usar
+# cree los templates en Twilio y pegue aquí sus SIDs, el envío pasa a usar
 # el template corto + cola de contenido pendiente (ver
 # finmate/alerts/pending.py) automáticamente.
 # ============================================================
@@ -171,7 +171,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # ============================================================
 # Base de datos (Fase 0 — memoria persistente del agente)
 # Postgres gestionado (ej. Neon: https://neon.tech). Neon entrega la URL como
-# postgres://... o postgresql://... — se normaliza al driver psycopg (v3) acá
+# postgres://... o postgresql://... — se normaliza al driver psycopg (v3) aquí
 # para no tener que editar la variable de entorno a mano.
 # ============================================================
 _raw_database_url = _key("DATABASE_URL")
