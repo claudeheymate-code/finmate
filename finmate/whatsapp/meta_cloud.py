@@ -23,6 +23,7 @@ from config.settings import (
     META_APP_SECRET,
     META_GRAPH_VERSION,
     META_PHONE_NUMBER_ID,
+    META_REGISTER_PIN,
     META_TEMPLATE_LANG,
     META_TEST_RECIPIENT,
     META_WABA_ID,
@@ -181,6 +182,16 @@ def startup_check() -> None:
     except Exception as e:
         logger.error(f"Meta (arranque): no se pudo consultar el número: {e}")
         return
+    if META_REGISTER_PIN:
+        try:
+            r = httpx.post(f"{base}/{META_PHONE_NUMBER_ID}/register", headers=headers, timeout=15,
+                           json={"messaging_product": "whatsapp", "pin": META_REGISTER_PIN})
+            if r.status_code >= 400:
+                logger.error(f"Meta (arranque): no se pudo registrar el número ({r.status_code}): {r.text[:300]}")
+            else:
+                logger.info("Meta (arranque): número registrado en la Cloud API (ya puede enviar mensajes).")
+        except Exception as e:
+            logger.error(f"Meta (arranque): error registrando el número: {e}")
     if META_TEST_RECIPIENT:
         ok = send_template(META_TEST_RECIPIENT, "hello_world", None, lang="en_US")
         logger.info(f"Meta (arranque): mensaje de prueba hello_world a {to_meta(META_TEST_RECIPIENT)}: {'enviado' if ok else 'falló (ver error arriba)'}")
