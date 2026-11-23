@@ -69,12 +69,11 @@ class AlertEngine:
 
     def _load_state(self) -> dict:
         """Carga el estado de alertas ya enviadas."""
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r") as f:
-                    return json.load(f)
-            except Exception:
-                pass
+        from finmate.db.state_store import load_json
+
+        saved = load_json(STATE_FILE, None)
+        if saved is not None:
+            return saved
         return {
             "sent_earnings": [],      # IDs de earnings ya notificados
             "sent_economic": [],      # IDs de eventos macro ya notificados
@@ -90,8 +89,9 @@ class AlertEngine:
             for key in ["sent_earnings", "sent_economic", "sent_news"]:
                 if len(self.state.get(key, [])) > 200:
                     self.state[key] = self.state[key][-200:]
-            with open(STATE_FILE, "w") as f:
-                json.dump(self.state, f, indent=2)
+            from finmate.db.state_store import save_json
+
+            save_json(STATE_FILE, self.state)
         except Exception as e:
             logger.error(f"Error guardando estado: {e}")
 

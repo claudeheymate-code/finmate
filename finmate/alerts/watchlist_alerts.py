@@ -31,6 +31,7 @@ import httpx
 
 from config.settings import TEMPLATE_WATCHLIST_ALERT, WATCHLIST_ALERT_THRESHOLD_PCT
 from finmate.db.repository import get_all_watchlist_entries
+from finmate.db.state_store import load_json, save_json
 from finmate.whatsapp.messenger import WhatsAppMessenger
 from finmate.whatsapp.webhook import _change_emoji, _format_number, _get_finnhub_quote
 
@@ -44,6 +45,11 @@ STATE_FILE = "watchlist_alert_state.json"
 # x muchos días), se poda a esta cantidad de entradas más recientes.
 MAX_STATE_ENTRIES = 2000
 
+# Movimientos en vivo de este tamaño o más se confirman con la cotización
+# normal; si difieren en más de la tolerancia, se descartan.
+EXTREME_MOVE_PCT = 15.0
+EXTREME_MOVE_TOLERANCE_PCT = 3.0
+
 # Etapa B: el flujo de precios en tiempo real (finmate/realtime/price_stream.py)
 # llama a check_watchlist_alerts desde su propio hilo, y el job de cada 30 min
 # desde el scheduler. Este lock evita que los dos lean/escriban el estado a la
@@ -52,13 +58,7 @@ _LOCK = threading.Lock()
 
 
 def _load_state() -> dict:
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    return load_json(STATE_FILE, {})
 
 
 def _save_state(state: dict) -> None:
@@ -68,8 +68,7 @@ def _save_state(state: dict) -> None:
             # (el orden de inserción de dict en Python 3.7+ está garantizado).
             for key in list(state.keys())[: len(state) - MAX_STATE_ENTRIES]:
                 del state[key]
-        with open(STATE_FILE, "w") as f:
-            json.dump(state, f, indent=2)
+        save_json(STATE_FILE, state)
     except Exception as e:
         logger.error(f"Error guardando estado de alertas de watchlist: {e}")
 
@@ -113,6 +112,7 @@ def _check_watchlist_alerts(
     # Cache de cotizaciones dentro de esta corrida: si varios usuarios siguen
     # el mismo símbolo, se consulta a Finnhub una sola vez por símbolo.
     quote_cache: dict = {}
+    confirmed_cache: dict = {}
 
     # Umbral por usuario (panel web → Ajustes). Quien no lo cambió usa el global.
     try:
@@ -144,6 +144,29 @@ def _check_watchlist_alerts(
 
             if abs(change_pct) < thresholds.get(user_id, WATCHLIST_ALERT_THRESHOLD_PCT):
                 continue
+
+            # Un movimiento extremo con precio en vivo puede ser una operación
+            # mal registrada en el flujo (23 nov 2026: NVDA "+34%"). Se confirma
+            # con la cotización normal de Finnhub antes de avisar.
+            if quote_fn is not None and abs(change_pct) >= EXTREME_MOVE_PCT:
+                if symbol not in confirmed_cache:
+                    with httpx.Client(timeout=10) as c:
+                        confirmed_cache[symbol] = _get_finnhub_quote(c, symbol)
+                rest = confirmed_cache[symbol]
+                try:
+                    rest_change = float((rest or {}).get("change_pct"))
+                except (TypeError, ValueError):
+                    rest_change = None
+                if rest_change is None or abs(rest_change - change_pct) > EXTREME_MOVE_TOLERANCE_PCT:
+                    logger.warning(
+                        f"Watchlist: {symbol} {change_pct:+.2f}% en vivo no coincide con la "
+                        f"cotización normal ({rest_change}); no se avisa."
+                    )
+                    continue
+                quote = rest
+                change_pct = rest_change
+                if abs(change_pct) < thresholds.get(user_id, WATCHLIST_ALERT_THRESHOLD_PCT):
+                    continue
 
             state_key = f"{user_id}_{symbol}_{today}"
             if state.get(state_key):

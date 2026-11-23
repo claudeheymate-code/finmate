@@ -48,13 +48,9 @@ _company_names: dict = {}
 
 
 def _load_state() -> dict:
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    from finmate.db.state_store import load_json
+
+    return load_json(STATE_FILE, {})
 
 
 def _save_state(state: dict, today: str = None) -> None:
@@ -65,8 +61,9 @@ def _save_state(state: dict, today: str = None) -> None:
                 del seen[k]
         today = today or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
         state["daily"] = {k: v for k, v in state.get("daily", {}).items() if k.endswith(today)}
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f)
+        from finmate.db.state_store import save_json
+
+        save_json(STATE_FILE, state)
     except Exception as e:
         logger.error(f"Error guardando estado de alertas de noticias: {e}")
 
