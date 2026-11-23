@@ -55,6 +55,11 @@ from finmate.agent.portfolio_tools import (
     tool_remove_from_portfolio,
     tool_remove_from_watchlist,
 )
+from finmate.agent.setup_tools import (
+    tool_get_notification_settings,
+    tool_onboarding,
+    tool_set_notification_settings,
+)
 from finmate.alerts.pending import pop_pending
 from finmate.db.cache import cached
 from finmate.whatsapp.webhook import _get_market_data
@@ -330,6 +335,33 @@ TOOLS = [
         "description": "Entrega el último resumen generado de un podcast (por defecto Primer Click del Diario Financiero). Usar cuando pregunte 'qué dijo Primer Click hoy', 'resumen del podcast'.",
         "input_schema": {"type": "object", "properties": {"podcast": {"type": "string"}}},
     },
+    # ── Bienvenida y ajustes de avisos ─────────────────────────────────────
+    {
+        "name": "get_notification_settings",
+        "description": "Muestra cada cuánto le llegan avisos al usuario: umbral de alerta de watchlist (% de movimiento diario), máximo de avisos de noticias por día y si recibe el resumen semanal.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "set_notification_settings",
+        "description": "Cambia la frecuencia de avisos. watchlist_threshold_pct: avisar cuando un activo de la watchlist se mueva más de X% en el día (0.5 a 50; más bajo = más avisos). news_max_per_day: máximo de avisos de noticias de sus activos por día (0 = ninguno, hasta 10). weekly_summary_enabled: resumen semanal del domingo. Pasa solo lo que el usuario quiera cambiar. Guía para traducir lo que diga: 'pocos mensajes' ≈ umbral 7 y 2 noticias/día; 'normal' ≈ umbral 5 y 4 noticias/día; 'todo lo que pase' ≈ umbral 3 y 8 noticias/día.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "watchlist_threshold_pct": {"type": "number", "minimum": 0.5, "maximum": 50},
+                "news_max_per_day": {"type": "integer", "minimum": 0, "maximum": 10},
+                "weekly_summary_enabled": {"type": "boolean"},
+            },
+        },
+    },
+    {
+        "name": "onboarding",
+        "description": "Marca la bienvenida como terminada ('complete') cuando el usuario ya configuró lo que quería o dijo que lo deja para después; o la reinicia ('restart') si pide configurar todo de nuevo ('empecemos de cero', 'configúrame de nuevo').",
+        "input_schema": {
+            "type": "object",
+            "properties": {"action": {"type": "string", "enum": ["complete", "restart"]}},
+            "required": ["action"],
+        },
+    },
     # ── Personalidad (Plan Fase 1) ─────────────────────────────────────────
     {
         "name": "get_personality",
@@ -379,6 +411,10 @@ _USER_SCOPED_TOOLS = {
     "get_economic_calendar":     lambda user_id, _input: tool_get_economic_calendar(user_id),
     "follow_indicator":          tool_follow_indicator,
     "unfollow_indicator":        tool_unfollow_indicator,
+    # Bienvenida y ajustes de avisos
+    "get_notification_settings": lambda user_id, _input: tool_get_notification_settings(user_id),
+    "set_notification_settings": tool_set_notification_settings,
+    "onboarding":                tool_onboarding,
     # Podcasts (Etapa C)
     "follow_podcast":            tool_follow_podcast,
     "unfollow_podcast":          tool_unfollow_podcast,

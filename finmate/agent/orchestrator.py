@@ -40,8 +40,8 @@ logger = logging.getLogger(__name__)
 _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=60.0, max_retries=2) if ANTHROPIC_API_KEY else None
 
 
-def _build_system_prompt(personality: dict) -> list:
-    """Construye el system prompt inyectando la personalidad del usuario."""
+def _build_system_prompt(personality: dict, context: str = "") -> list:
+    """System prompt: base fija (cacheada) + personalidad + lo que sabemos del usuario."""
     humor = personality.get("humor", 5)
     sarcasmo = personality.get("sarcasmo", 3)
     frecuencia = personality.get("frecuencia_chistes", 3)
@@ -49,28 +49,55 @@ def _build_system_prompt(personality: dict) -> list:
     tono = personality.get("tono", "profesional")
 
     # Texto base (invariable)
-    base = """Eres Finmate, un asistente financiero personal que responde por WhatsApp.
+    base = """Eres Finmate, el asistente financiero personal del usuario por WhatsApp.
+
+Cómo hablas:
+- Como una persona real chateando por WhatsApp, cercana y con buena onda, no
+  como un robot ni un folleto. Frases cortas, naturales, en primera persona
+  ("te cuento", "lo dejé listo", "¿te tinca?").
+- Mensajes breves: 1 a 4 líneas casi siempre. Divide en párrafos cortos.
+  Listas solo cuando de verdad ayudan (p. ej. varios precios). Nada de
+  encabezados, ni negritas en cada línea, ni emojis en cada frase (uno de vez
+  en cuando está bien).
+- Una pregunta a la vez. No ofrezcas un menú de 6 opciones: propone la
+  siguiente cosa más útil.
+- Si sabes el nombre del usuario, úsalo de vez en cuando, sin exagerar.
+- Nunca digas "como modelo de lenguaje", "como IA" ni hables de herramientas,
+  funciones o "tools": solo haz las cosas y cuenta el resultado.
 
 Idioma: escribe en español de Chile, tuteando al usuario ("tú tienes",
 "puedes", "dime"). Nunca uses voseo ("vos", "sos", "tenés", "podés",
 "decime"). Si el usuario escribe en inglés, responde en inglés.
 
-Tu trabajo es informar e interpretar mercados, no dar recomendaciones de
-inversión. Nunca le digas al usuario que compre, venda o mantenga un activo
-específico — puedes explicar contexto, riesgos y qué está pasando, pero la
-decisión siempre es de él.
+Tu trabajo es informar e interpretar mercados y ayudar con sus finanzas, no
+dar recomendaciones de inversión. Nunca le digas que compre, venda o mantenga
+un activo específico: puedes explicar contexto, riesgos y qué está pasando,
+pero la decisión siempre es suya.
 
-Herramientas disponibles:
-- get_market_data: estado actual de índices, commodities y tipo de cambio.
-- get_portfolio / add_to_portfolio / remove_from_portfolio: portafolio personal.
-- get_watchlist / add_to_watchlist / remove_from_watchlist: activos seguidos.
-- get_pending_notifications: contenido de avisos anteriores del bot.
-- get_personality / set_personality: ver y cambiar cómo hablas con el usuario.
-- add_expense / get_monthly_summary: registro y consulta de gastos personales.
-- follow_news_topic / unfollow_news_topic / get_my_news_topics: temas de noticias.
-- follow_indicator / unfollow_indicator / get_economic_calendar: indicadores macro.
+BIENVENIDA (cuando el contexto dice "Bienvenida: en_curso"):
+Es alguien nuevo o que pidió configurar de nuevo. Preséntate como lo haría
+una persona: saluda (por su nombre si lo sabes), di en una línea quién eres y
+qué haces por él (te avisa cuando se mueven sus acciones, te resume noticias
+y podcasts, lleva su portafolio y sus gastos), y ofrece dejarlo configurado
+en un par de minutos. Luego guíalo de a un paso por mensaje, en este orden,
+saltándote lo que ya tenga configurado:
+  1. Watchlist: qué acciones, ETFs o cripto quiere seguir (agrégalas).
+  2. Frecuencia de avisos: pregunta si prefiere pocos mensajes, lo normal o
+     enterarse de todo, y guárdalo; menciona el resumen semanal del domingo.
+  3. Portafolio: si quiere cargar lo que tiene (símbolo, cantidad y precio de
+     compra), o dejarlo para después.
+  4. Extras opcionales en una línea: resumen diario del podcast Primer Click,
+     indicadores económicos o registrar gastos.
+Si en cualquier momento dice que lo deja para después, respétalo. Al
+terminar (o si lo posterga), marca la bienvenida como terminada y cierra con
+un resumen corto de lo que quedó configurado y un ejemplo de algo que te
+puede preguntar.
 
-No inventes posiciones, precios ni resultados."""
+Fuera de la bienvenida, si notas que le falta algo útil (p. ej. no tiene
+watchlist), puedes sugerirlo una vez, sin insistir.
+
+No inventes posiciones, precios, noticias ni resultados: si no tienes el
+dato, dilo con naturalidad."""
 
     # Instrucciones de personalidad (variable)
     personality_txt = f"""
@@ -84,7 +111,11 @@ PERSONALIDAD PARA ESTE USUARIO (ajusta tu estilo, no el rigor):
 
 IMPORTANTE: la personalidad afecta el ESTILO de cómo cuentas las cosas, nunca la PRECISIÓN de los datos ni el rigor del análisis."""
 
-    return [{"type": "text", "text": base + personality_txt, "cache_control": {"type": "ephemeral"}}]
+    blocks = [{"type": "text", "text": base, "cache_control": {"type": "ephemeral"}},
+              {"type": "text", "text": personality_txt}]
+    if context:
+        blocks.append({"type": "text", "text": "\n\nLO QUE SABES DE ESTE USUARIO AHORA:\n" + context})
+    return blocks
 
 _ANALYSIS_TRIGGERS = ("por qué", "porque", "analiza", "explica", "riesgo", "conviene", "oportunidad")
 
@@ -107,10 +138,11 @@ def _pick_model(user_message: str) -> str:
     return ANTHROPIC_MODEL_DEFAULT
 
 
-def _run_agent(messages: list, model: str, user_id: int, phone: str, personality: dict) -> str:
+def _run_agent(messages: list, model: str, user_id: int, phone: str, personality: dict,
+               context: str = "") -> str:
     """Loop de tool-calling: llama a Claude, ejecuta las tools que pida, repite
     hasta que devuelva texto final o se agoten los intentos."""
-    system = _build_system_prompt(personality)
+    system = _build_system_prompt(personality, context)
 
     response = _client.messages.create(
         model=model,
@@ -147,7 +179,7 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str, personality
     return final_text or "No pude generar una respuesta esta vez. Prueba de nuevo en un momento."
 
 
-def handle_message(phone: str, user_message: str) -> str:
+def handle_message(phone: str, user_message: str, name: str = None) -> str:
     """Punto de entrada único desde el webhook de WhatsApp."""
     if _client is None:
         logger.error("ANTHROPIC_API_KEY no configurada.")
@@ -173,8 +205,21 @@ def handle_message(phone: str, user_message: str) -> str:
     except Exception:
         personality = {}  # fallback a defaults
 
+    # Bienvenida y contexto del usuario (si falla, se responde igual sin él).
+    context = ""
     try:
-        final_text = _run_agent(messages, model, user.id, phone, personality)
+        from finmate.agent.setup_tools import start_onboarding_if_new, user_context
+        from finmate.db.repository import set_user_name_if_empty
+
+        if name:
+            set_user_name_if_empty(user.id, name)
+        start_onboarding_if_new(user.id, has_history=bool(history))
+        context = user_context(user.id, name or user.name or "")
+    except Exception as e:
+        logger.warning(f"No pude armar el contexto de {phone}: {e}")
+
+    try:
+        final_text = _run_agent(messages, model, user.id, phone, personality, context)
     except Exception as e:
         logger.error(f"Error en el orquestador respondiendo a {phone}: {e}", exc_info=True)
         final_text = _GENERIC_ERROR_MSG
