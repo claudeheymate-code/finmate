@@ -121,9 +121,14 @@ def tool_explain_movement(tool_input: dict) -> str:
         for item in news:
             headline = item.get("headline", "").strip()
             source = item.get("source", "")
+            summary = (item.get("summary") or "").strip()
             if headline:
                 truncated = headline[:120] + ("..." if len(headline) > 120 else "")
                 lines.append(f"• {truncated} _{source}_")
+                if summary:
+                    lines.append(f"  {summary[:400]}{'…' if len(summary) > 400 else ''}")
+                if item.get("url"):
+                    lines.append(f"  Link: {item['url']}")
     else:
         lines.append("_No encontré noticias recientes que hablen directamente de este activo._")
 

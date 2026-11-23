@@ -1,0 +1,89 @@
+"""Tools del agente para leer noticias completas (ver data_sources/news_content.py)."""
+import logging
+
+from finmate.data_sources import news_content as nc
+
+logger = logging.getLogger(__name__)
+
+TEXT_PER_ARTICLE = 1800
+
+
+def _finnhub_items(symbol: str) -> list:
+    try:
+        from finmate.agent.market_tools import _get_news
+
+        return [{"title": n.get("headline", ""), "url": n.get("url", ""),
+                 "source": n.get("source", ""), "summary": n.get("summary", ""),
+                 "date": n.get("datetime", "")} for n in (_get_news(symbol) or [])]
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"Finnhub news falló para {symbol}: {e}")
+        return []
+
+
+def tool_get_news_detail(tool_input: dict) -> str:
+    """Noticias recientes con el contenido de los artículos, para resumir."""
+    query = (tool_input.get("query") or "").strip()
+    symbol = (tool_input.get("symbol") or "").strip().upper()
+    if not query and not symbol:
+        return "Necesito un tema o un símbolo para buscar noticias."
+
+    items = []
+    if symbol:
+        items += _finnhub_items(symbol)
+    q = query or symbol
+    items += nc.guardian_search(q)
+    items += nc.bing_news(q, "es")
+    items += nc.bing_news(q, "en")
+
+    seen, picked = set(), []
+    for it in items:
+        key = (it.get("title") or "").lower()[:70]
+        if not it.get("url") or key in seen:
+            continue
+        seen.add(key)
+        picked.append(it)
+    if not picked:
+        return f"No encontré noticias recientes sobre {q}."
+
+    out, with_text = [], 0
+    for it in picked[:8]:
+        text = it.get("text") or ""
+        if not text and with_text < 3:
+            text = nc.extract_article(it["url"])
+        if text:
+            with_text += 1
+        body = (text[:TEXT_PER_ARTICLE] + "…") if len(text) > TEXT_PER_ARTICLE else text
+        out.append(
+            f"### {it.get('title')}\nFuente: {it.get('source') or '?'} · {it.get('date') or ''}\n"
+            f"Link: {it['url']}\n"
+            + (f"Contenido:\n{body}" if body else f"Resumen: {it.get('summary') or '(sin resumen)'}")
+        )
+        if len(out) >= 6:
+            break
+    return ("Noticias encontradas (resume con tus palabras para el usuario; no copies "
+            "párrafos completos; menciona la fuente y comparte el link si lo pide):\n\n"
+            + "\n\n".join(out))
+
+
+def tool_read_article(tool_input: dict) -> str:
+    url = (tool_input.get("url") or "").strip()
+    text = nc.extract_article(url, max_chars=8000)
+    if not text:
+        return "No pude leer ese artículo (puede tener muro de pago o bloquear lectores)."
+    return ("Contenido del artículo (resúmelo con tus palabras; no lo copies entero):\n\n" + text)
+
+
+def tool_get_company_filings(tool_input: dict) -> str:
+    symbol = (tool_input.get("symbol") or "").strip().upper()
+    if not symbol:
+        return "Necesito el símbolo de la empresa (ej: AAPL)."
+    filings = nc.sec_latest_filings(symbol)
+    if not filings:
+        return f"No encontré reportes en la SEC para {symbol} (solo empresas que reportan en EE.UU.)."
+    lines = [f"Últimos reportes oficiales de {symbol} en la SEC:"]
+    for f in filings:
+        lines.append(f"- {f['form']} del {f['date']}" + (f" (ítems {f['items']})" if f.get("items") else "")
+                     + f": {f['url']}")
+    if filings[0].get("text"):
+        lines.append(f"\nExtracto del más reciente ({filings[0]['form']}):\n{filings[0]['text']}")
+    return "\n".join(lines)

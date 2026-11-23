@@ -55,6 +55,11 @@ from finmate.agent.portfolio_tools import (
     tool_remove_from_portfolio,
     tool_remove_from_watchlist,
 )
+from finmate.agent.news_content_tools import (
+    tool_get_company_filings,
+    tool_get_news_detail,
+    tool_read_article,
+)
 from finmate.agent.setup_tools import (
     tool_get_notification_settings,
     tool_onboarding,
@@ -335,6 +340,22 @@ TOOLS = [
         "description": "Entrega el último resumen generado de un podcast (por defecto Primer Click del Diario Financiero). Usar cuando pregunte 'qué dijo Primer Click hoy', 'resumen del podcast'.",
         "input_schema": {"type": "object", "properties": {"podcast": {"type": "string"}}},
     },
+    # ── Noticias con contenido completo ────────────────────────────────────
+    {
+        "name": "get_news_detail",
+        "description": "Busca noticias recientes sobre un tema o empresa y LEE el contenido de los artículos (no solo titulares), juntando Finnhub, Bing News en español e inglés y The Guardian. Usar cuando pregunte qué pasó, por qué se movió algo, 'cuéntame más', qué dice la prensa de X, o un tema económico/político que afecte mercados. symbol: ticker si es una empresa (ej NVDA); query: tema en palabras (ej 'Jensen Huang Nvidia CEO', 'tasa de interés Banco Central Chile').",
+        "input_schema": {"type": "object", "properties": {"query": {"type": "string"}, "symbol": {"type": "string"}}},
+    },
+    {
+        "name": "read_article",
+        "description": "Lee el texto completo de un artículo a partir de su link (por ejemplo uno que mandó el usuario o que apareció en otra búsqueda).",
+        "input_schema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]},
+    },
+    {
+        "name": "get_company_filings",
+        "description": "Últimos reportes oficiales de una empresa de EE.UU. en la SEC (8-K con hechos esenciales y resultados, 10-Q trimestral, 10-K anual), con un extracto del comunicado más reciente. Usar para resultados trimestrales, anuncios oficiales o cambios en la empresa.",
+        "input_schema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]},
+    },
     # ── Bienvenida y ajustes de avisos ─────────────────────────────────────
     {
         "name": "get_notification_settings",
@@ -438,6 +459,15 @@ def run_tool(
 
     if name == "explain_movement":
         return tool_explain_movement(tool_input)
+
+    if name == "get_news_detail":
+        return tool_get_news_detail(tool_input)
+
+    if name == "read_article":
+        return tool_read_article(tool_input)
+
+    if name == "get_company_filings":
+        return tool_get_company_filings(tool_input)
 
     if name == "get_podcast_summary":
         return tool_get_podcast_summary(tool_input)
