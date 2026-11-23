@@ -38,6 +38,14 @@
       <ul class="list">
         <li><div class="grow"><p class="strong">Umbral de alertas de watchlist</p><p class="faint small">Te avisa si un activo se mueve más que esto en el día</p></div>
           <div class="field" style="flex:0 0 120px"><label for="a-thr" class="sr-only">Umbral en porcentaje</label><input id="a-thr" type="number" min="0.5" max="50" step="0.5"></div><span class="muted">%</span></li>
+        <li><div class="grow"><p class="strong">Noticias de tus activos</p><p class="faint small">Máximo de avisos por día (0 = ninguno)</p></div>
+          <div class="field" style="flex:0 0 120px"><label for="a-news" class="sr-only">Avisos de noticias por día</label><input id="a-news" type="number" min="0" max="10" step="1"></div></li>
+        <li><div class="grow"><p class="strong">Resultados de empresas</p><p class="faint small">Cuando una empresa publica sus resultados trimestrales</p></div>
+          <div class="field" style="flex:0 0 190px"><label for="a-earn" class="sr-only">Resultados de empresas</label><select id="a-earn"><option value="mine">Solo mis activos</option><option value="all">Todas las empresas</option><option value="off">Ninguno</option></select></div></li>
+        <li><div class="grow"><p class="strong">Datos macroeconómicos</p><p class="faint small">Inflación, empleo, tasas y otros datos apenas se publican</p></div>
+          <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-macro" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
+        <li><div class="grow"><p class="strong">Noticias generales del mercado</p><p class="faint small">Las noticias más importantes del día, aunque no sean de tus activos</p></div>
+          <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-mnews" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
         <li><div class="grow"><p class="strong">Resumen semanal</p><p class="faint small">Domingos a las 20:00 (hora de Chile)</p></div>
           <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-weekly" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
         <li><div class="grow"><p class="strong">WhatsApp vinculado</p><p class="faint small">{{ phone }} · los cambios se sincronizan con el chat</p></div><span class="pill-status">Conectado</span></li>
