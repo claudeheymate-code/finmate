@@ -63,8 +63,8 @@ def tool_get_portfolio(user_id: int) -> str:
     holdings = get_portfolio(user_id)
     if not holdings:
         return (
-            "Todavía no tenés nada cargado en tu portafolio. Decime algo como "
-            "'agregá 10 AAPL a 150' para empezar."
+            "Todavía no tienes nada cargado en tu portafolio. Dime algo como "
+            "'agrega 10 AAPL a 150' para empezar."
         )
 
     lines = ["*TU PORTAFOLIO*", ""]
@@ -119,7 +119,7 @@ def tool_get_portfolio(user_id: int) -> str:
 def tool_add_to_portfolio(user_id: int, tool_input: dict) -> str:
     symbol = _clean_symbol(tool_input.get("symbol", ""))
     if not symbol:
-        return "No reconocí el símbolo. Decime el ticker tal cual se opera, por ejemplo AAPL o NVDA."
+        return "No reconocí el símbolo. Dime el ticker tal cual se opera, por ejemplo AAPL o NVDA."
 
     quantity = _to_float(tool_input.get("quantity"))
     if quantity is None or quantity <= 0:
@@ -134,14 +134,14 @@ def tool_add_to_portfolio(user_id: int, tool_input: dict) -> str:
     msg = f"✅ Agregado: {quantity:g} u. de *{symbol}*"
     if avg_cost:
         msg += f" a costo promedio {_format_number(avg_cost, prefix='$')}"
-    msg += f". Ahora tenés {holding.quantity:g} u. en total."
+    msg += f". Ahora tienes {holding.quantity:g} u. en total."
     return msg
 
 
 def tool_remove_from_portfolio(user_id: int, tool_input: dict) -> str:
     symbol = _clean_symbol(tool_input.get("symbol", ""))
     if not symbol:
-        return "No reconocí el símbolo. Decime el ticker tal cual se opera, por ejemplo AAPL o NVDA."
+        return "No reconocí el símbolo. Dime el ticker tal cual se opera, por ejemplo AAPL o NVDA."
 
     quantity = _to_float(tool_input.get("quantity"))
 
@@ -168,7 +168,7 @@ def tool_remove_from_portfolio(user_id: int, tool_input: dict) -> str:
 def tool_get_watchlist(user_id: int) -> str:
     items = repo_get_watchlist(user_id)
     if not items:
-        return "No estás siguiendo ningún activo todavía. Decime 'seguí a NVDA' para agregarlo."
+        return "No estás siguiendo ningún activo todavía. Dime 'sigue a NVDA' para agregarlo."
 
     lines = ["*TU WATCHLIST*", ""]
     for symbol, note in items:
@@ -192,7 +192,7 @@ def tool_get_watchlist(user_id: int) -> str:
 def tool_add_to_watchlist(user_id: int, tool_input: dict) -> str:
     symbol = _clean_symbol(tool_input.get("symbol", ""))
     if not symbol:
-        return "No reconocí el símbolo. Decime el ticker tal cual se opera, por ejemplo AAPL o NVDA."
+        return "No reconocí el símbolo. Dime el ticker tal cual se opera, por ejemplo AAPL o NVDA."
 
     note = tool_input.get("note") or None
     add_to_watchlist_result = None

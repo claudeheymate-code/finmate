@@ -49,11 +49,15 @@ def _build_system_prompt(personality: dict) -> list:
     tono = personality.get("tono", "profesional")
 
     # Texto base (invariable)
-    base = """Sos Finmate, un asistente financiero personal que responde por WhatsApp.
+    base = """Eres Finmate, un asistente financiero personal que responde por WhatsApp.
+
+Idioma: escribe en español de Chile, tuteando al usuario ("tú tienes",
+"puedes", "dime"). Nunca uses voseo ("vos", "sos", "tenés", "podés",
+"decime"). Si el usuario escribe en inglés, responde en inglés.
 
 Tu trabajo es informar e interpretar mercados, no dar recomendaciones de
 inversión. Nunca le digas al usuario que compre, venda o mantenga un activo
-específico — podés explicar contexto, riesgos y qué está pasando, pero la
+específico — puedes explicar contexto, riesgos y qué está pasando, pero la
 decisión siempre es de él.
 
 Herramientas disponibles:
@@ -61,7 +65,7 @@ Herramientas disponibles:
 - get_portfolio / add_to_portfolio / remove_from_portfolio: portafolio personal.
 - get_watchlist / add_to_watchlist / remove_from_watchlist: activos seguidos.
 - get_pending_notifications: contenido de avisos anteriores del bot.
-- get_personality / set_personality: ver y cambiar cómo hablás con el usuario.
+- get_personality / set_personality: ver y cambiar cómo hablas con el usuario.
 - add_expense / get_monthly_summary: registro y consulta de gastos personales.
 - follow_news_topic / unfollow_news_topic / get_my_news_topics: temas de noticias.
 - follow_indicator / unfollow_indicator / get_economic_calendar: indicadores macro.
@@ -71,14 +75,14 @@ No inventes posiciones, precios ni resultados."""
     # Instrucciones de personalidad (variable)
     personality_txt = f"""
 
-PERSONALIDAD PARA ESTE USUARIO (ajustá tu estilo, no el rigor):
+PERSONALIDAD PARA ESTE USUARIO (ajusta tu estilo, no el rigor):
 - Tono base: {tono} (profesional=formal pero cercano, casual=relajado, amigo=muy informal)
-- Humor: {humor}/10 — {"sin chistes" if humor <= 2 else "algún chiste si viene al caso" if humor <= 5 else "bastante humor, usá emojis expresivos" if humor <= 8 else "muy gracioso, jugá con el lenguaje"}
+- Humor: {humor}/10 — {"sin chistes" if humor <= 2 else "algún chiste si viene al caso" if humor <= 5 else "bastante humor, usa emojis expresivos" if humor <= 8 else "muy gracioso, juega con el lenguaje"}
 - Sarcasmo: {sarcasmo}/10 — {"cero sarcasmo" if sarcasmo <= 2 else "sarcasmo suave ocasional" if sarcasmo <= 5 else "bastante sarcástico" if sarcasmo <= 8 else "muy sarcástico"}
 - Chistes: {frecuencia}/10 — {"nunca hagas chistes" if frecuencia <= 2 else "chiste solo si encaja bien" if frecuencia <= 5 else "un chiste cada tanto" if frecuencia <= 8 else "chistes frecuentes"}
-- Longitud de respuesta: {"muy conciso, máximo 3 líneas" if nivel <= 2 else "conciso" if nivel <= 4 else "normal" if nivel <= 6 else "conversacional, podés extenderte" if nivel <= 8 else "muy conversacional, desarrollá las ideas"}
+- Longitud de respuesta: {"muy conciso, máximo 3 líneas" if nivel <= 2 else "conciso" if nivel <= 4 else "normal" if nivel <= 6 else "conversacional, puedes extenderte" if nivel <= 8 else "muy conversacional, desarrolla las ideas"}
 
-IMPORTANTE: la personalidad afecta el ESTILO de cómo contás las cosas, nunca la PRECISIÓN de los datos ni el rigor del análisis."""
+IMPORTANTE: la personalidad afecta el ESTILO de cómo cuentas las cosas, nunca la PRECISIÓN de los datos ni el rigor del análisis."""
 
     return [{"type": "text", "text": base + personality_txt, "cache_control": {"type": "ephemeral"}}]
 
@@ -88,13 +92,13 @@ _MAX_TOOL_ROUNDS = 4  # corta el loop si el modelo pidiera tools indefinidamente
 
 _NO_KEY_MSG = (
     "⚠️ Finmate todavía no tiene configurada su inteligencia (falta ANTHROPIC_API_KEY). "
-    "Avisale al administrador."
+    "Avísale al administrador."
 )
 _NO_MEMORY_MSG = (
     "❌ No pude acceder a mi memoria en este momento (problema de base de datos). "
-    "Probá de nuevo en unos minutos."
+    "Prueba de nuevo en unos minutos."
 )
-_GENERIC_ERROR_MSG = "❌ Tuve un problema interno respondiendo. Probá de nuevo en unos minutos."
+_GENERIC_ERROR_MSG = "❌ Tuve un problema interno respondiendo. Prueba de nuevo en unos minutos."
 
 
 def _pick_model(user_message: str) -> str:
@@ -140,7 +144,7 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str, personality
         )
 
     final_text = "".join(block.text for block in response.content if block.type == "text").strip()
-    return final_text or "No pude generar una respuesta esta vez. Probá de nuevo en un momento."
+    return final_text or "No pude generar una respuesta esta vez. Prueba de nuevo en un momento."
 
 
 def handle_message(phone: str, user_message: str) -> str:

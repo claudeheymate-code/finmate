@@ -26,7 +26,7 @@ _INT_PARAMS = {"humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador"}
 
 _DB_ERROR_MSG = (
     "❌ No pude acceder a tu configuración de personalidad en este momento "
-    "(problema de base de datos). Probá de nuevo en unos minutos."
+    "(problema de base de datos). Prueba de nuevo en unos minutos."
 )
 
 
@@ -54,7 +54,7 @@ def tool_get_personality(user_id: int) -> str:
         f"😄 Frecuencia de chistes: {frecuencia}/10\n"
         f"💬 Nivel conversador: {nivel}/10\n"
         f"🗣 Tono: {tono}\n\n"
-        "Decime qué querés cambiar: ej. \"poneme el tono en amigo\" o \"más humor, más chistes\"."
+        "Dime qué quieres cambiar: ej. \"poneme el tono en amigo\" o \"más humor, más chistes\"."
     )
 
 
@@ -64,7 +64,7 @@ def tool_set_personality(user_id: int, tool_input: dict) -> str:
         return _DB_ERROR_MSG
 
     if not tool_input:
-        return "⚠️ No me indicaste qué parámetro querés cambiar."
+        return "⚠️ No me indicaste qué parámetro quieres cambiar."
 
     # Validar
     errors = []

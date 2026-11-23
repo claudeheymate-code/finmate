@@ -173,9 +173,10 @@ TOOLS = [
             "Entrega el contenido completo de avisos de Finmate que quedaron "
             "pendientes (resumen semanal, alertas de resultados corporativos, "
             "datos macro o noticias). Usar cuando el usuario responda a un "
-            "aviso corto de Finmate tipo 'tenés novedades de mercado' o 'tu "
-            "resumen semanal está listo' con algo afirmativo (ej: 'sí', "
-            "'dale', 'mostrame', 'ver', 'mandalo', 'quiero verlo'). Si no hay "
+            "aviso corto de Finmate (empiezan con 'Aviso de tu cuenta Finmate' o "
+            "'Alerta de precio de tu lista de seguimiento') con algo afirmativo "
+            "o cualquier respuesta (ej: 'sí', 'dale', 'muéstrame', 'mostrame', "
+            "'ver', 'mándalo', 'quiero verlo', 'ok'). Si no hay "
             "nada pendiente, la tool lo informa — no hace falta preguntarle "
             "al usuario antes de llamarla."
         ),
@@ -184,7 +185,7 @@ TOOLS = [
     # ── Finanzas personales (Plan Fase 5) ──────────────────────────────────
     {
         "name": "add_expense",
-        "description": "Registra un gasto o ingreso personal. Usar cuando el usuario diga algo como 'gasté X en Y', 'pagué X', 'cobré X', 'ingresé X'. Extraé el monto, la categoría, una descripción corta y, si la menciona, la ocasión (ej: 'cumpleaños de la Cata', 'aniversario'). Categorías por defecto: Comidas, Carretes, Asados, Regalos, Suscripciones, Polola, Copete, Bets y Otros; cada usuario puede tener además categorías propias o haber sacado alguna (si dudás, llamá antes a manage_expense_categories con action=list). Si no queda clara la categoría, preguntá antes de registrar ofreciendo sus opciones.",
+        "description": "Registra un gasto o ingreso personal. Usar cuando el usuario diga algo como 'gasté X en Y', 'pagué X', 'cobré X', 'ingresé X'. Extrae el monto, la categoría, una descripción corta y, si la menciona, la ocasión (ej: 'cumpleaños de la Cata', 'aniversario'). Categorías por defecto: Comidas, Carretes, Asados, Regalos, Suscripciones, Polola, Copete, Bets y Otros; cada usuario puede tener además categorías propias o haber sacado alguna (si dudas, llama antes a manage_expense_categories con action=list). Si no queda clara la categoría, pregunta antes de registrar ofreciendo sus opciones.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -202,7 +203,7 @@ TOOLS = [
     },
     {
         "name": "manage_expense_categories",
-        "description": "Lista, agrega o saca categorías de gasto del usuario (afecta solo su cuenta). Usar cuando pregunte qué categorías tiene, o pida 'agregá la categoría X' / 'sacá la categoría Y'. Sacar una no borra los gastos que ya tenía ahí. 'Otros' no se puede sacar.",
+        "description": "Lista, agrega o saca categorías de gasto del usuario (afecta solo su cuenta). Usar cuando pregunte qué categorías tiene, o pida 'agrega la categoría X' / 'saca la categoría Y'. Sacar una no borra los gastos que ya tenía ahí. 'Otros' no se puede sacar.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -236,7 +237,7 @@ TOOLS = [
     },
     {
         "name": "follow_news_topic",
-        "description": "Agrega un tema de noticias para seguir. Usar cuando el usuario diga 'seguime las noticias de X', 'avisame sobre X'. Tipos: ticker (ej: AAPL), sector (ej: tecnología), pais (ej: Chile), keyword (ej: inflación).",
+        "description": "Agrega un tema de noticias para seguir. Usar cuando el usuario diga 'seguime las noticias de X', 'avísame sobre X'. Tipos: ticker (ej: AAPL), sector (ej: tecnología), pais (ej: Chile), keyword (ej: inflación).",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -265,7 +266,7 @@ TOOLS = [
     },
     {
         "name": "follow_indicator",
-        "description": "Agrega un indicador económico macro para seguir. Usar cuando el usuario diga 'seguime el CPI', 'avisame del NFP', etc. Códigos: FED_RATE, CPI_US, NFP, GDP_US, PCE_US, IPC_CL, BCCh_RATE, etc.",
+        "description": "Agrega un indicador económico macro para seguir. Usar cuando el usuario diga 'seguime el CPI', 'avísame del NFP', etc. Códigos: FED_RATE, CPI_US, NFP, GDP_US, PCE_US, IPC_CL, BCCh_RATE, etc.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -388,7 +389,7 @@ _USER_SCOPED_TOOLS = {
 # WhatsApp — ver finmate/alerts/pending.py).
 _PHONE_SCOPED_TOOLS = {
     "get_pending_notifications": lambda phone, _input: (
-        pop_pending(phone) or "No tenés avisos pendientes en este momento."
+        pop_pending(phone) or "No tienes avisos pendientes en este momento."
     ),
 }
 

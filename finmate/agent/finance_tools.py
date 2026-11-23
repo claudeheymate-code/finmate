@@ -212,16 +212,16 @@ def tool_add_expense(user_id: int, tool_input: dict) -> str:
             f"{icon} {verb}: *{amount_str}* en {category}",
             desc_line,
             "",
-            f"Llevás *{gastos_str}* en gastos este mes.",
+            f"Llevas *{gastos_str}* en gastos este mes.",
         ]
         return "\n".join(lines)
 
     except KeyError as exc:
         logger.error("tool_add_expense: falta campo requerido — %s", exc)
-        return "❌ No pude registrar el gasto ahora. Probá en un minuto."
+        return "❌ No pude registrar el gasto ahora. Prueba en un minuto."
     except Exception:
         logger.exception("tool_add_expense: error inesperado")
-        return "❌ No pude registrar el gasto ahora. Probá en un minuto."
+        return "❌ No pude registrar el gasto ahora. Prueba en un minuto."
 
 
 def tool_get_monthly_summary(user_id: int, tool_input: dict) -> str:
@@ -240,7 +240,7 @@ def tool_get_monthly_summary(user_id: int, tool_input: dict) -> str:
 
         # Sin transacciones
         if ingresos == 0 and gastos == 0 and not por_categoria:
-            return f"No tenés transacciones registradas en {_MONTH_NAMES[month]} {year}."
+            return f"No tienes transacciones registradas en {_MONTH_NAMES[month]} {year}."
 
         ingresos_str = _fmt_amount(abs(ingresos))
         gastos_str = _fmt_amount(-abs(gastos))
@@ -271,7 +271,7 @@ def tool_get_monthly_summary(user_id: int, tool_input: dict) -> str:
 
     except Exception:
         logger.exception("tool_get_monthly_summary: error inesperado")
-        return "❌ No pude obtener el resumen ahora. Probá en un minuto."
+        return "❌ No pude obtener el resumen ahora. Prueba en un minuto."
 
 
 def tool_get_recent_transactions(user_id: int) -> str:
@@ -283,7 +283,7 @@ def tool_get_recent_transactions(user_id: int) -> str:
         transactions = get_recent_transactions(user_id, limit=5)
 
         if not transactions:
-            return "No tenés movimientos registrados todavía."
+            return "No tienes movimientos registrados todavía."
 
         lines = ["*ÚLTIMOS MOVIMIENTOS*", ""]
         for i, tx in enumerate(transactions, start=1):
@@ -299,7 +299,7 @@ def tool_get_recent_transactions(user_id: int) -> str:
 
     except Exception:
         logger.exception("tool_get_recent_transactions: error inesperado")
-        return "❌ No pude obtener los movimientos ahora. Probá en un minuto."
+        return "❌ No pude obtener los movimientos ahora. Prueba en un minuto."
 
 
 def tool_manage_expense_categories(user_id: int, tool_input: dict) -> str:
@@ -328,4 +328,4 @@ def tool_manage_expense_categories(user_id: int, tool_input: dict) -> str:
         return "\n".join(lines)
     except Exception:
         logger.exception("tool_manage_expense_categories: error inesperado")
-        return "❌ No pude revisar tus categorías ahora. Probá en un minuto."
+        return "❌ No pude revisar tus categorías ahora. Prueba en un minuto."

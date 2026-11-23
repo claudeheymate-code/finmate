@@ -3,7 +3,7 @@ Finmate — Tools de noticias e indicadores económicos (Plan Fase 4)
 
 Permiten al usuario configurar qué temas de noticias e indicadores macro
 quiere seguir. Las alertas proactivas sobre esos temas quedan para fases
-posteriores; acá solo se gestiona el seguimiento.
+posteriores; aquí solo se gestiona el seguimiento.
 """
 import logging
 
@@ -43,11 +43,11 @@ def tool_get_my_news_topics(user_id: int) -> str:
     if not topics and not indicators:
         return (
             "No estás siguiendo ningún tema todavía.\n\n"
-            "Ejemplos de lo que podés pedirme:\n"
+            "Ejemplos de lo que puedes pedirme:\n"
             "• 'Seguime las noticias de AAPL'\n"
             "• 'Seguime el sector tecnología'\n"
             "• 'Seguime el CPI_US' (inflación EE.UU.)\n"
-            "• 'Mostrame el calendario económico'"
+            "• 'Muéstrame el calendario económico'"
         )
 
     lines = ["*TUS SEGUIMIENTOS*", ""]
@@ -67,7 +67,7 @@ def tool_get_my_news_topics(user_id: int) -> str:
             lines.append(f"  • `{code}` — {name}")
         lines.append("")
 
-    lines.append("Decime qué querés agregar o quitar.")
+    lines.append("Dime qué quieres agregar o quitar.")
     return "\n".join(lines)
 
 
@@ -133,7 +133,7 @@ def tool_get_economic_calendar(user_id: int) -> str:
         else:
             lines.append(f"• `{code}`")
     lines.append("")
-    lines.append("Decime 'seguime el NFP' para agregar más, o 'mostrame el calendario completo'.")
+    lines.append("Dime 'seguime el NFP' para agregar más, o 'muéstrame el calendario completo'.")
     return "\n".join(lines)
 
 
@@ -153,7 +153,7 @@ def tool_follow_indicator(user_id: int, tool_input: dict) -> str:
         return (
             f"❌ No conozco el indicador `{code}`.\n"
             f"Algunos disponibles: {available}...\n"
-            "Pedime 'mostrame el calendario económico' para ver todos."
+            "Pídeme 'muéstrame el calendario económico' para ver todos."
         )
 
     country = info.get("country", "US")
