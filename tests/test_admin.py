@@ -108,13 +108,25 @@ def test_numero_nuevo_queda_pendiente_y_se_aprueba(admin, monkeypatch):
         raise AssertionError("no debe llamar a Claude sin acceso")
 
     monkeypatch.setattr(orchestrator, "_run_agent", boom, raising=False)
+    monkeypatch.setattr("finmate.services.feedback.send_email", lambda *a, **k: True)
     reply = orchestrator.handle_message("whatsapp:+56988880001", "hola", name="Pedro Pérez")
-    assert "Pedro" in reply and "pendiente" in reply.lower()
-    assert any(to == "whatsapp:+56911110000" for to, _ in sent)  # aviso al admin
+    assert "Pedro" in reply and "correo" in reply.lower()
+    assert not sent  # todavía no hay datos: no se avisa al admin
+    reply = orchestrator.handle_message("whatsapp:+56988880001", "Pedro Pérez Soto", name="Pedro Pérez")
+    assert "correo" in reply.lower()
+    reply = orchestrator.handle_message("whatsapp:+56988880001", "pedro@correo.cl", name="Pedro Pérez")
+    assert "pendiente" in reply.lower()
+    aviso = [b for to, b in sent if to == "whatsapp:+56911110000"]
+    assert aviso and "pedro@correo.cl" in aviso[0] and "Pedro Pérez Soto" in aviso[0]
+    reply = orchestrator.handle_message("whatsapp:+56988880001", "hola?", name="Pedro Pérez")
+    assert "sigue pendiente" in reply.lower()
 
     inbox = admin.get("/admin/api/inbox", headers=H).get_json()
     req = next(r for r in inbox["requests"] if r["phone"].endswith("56988880001"))
     assert req["status"] == "pending" and req["messages"]
+    assert req["email"] == "pedro@correo.cl" and req["name"] == "Pedro Pérez Soto" and req["registered"]
+    csv_text = admin.get("/admin/api/usuarios.csv").get_data(as_text=True)
+    assert "Correo" in csv_text and "pedro@correo.cl" in csv_text
 
     # Sin acceso no puede pedir código para el panel.
     assert admin.post("/api/auth/request-code", json={"phone": "+56988880001"}, headers=H).status_code == 403
@@ -168,3 +180,29 @@ def test_fuentes(admin, monkeypatch):
     assert next(s for s in d["sources"] if s["id"] == "fred")["note"] == "Ver series de empleo"
     assert d["ideas"] == "Probar Reddit"
     assert admin.post("/admin/api/fuentes/nada/probar", headers=H).status_code == 404
+
+
+def test_registro_en_un_solo_mensaje(admin, monkeypatch):
+    from config import settings
+    from finmate.agent import orchestrator
+
+    monkeypatch.setattr(settings, "ACCESS_APPROVAL_REQUIRED", True)
+    monkeypatch.setattr(settings, "WHATSAPP_RECIPIENTS", ["whatsapp:+56911110000"])
+    monkeypatch.setattr(orchestrator, "ANTHROPIC_API_KEY", "test", raising=False)
+    sent = _fake_whatsapp(monkeypatch)
+    mails = []
+    monkeypatch.setattr("finmate.services.feedback.send_email", lambda subj, body, fields: mails.append(fields) or True)
+    orchestrator.handle_message("whatsapp:+56988880003", "Hola, quiero probar", name=None)
+    reply = orchestrator.handle_message("whatsapp:+56988880003", "me llamo ana soto y mi correo es Ana@Mail.com")
+    assert "Ana" in reply and "pendiente" in reply.lower()
+    assert mails and mails[0]["correo"] == "ana@mail.com" and mails[0]["nombre"] == "Ana Soto"
+
+
+def test_interpretar_nombre_y_correo():
+    from finmate.agent.signup import parse_signup
+
+    assert parse_signup("hola") == (None, None)
+    assert parse_signup("Joaquín Cornejo, joaco@gmail.com") == ("Joaquín Cornejo", "joaco@gmail.com")
+    assert parse_signup("pedro@x.com") == (None, "pedro@x.com")
+    assert parse_signup("Mi nombre es ana maría soto") == ("Ana María Soto", None)
+    assert parse_signup("¿qué es finmate?") == (None, None)
