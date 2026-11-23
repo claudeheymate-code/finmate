@@ -302,11 +302,17 @@ def _first_time(msg_id: str) -> bool:
 
 
 def _answer_meta(msg: dict) -> None:
-    from finmate.agent.orchestrator import handle_message
-    from finmate.whatsapp.messenger import WhatsAppMessenger
+    import faulthandler
+    import sys
 
-    phone = meta_cloud.to_internal(msg["from"])
+    logger.info(f"Procesando respuesta para {msg.get('from')}…")
+    # Si algo se traba más de 90 s, deja en el log dónde está cada hilo.
+    faulthandler.dump_traceback_later(90, exit=False, file=sys.stderr)
     try:
+        from finmate.agent.orchestrator import handle_message
+        from finmate.whatsapp.messenger import WhatsAppMessenger
+
+        phone = meta_cloud.to_internal(msg["from"])
         meta_cloud.mark_as_read(msg["id"])
         if not msg["text"]:
             reply = "Por ahora solo puedo leer mensajes de texto. Escríbeme tu pregunta y te respondo."
@@ -315,7 +321,9 @@ def _answer_meta(msg: dict) -> None:
         ok = WhatsAppMessenger().send_message(phone, reply)
         logger.info(f"Respuesta a {msg['from']} {'enviada' if ok else 'NO enviada'} ({len(reply)} caracteres)")
     except Exception as e:
-        logger.error(f"Error respondiendo a {phone} por Meta: {e}", exc_info=True)
+        logger.error(f"Error respondiendo a {msg.get('from')} por Meta: {e}", exc_info=True)
+    finally:
+        faulthandler.cancel_dump_traceback_later()
 
 
 def _incoming_meta():
