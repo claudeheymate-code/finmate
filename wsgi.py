@@ -14,7 +14,8 @@ logging.basicConfig(
 
 from main import app, start_scheduler
 
-# Iniciar scheduler al cargar el módulo (gunicorn --preload)
+# Iniciar scheduler al cargar el módulo. Sin --preload: corre dentro del
+# único worker, así la base y los clientes HTTP no se heredan de un fork.
 scheduler = start_scheduler()
 
 # Etapa B: precios en tiempo real (WebSocket de Finnhub) para alertas de
