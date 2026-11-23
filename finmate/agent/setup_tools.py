@@ -85,7 +85,10 @@ def user_context(user_id: int, name: str = "") -> str:
         lines.append(
             f"- Avisos: alerta de watchlist si un activo se mueve ±{notif.get('watchlist_threshold_pct')}% "
             f"en el día; hasta {notif.get('news_max_per_day')} avisos de noticias por día; resumen "
-            f"semanal {'activado' if notif.get('weekly_summary_enabled') else 'desactivado'}."
+            f"semanal {'activado' if notif.get('weekly_summary_enabled') else 'desactivado'}; "
+            f"resultados de empresas: {_EARN.get(notif.get('earnings_alerts'), '?')}; datos macro: "
+            f"{'sí' if notif.get('macro_alerts') else 'no'}; noticias generales: "
+            f"{'sí' if notif.get('market_news_alerts') else 'no'}."
         )
     return "\n".join(lines)
 
@@ -100,8 +103,14 @@ def tool_get_notification_settings(user_id: int) -> str:
         f"Alerta de watchlist: cuando un activo se mueve ±{n['watchlist_threshold_pct']:g}% en el día.\n"
         f"Avisos de noticias de tus activos: hasta {n['news_max_per_day']} por día "
         f"({'apagados' if n['news_max_per_day'] == 0 else 'activos'}).\n"
-        f"Resumen semanal (domingo): {'activado' if n['weekly_summary_enabled'] else 'desactivado'}."
+        f"Resumen semanal (domingo): {'activado' if n['weekly_summary_enabled'] else 'desactivado'}.\n"
+        f"Resultados de empresas: {_EARN[n['earnings_alerts']]}.\n"
+        f"Datos macro: {'sí' if n['macro_alerts'] else 'no'}. "
+        f"Noticias generales del mercado: {'sí' if n['market_news_alerts'] else 'no'}."
     )
+
+
+_EARN = {"off": "ninguno", "mine": "solo de tus activos", "all": "de todas las empresas"}
 
 
 def tool_set_notification_settings(user_id: int, tool_input: dict) -> str:
@@ -113,6 +122,9 @@ def tool_set_notification_settings(user_id: int, tool_input: dict) -> str:
             watchlist_threshold_pct=tool_input.get("watchlist_threshold_pct"),
             weekly_summary_enabled=tool_input.get("weekly_summary_enabled"),
             news_max_per_day=tool_input.get("news_max_per_day"),
+            earnings_alerts=tool_input.get("earnings_alerts"),
+            macro_alerts=tool_input.get("macro_alerts"),
+            market_news_alerts=tool_input.get("market_news_alerts"),
         )
     except ValueError as e:
         return f"No pude guardar ese ajuste: {e}"

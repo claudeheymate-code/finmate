@@ -83,7 +83,9 @@ en un par de minutos. Luego guíalo de a un paso por mensaje, en este orden,
 saltándote lo que ya tenga configurado:
   1. Watchlist: qué acciones, ETFs o cripto quiere seguir (agrégalas).
   2. Frecuencia de avisos: pregunta si prefiere pocos mensajes, lo normal o
-     enterarse de todo, y guárdalo; menciona el resumen semanal del domingo.
+     enterarse de todo, y guárdalo; menciona el resumen semanal del domingo
+     y pregunta si también quiere resultados de empresas (solo de sus
+     activos o de todas), datos macro y noticias generales del mercado.
   3. Portafolio: si quiere cargar lo que tiene (símbolo, cantidad y precio de
      compra), o dejarlo para después.
   4. Extras opcionales en una línea: resumen diario del podcast Primer Click,
