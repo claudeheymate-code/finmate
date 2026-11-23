@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 MIN_THRESHOLD = 0.5
 MAX_THRESHOLD = 50.0
 MAX_NEWS_PER_DAY = 10
+EARNINGS_OPTIONS = ("off", "mine", "all")
 
 
 def _defaults() -> dict:
@@ -21,6 +22,9 @@ def _defaults() -> dict:
         "watchlist_threshold_pct": float(WATCHLIST_ALERT_THRESHOLD_PCT),
         "weekly_summary_enabled": True,
         "news_max_per_day": int(NEWS_ALERTS_MAX_PER_USER_PER_DAY),
+        "earnings_alerts": "mine",
+        "macro_alerts": False,
+        "market_news_alerts": False,
     }
 
 
@@ -37,6 +41,12 @@ def get_notification_settings(user_id: int) -> dict:
             out["weekly_summary_enabled"] = bool(row.weekly_summary_enabled)
             if getattr(row, "news_max_per_day", None) is not None:
                 out["news_max_per_day"] = int(row.news_max_per_day)
+            if getattr(row, "earnings_alerts", None):
+                out["earnings_alerts"] = row.earnings_alerts
+            if getattr(row, "macro_alerts", None) is not None:
+                out["macro_alerts"] = bool(row.macro_alerts)
+            if getattr(row, "market_news_alerts", None) is not None:
+                out["market_news_alerts"] = bool(row.market_news_alerts)
         return out
     finally:
         session.close()
@@ -47,6 +57,9 @@ def set_notification_settings(
     watchlist_threshold_pct: Optional[float] = None,
     weekly_summary_enabled: Optional[bool] = None,
     news_max_per_day: Optional[int] = None,
+    earnings_alerts: Optional[str] = None,
+    macro_alerts: Optional[bool] = None,
+    market_news_alerts: Optional[bool] = None,
 ) -> dict:
     """Actualiza solo lo que se pasa. Valida el umbral (0,5% a 50%)."""
     from finmate.db.models import NotificationSettings, get_session
@@ -63,6 +76,8 @@ def set_notification_settings(
         if not (0 <= n <= MAX_NEWS_PER_DAY):
             raise ValueError(f"Los avisos de noticias por día van de 0 a {MAX_NEWS_PER_DAY}.")
         news_max_per_day = n
+    if earnings_alerts is not None and earnings_alerts not in EARNINGS_OPTIONS:
+        raise ValueError("Resultados de empresas: elige 'off' (ninguno), 'mine' (solo mis activos) o 'all' (todas).")
 
     session = get_session()
     try:
@@ -76,6 +91,12 @@ def set_notification_settings(
             row.weekly_summary_enabled = bool(weekly_summary_enabled)
         if news_max_per_day is not None:
             row.news_max_per_day = news_max_per_day
+        if earnings_alerts is not None:
+            row.earnings_alerts = earnings_alerts
+        if macro_alerts is not None:
+            row.macro_alerts = bool(macro_alerts)
+        if market_news_alerts is not None:
+            row.market_news_alerts = bool(market_news_alerts)
         session.commit()
     finally:
         session.close()
@@ -141,3 +162,105 @@ def get_news_limits_by_user() -> Dict[int, int]:
         return {}
     finally:
         session.close()
+
+
+# ── Destinatarios de los avisos generales ──────────────────────────────
+
+def _all_users_with_settings():
+    """[(user_id, phone, settings_dict)] de todos los usuarios."""
+    from finmate.db.models import NotificationSettings, User, get_session
+
+    session = get_session()
+    try:
+        rows = (
+            session.query(User, NotificationSettings)
+            .outerjoin(NotificationSettings, NotificationSettings.user_id == User.id)
+            .all()
+        )
+        out = []
+        for user, ns in rows:
+            d = _defaults()
+            if ns is not None:
+                d["weekly_summary_enabled"] = bool(ns.weekly_summary_enabled)
+                if ns.earnings_alerts:
+                    d["earnings_alerts"] = ns.earnings_alerts
+                if ns.macro_alerts is not None:
+                    d["macro_alerts"] = bool(ns.macro_alerts)
+                if ns.market_news_alerts is not None:
+                    d["market_news_alerts"] = bool(ns.market_news_alerts)
+            out.append((user.id, user.phone, d))
+        return out
+    finally:
+        session.close()
+
+
+def recipients_for(kind: str, symbol: Optional[str] = None) -> list:
+    """Teléfonos que quieren un aviso general, según lo que eligió cada uno.
+
+    kind: "weekly" (resumen semanal), "macro" (datos macro publicados),
+    "market_news" (noticias generales del mercado) o "earnings" (resultados
+    de una empresa: "all" los recibe todos; "mine" solo si `symbol` está en
+    su portafolio o watchlist).
+    """
+    try:
+        users = _all_users_with_settings()
+    except Exception as e:
+        logger.warning(f"No pude leer destinatarios de avisos ({kind}): {e}")
+        return []
+    if kind == "weekly":
+        return [p for _u, p, d in users if d["weekly_summary_enabled"]]
+    if kind == "macro":
+        return [p for _u, p, d in users if d["macro_alerts"]]
+    if kind == "market_news":
+        return [p for _u, p, d in users if d["market_news_alerts"]]
+    if kind == "earnings":
+        sym = (symbol or "").upper()
+        out = []
+        for uid, phone, d in users:
+            mode = d["earnings_alerts"]
+            if mode == "all":
+                out.append(phone)
+            elif mode == "mine" and sym and sym in _user_symbols(uid):
+                out.append(phone)
+        return out
+    return []
+
+
+def _user_symbols(user_id: int) -> set:
+    from finmate.db.repository import get_portfolio, get_watchlist
+
+    try:
+        syms = {s.upper() for s, _ in get_watchlist(user_id)}
+        syms |= {s.upper() for s, _q, _p in get_portfolio(user_id)}
+        return syms
+    except Exception:
+        return set()
+
+
+def migrate_legacy_recipients(phones) -> int:
+    """Una sola vez: quienes estaban en la lista fija WHATSAPP_RECIPIENTS
+    quedan con todos los avisos generales activados y siguiendo Primer Click,
+    para que no pierdan lo que ya recibían. Después lo maneja cada uno."""
+    from finmate.db.state_store import load_json, save_json
+
+    flag = "migration:legacy_recipients"
+    if (load_json(flag, {}) or {}).get("done"):
+        return 0
+    from finmate.db.news_repo import add_news_topic
+    from finmate.db.repository import find_user_by_phone
+
+    n = 0
+    for phone in phones or []:
+        user = find_user_by_phone(phone)
+        if user is None:
+            continue
+        try:
+            set_notification_settings(user.id, earnings_alerts="all", macro_alerts=True,
+                                      market_news_alerts=True, weekly_summary_enabled=True)
+            add_news_topic(user.id, "podcast", "primer_click")
+            n += 1
+        except Exception as e:
+            logger.warning(f"No pude migrar avisos de {phone}: {e}")
+    save_json(flag, {"done": True, "migrated": n})
+    logger.info(f"Avisos generales: {n} usuario(s) de la lista fija migrados a preferencias propias.")
+    return n

@@ -237,6 +237,10 @@ class NotificationSettings(Base):
     watchlist_threshold_pct = Column(Float, nullable=True)   # None = usar el global
     weekly_summary_enabled = Column(Boolean, nullable=False, default=True)
     news_max_per_day = Column(Integer, nullable=True)  # None = usar el global; 0 = sin avisos de noticias
+    # Avisos generales (antes iban a una lista fija de números, WHATSAPP_RECIPIENTS):
+    earnings_alerts = Column(String(10), nullable=True)   # "off" | "mine" | "all" (None = "mine")
+    macro_alerts = Column(Boolean, nullable=True)         # datos macro publicados (None = no)
+    market_news_alerts = Column(Boolean, nullable=True)   # noticias generales del mercado (None = no)
     updated_at = Column(
         DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False
     )
@@ -321,7 +325,12 @@ def _ensure_engine() -> None:
 # perder datos). Cuando esto crezca, conviene pasar a Alembic.
 _ADDED_COLUMNS = {
     "portfolio_holdings": {"asset_class": "VARCHAR(30)", "sector": "VARCHAR(60)"},
-    "notification_settings": {"news_max_per_day": "INTEGER"},
+    "notification_settings": {
+        "news_max_per_day": "INTEGER",
+        "earnings_alerts": "VARCHAR(10)",
+        "macro_alerts": "BOOLEAN",
+        "market_news_alerts": "BOOLEAN",
+    },
     "transactions": {
         "occasion": "VARCHAR(200)",
         "merchant": "VARCHAR(200)",
