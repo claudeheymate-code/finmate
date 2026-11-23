@@ -10,7 +10,7 @@ el feed RSS público del podcast (el mismo que alimenta a Spotify y Apple):
    15 min). Sin esa clave, usa la descripción del episodio.
 3. Claude (modelo económico) lo resume en 5-6 puntos para inversionistas.
 4. Lo manda por WhatsApp a quienes siguen el podcast (tool follow_podcast)
-   y a WHATSAPP_RECIPIENTS, con el link al episodio.
+   (cada usuario lo activa por chat o desde su panel), con el link al episodio.
 
 El resumen es corto y en palabras propias (no reproduce la transcripción),
 y siempre enlaza al episodio original.
@@ -192,9 +192,6 @@ def _recipients(podcast_id: str) -> list:
         phones = [p for _uid, p in get_topic_followers("podcast", podcast_id)]
     except Exception as e:
         logger.warning(f"No pude leer seguidores del podcast {podcast_id}: {e}")
-    for p in WHATSAPP_RECIPIENTS:
-        if p not in phones:
-            phones.append(p)
     return phones
 
 
