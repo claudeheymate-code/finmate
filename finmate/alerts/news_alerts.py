@@ -16,7 +16,7 @@ Reglas para no saturar:
   MAX_ITEMS_PER_MESSAGE titulares por mensaje.
 
 Igual que las alertas de watchlist, corre como job separado en main.py: un
-error acá nunca toca el resto de las alertas.
+error aquí nunca toca el resto de las alertas.
 """
 import datetime as dt
 import hashlib
@@ -152,7 +152,7 @@ def _format_message(items: list) -> str:
         if it.get("url"):
             lines.append(it["url"])
         lines.append("")
-    lines.append("_Escribime \"¿por qué se movió " + items[0]["symbol"] + "?\" si querés el análisis._")
+    lines.append("_Escribime \"¿por qué se movió " + items[0]["symbol"] + "?\" si quieres el análisis._")
     return "\n".join(lines).strip()
 
 

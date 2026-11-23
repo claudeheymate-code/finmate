@@ -8,7 +8,7 @@ de Finnhub que ya usa `portfolio_tools.py`, para no duplicar el manejo de
 "mercado cerrado" ni el formato de números.
 
 Separado a propósito del motor de alertas broadcast (`alerts/engine.py`):
-así un error acá (o que todavía no haya DATABASE_URL configurada) nunca
+así un error aquí (o que todavía no haya DATABASE_URL configurada) nunca
 puede afectar earnings/macro/noticias, que ya funcionan en producción. Ver
 la nota en CLAUDE.md sobre por qué esto quedó pendiente en la pasada de
 Fase 1.
@@ -164,7 +164,7 @@ def _check_watchlist_alerts(
                     msg = (
                         f"{emoji} *{symbol}* se movió {change_fmt} hoy\n"
                         f"Precio actual: {price_fmt}\n\n"
-                        f"_Lo tenés en tu watchlist. Escribime si querés más detalle o sacarlo de la lista._"
+                        f"_Lo tienes en tu watchlist. Escríbeme si quieres más detalle o sacarlo de la lista._"
                     )
                     ok = messenger.send_message(phone, msg)
             except Exception as e:

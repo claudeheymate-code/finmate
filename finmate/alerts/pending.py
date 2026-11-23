@@ -6,8 +6,8 @@ alertas de earnings/macro/noticias) son demasiado largos y dinámicos
 (listas de longitud variable, texto condicional) para ser un Content
 Template de WhatsApp Business aprobado por Meta — un template necesita
 texto mayormente fijo con pocas variables cortas. La solución estándar:
-se manda un template corto y estático avisando "tenés novedades" (eso sí
-es válido como template) y acá se guarda el contenido real, por teléfono.
+se manda un template corto y estático avisando "tienes novedades" (eso sí
+es válido como template) y aquí se guarda el contenido real, por teléfono.
 Cuando el usuario responde algo (lo que abre la ventana de 24hs de
 mensajería libre de WhatsApp), el agente llama a la tool
 `get_pending_notifications` (ver finmate/agent/tools.py) y recién ahí se
