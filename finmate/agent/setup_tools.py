@@ -128,3 +128,10 @@ def tool_onboarding(user_id: int, tool_input: dict) -> str:
         set_onboarding_status(user_id, "en_curso")
         return "Bienvenida reiniciada: vuelve a guiar la configuración desde el principio."
     return "Acción no válida (usa 'complete' o 'restart')."
+
+
+def tool_get_panel_link(user_id: int, _input: dict) -> str:
+    from finmate.web.login_codes import LINK_TTL_MIN, panel_link
+
+    return (f"Link de acceso al panel web (un solo uso, vence en {LINK_TTL_MIN} minutos): "
+            f"{panel_link(user_id)}\nCompártelo tal cual con el usuario.")

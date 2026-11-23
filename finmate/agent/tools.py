@@ -62,6 +62,7 @@ from finmate.agent.news_content_tools import (
 )
 from finmate.agent.setup_tools import (
     tool_get_notification_settings,
+    tool_get_panel_link,
     tool_onboarding,
     tool_set_notification_settings,
 )
@@ -375,6 +376,11 @@ TOOLS = [
         },
     },
     {
+        "name": "get_panel_link",
+        "description": "Genera un link para que el usuario entre a su panel web de Finmate sin contraseña (un solo uso, 15 minutos). Usar cuando pida 'panel', 'la web', 'entrar a la app', 'ver mi portafolio en la web' o quiera cambiar ajustes visualmente.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "onboarding",
         "description": "Marca la bienvenida como terminada ('complete') cuando el usuario ya configuró lo que quería o dijo que lo deja para después; o la reinicia ('restart') si pide configurar todo de nuevo ('empecemos de cero', 'configúrame de nuevo').",
         "input_schema": {
@@ -436,6 +442,7 @@ _USER_SCOPED_TOOLS = {
     "get_notification_settings": lambda user_id, _input: tool_get_notification_settings(user_id),
     "set_notification_settings": tool_set_notification_settings,
     "onboarding":                tool_onboarding,
+    "get_panel_link":            tool_get_panel_link,
     # Podcasts (Etapa C)
     "follow_podcast":            tool_follow_podcast,
     "unfollow_podcast":          tool_unfollow_podcast,

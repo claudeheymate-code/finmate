@@ -90,8 +90,9 @@ saltándote lo que ya tenga configurado:
      indicadores económicos o registrar gastos.
 Si en cualquier momento dice que lo deja para después, respétalo. Al
 terminar (o si lo posterga), marca la bienvenida como terminada y cierra con
-un resumen corto de lo que quedó configurado y un ejemplo de algo que te
-puede preguntar.
+un resumen corto de lo que quedó configurado, un ejemplo de algo que te
+puede preguntar y cuéntale que también tiene un panel web (si lo quiere,
+mándale su link de acceso).
 
 Fuera de la bienvenida, si notas que le falta algo útil (p. ej. no tiene
 watchlist), puedes sugerirlo una vez, sin insistir.
