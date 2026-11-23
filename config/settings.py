@@ -247,3 +247,17 @@ PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://claudeheymate-code.githu
 
 # Dirección pública del panel web (para los links de acceso que manda el bot).
 PANEL_BASE_URL = os.getenv("PANEL_BASE_URL", "https://web-production-3626a.up.railway.app").strip()
+
+
+# ── Panel de administrador (/admin) ─────────────────────────────────
+# Se entra con Google y solo con estos correos (separados por coma).
+ADMIN_EMAILS = [e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "claude.heymate@gmail.com").split(",") if e.strip()]
+# Credenciales OAuth de Google Cloud ("ID de cliente de OAuth", tipo aplicación web).
+# URI de redirección autorizado: <PANEL_BASE_URL>/admin/oauth/callback
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "").strip()
+GOOGLE_OAUTH_CLIENT_SECRET = _key("GOOGLE_OAUTH_CLIENT_SECRET")
+# Solo para tests/local: entrar al admin sin Google. Nunca en producción.
+ADMIN_DEV_LOGIN = os.getenv("ADMIN_DEV_LOGIN", "false").lower() == "true"
+# Los números nuevos que escriben al bot quedan pendientes hasta que el
+# administrador los apruebe en /admin → Inbox. Poner "false" para abrir el bot a todos.
+ACCESS_APPROVAL_REQUIRED = os.getenv("ACCESS_APPROVAL_REQUIRED", "true").lower() == "true"
