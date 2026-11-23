@@ -204,9 +204,15 @@ def check_news_alerts(
         if messenger is None:
             from finmate.whatsapp.messenger import WhatsAppMessenger
             messenger = WhatsAppMessenger()
+        try:
+            from finmate.db.settings_repo import get_news_limits_by_user
+
+            limits = get_news_limits_by_user()
+        except Exception:
+            limits = {}
         for user_id, user_items in per_user.items():
             dkey = f"{user_id}_{today}"
-            if daily.get(dkey, 0) >= NEWS_ALERTS_MAX_PER_USER_PER_DAY:
+            if daily.get(dkey, 0) >= limits.get(user_id, NEWS_ALERTS_MAX_PER_USER_PER_DAY):
                 continue
             # Primero las de sentimiento más marcado (si lo hay).
             user_items.sort(key=lambda x: -abs(x.get("sentiment") or 0))
