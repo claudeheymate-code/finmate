@@ -47,7 +47,7 @@ logger = logging.getLogger("finmate")
 
 # ============================================================
 # Base de datos (Fase 0 — memoria persistente del agente)
-# Se corre acá, a nivel de módulo, para que también se ejecute cuando
+# Se corre aquí, a nivel de módulo, para que también se ejecute cuando
 # gunicorn importa wsgi.py (no solo con `python main.py`). Si todavía no
 # se configuró DATABASE_URL, se loguea el error pero no se cae la app —
 # el webhook sigue respondiendo (avisando que falta memoria) y /health
@@ -163,7 +163,7 @@ def run_watchlist_alert_check():
     try/except: necesita DATABASE_URL (consulta la watchlist por usuario) y
     si falla por lo que sea, no debe tocar el chequeo de alertas broadcast
     (earnings/macro/noticias) que ya funciona en producción. El import de
-    `check_watchlist_alerts` se hace acá adentro, no arriba del archivo, por
+    `check_watchlist_alerts` se hace aquí adentro, no arriba del archivo, por
     la misma razón: que un problema en ese módulo no le impida ni siquiera
     arrancar al resto del bot.
     """
@@ -242,7 +242,7 @@ def start_scheduler():
 
     # Alertas de watchlist por usuario (Fase 1.5) — mismo intervalo que el
     # chequeo de alertas broadcast de arriba, pero como job separado para
-    # que un error acá nunca afecte earnings/macro/noticias.
+    # que un error aquí nunca afecte earnings/macro/noticias.
     scheduler.add_job(
         run_watchlist_alert_check,
         IntervalTrigger(minutes=ALERT_CHECK_INTERVAL_MINUTES),
