@@ -37,7 +37,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=60.0, max_retries=2) if ANTHROPIC_API_KEY else None
 
 
 def _build_system_prompt(personality: dict) -> list:
