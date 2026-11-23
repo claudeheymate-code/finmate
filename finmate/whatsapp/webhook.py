@@ -347,7 +347,7 @@ def _incoming_meta():
             threading.Thread(target=_answer_meta, args=(msg,), daemon=True).start()
         else:
             _answer_meta(msg)
-    return "ok", 200  # siempre 200 rápido; los avisos de estado (entregado/leído) también llegan acá
+    return "ok", 200  # siempre 200 rápido; los avisos de estado (entregado/leído) también llegan aquí
 
 
 @whatsapp_bp.route("/webhook", methods=["POST"])
