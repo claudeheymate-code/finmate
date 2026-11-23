@@ -17,6 +17,7 @@
   </div>
   <section class="card glass-strong" style="flex:0 1 420px;padding:32px;border-radius:28px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="up" style="display:flex">{{ icon('lock') }}</span><h2 style="font-size:24px">Entrar</h2></div>
+    {% if link_error %}<div class="error-box" style="margin-bottom:16px">{{ link_error }}</div>{% endif %}
     {% if dev_login %}
     <p class="faint small" style="margin-bottom:22px">Modo desarrollo: se entra solo con el número. El acceso con código por WhatsApp llega en la etapa 4.</p>
     <form id="dev-login" style="display:flex;flex-direction:column;gap:16px">
@@ -25,7 +26,17 @@
       <div id="login-msg"></div>
     </form>
     {% else %}
-    <p class="faint" style="line-height:1.6">El acceso con un código que te llega por WhatsApp se está terminando. Mientras tanto, sigue usando Finmate desde el chat.</p>
+    <p class="faint small" style="margin-bottom:22px;line-height:1.6">Te mandamos un código a tu WhatsApp. También puedes escribirle <b>panel</b> a Finmate y te manda un link para entrar directo.</p>
+    <form id="code-request" style="display:flex;flex-direction:column;gap:16px">
+      <div class="field"><label for="phone">Tu número de WhatsApp</label><input id="phone" type="tel" required autocomplete="tel" placeholder="+56 9 1234 5678"></div>
+      <button class="btn" type="submit">Mandarme el código</button>
+    </form>
+    <form id="code-verify" style="display:none;flex-direction:column;gap:16px">
+      <div class="field"><label for="code">Código de 6 dígitos</label><input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="123456"></div>
+      <button class="btn" type="submit">Entrar al panel</button>
+      <button class="btn ghost" type="button" id="code-back">Cambiar número</button>
+    </form>
+    <div id="login-msg" style="margin-top:12px"></div>
     {% endif %}
   </section>
 </div>
