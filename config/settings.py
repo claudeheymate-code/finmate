@@ -243,3 +243,7 @@ SMTP_USER = os.getenv("SMTP_USER", "").strip()
 SMTP_PASSWORD = _key("SMTP_PASSWORD")
 SMTP_FROM = os.getenv("SMTP_FROM", "").strip()
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://claudeheymate-code.github.io").strip()
+
+
+# Dirección pública del panel web (para los links de acceso que manda el bot).
+PANEL_BASE_URL = os.getenv("PANEL_BASE_URL", "https://web-production-3626a.up.railway.app").strip()
