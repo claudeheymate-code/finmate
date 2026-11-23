@@ -309,6 +309,8 @@ def _user_rows():
         rows = []
         for u, n, last in q.all():
             rows.append({"id": u.id, "name": u.name or "", "phone": u.phone.replace("whatsapp:", ""),
+                         "email": u.email or "",
+                         "registered_at": u.registered_at.isoformat() if u.registered_at else None,
                          "created_at": u.created_at.isoformat() if u.created_at else None,
                          "last_message_at": last.isoformat() if last else None, "messages": int(n or 0),
                          "status": u.access_status or "approved"})
@@ -347,6 +349,28 @@ def api_users():
         except Exception:
             r["watchlist"] = r["portfolio"] = None
     return jsonify({"users": rows, "counts": _user_counts()})
+
+
+@admin_bp.get("/api/usuarios.csv")
+@admin_api
+def api_users_csv():
+    """Descarga de los registrados (nombre, correo, número, fechas, estado) para Excel/Sheets."""
+    import csv
+    import io
+
+    from flask import Response
+
+    labels = {"approved": "Con acceso", "pending": "Pendiente", "denied": "Rechazado"}
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Nombre", "Correo", "WhatsApp", "Registro", "Inicio", "Último mensaje", "Mensajes", "Acceso"])
+    for r in _user_rows():
+        w.writerow([r["name"], r["email"], r["phone"], (r["registered_at"] or "")[:16].replace("T", " "),
+                    (r["created_at"] or "")[:16].replace("T", " "), (r["last_message_at"] or "")[:16].replace("T", " "),
+                    r["messages"], labels.get(r["status"], r["status"])])
+    fname = f"finmate-usuarios-{dt.date.today().isoformat()}.csv"
+    return Response("\ufeff" + buf.getvalue(), mimetype="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
 @admin_bp.post("/api/usuarios/<int:uid>/acceso")
@@ -410,6 +434,7 @@ def api_inbox():
             msgs = (s.query(ConversationTurn).filter_by(user_id=u.id, role="user")
                     .order_by(ConversationTurn.timestamp.desc()).limit(3).all())
             pending.append({"id": u.id, "name": u.name or "", "phone": u.phone.replace("whatsapp:", ""),
+                            "email": u.email or "", "registered": bool(u.registered_at),
                             "status": u.access_status, "created_at": u.created_at.isoformat() if u.created_at else None,
                             "messages": [{"text": m.content[:300], "at": m.timestamp.isoformat()} for m in reversed(msgs)]})
         fbs = []
