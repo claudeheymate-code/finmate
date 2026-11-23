@@ -297,7 +297,10 @@ def _ensure_engine() -> None:
         if DATABASE_URL.startswith("sqlite"):
             _engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
         else:
-            _engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=5)
+            _engine = create_engine(
+                DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=5,
+                pool_recycle=300, connect_args={"connect_timeout": 10},
+            )
         _SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False)
 
 
