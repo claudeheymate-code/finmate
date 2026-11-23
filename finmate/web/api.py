@@ -446,8 +446,13 @@ def avisos_put():
     weekly = b.get("weekly_summary_enabled") if "weekly_summary_enabled" in b else None
     if weekly is not None and not isinstance(weekly, bool):
         return _err("weekly_summary_enabled tiene que ser true o false.")
+    news = None
+    if "news_max_per_day" in b:
+        news = b.get("news_max_per_day")
+        if isinstance(news, bool) or not isinstance(news, int):
+            return _err("news_max_per_day tiene que ser un número entero de 0 a 10.")
     try:
-        return jsonify(settings_repo.set_notification_settings(g.user.id, thr, weekly))
+        return jsonify(settings_repo.set_notification_settings(g.user.id, thr, weekly, news))
     except ValueError as e:
         return _err(str(e))
 
