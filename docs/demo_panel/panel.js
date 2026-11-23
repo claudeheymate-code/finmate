@@ -386,13 +386,36 @@
     });
   }
 
-  // ---------- Acceso (modo desarrollo) ----------
+  // ---------- Acceso: código por WhatsApp (o modo desarrollo) ----------
   function pageAcceso() {
-    const f = $("#dev-login"); if (!f) return;
-    f.addEventListener("submit", async (e) => {
+    const dev = $("#dev-login");
+    if (dev) {
+      dev.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try { await api("POST", "/auth/dev-login", { phone: $("#phone").value }); location.href = "index.html"; } catch (err) { $("#login-msg").innerHTML = box("error-box", err.message); }
+      });
+      return;
+    }
+    const req = $("#code-request"), ver = $("#code-verify"), msg = $("#login-msg");
+    if (!req) return;
+    req.addEventListener("submit", async (e) => {
       e.preventDefault();
-      try { await api("POST", "/auth/dev-login", { phone: $("#phone").value }); location.href = "index.html"; } catch (err) { $("#login-msg").innerHTML = box("error-box", err.message); }
+      msg.innerHTML = "";
+      const btn = req.querySelector("button"); btn.disabled = true;
+      try {
+        const r = await api("POST", "/auth/request-code", { phone: $("#phone").value });
+        req.style.display = "none"; ver.style.display = "flex";
+        msg.innerHTML = '<span class="up small">Te mandamos el código al WhatsApp ' + (r.phone || "") + ".</span>";
+        $("#code").focus();
+      } catch (err) { msg.innerHTML = box("error-box", err.message); }
+      btn.disabled = false;
     });
+    ver.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try { await api("POST", "/auth/verify-code", { phone: $("#phone").value, code: $("#code").value }); location.href = "index.html"; }
+      catch (err) { msg.innerHTML = box("error-box", err.message); }
+    });
+    $("#code-back").addEventListener("click", () => { ver.style.display = "none"; req.style.display = "flex"; msg.innerHTML = ""; });
   }
 
 
