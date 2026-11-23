@@ -259,6 +259,16 @@ class Feedback(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
 
+class KVState(Base):
+    """Estado JSON de los avisos (dedup y colas), ver finmate/db/state_store.py."""
+
+    __tablename__ = "kv_state"
+
+    key = Column(String(255), primary_key=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False)
+
+
 class AlertLog(Base):
     """Log de alertas enviadas — reemplaza JSON state files gradualmente (Plan Fase 6)."""
 
