@@ -121,6 +121,7 @@ def test_revision_al_arrancar(monkeypatch, caplog):
     monkeypatch.setattr(meta_cloud, "META_PHONE_NUMBER_ID", "123")
     monkeypatch.setattr(meta_cloud, "META_WABA_ID", "999")
     monkeypatch.setattr(meta_cloud, "META_TEST_RECIPIENT", "")
+    monkeypatch.setattr(meta_cloud, "META_REGISTER_PIN", "123456")
     calls = []
 
     class R:
@@ -134,12 +135,14 @@ def test_revision_al_arrancar(monkeypatch, caplog):
     with caplog.at_level("INFO"):
         meta_cloud.startup_check()
     assert ("POST", "https://graph.facebook.com/v25.0/999/subscribed_apps") in calls
+    assert ("POST", "https://graph.facebook.com/v25.0/123/register") in calls
     assert "token OK" in caplog.text and "suscrita" in caplog.text
 
 
 def test_mensaje_de_prueba_al_arrancar(monkeypatch, captured):
     monkeypatch.setattr(meta_cloud, "META_TEST_RECIPIENT", "+56 9 5416 1465")
     monkeypatch.setattr(meta_cloud, "META_WABA_ID", "")
+    monkeypatch.setattr(meta_cloud, "META_REGISTER_PIN", "")
 
     class G:
         status_code, text = 200, "{}"
