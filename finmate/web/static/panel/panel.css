@@ -15,6 +15,7 @@ html { background: var(--bg); -webkit-text-size-adjust: 100%; touch-action: pan-
 body { background: var(--bg); color: var(--text); font: 400 15px/1.5 Inter, system-ui, sans-serif; overflow-x: hidden; }
 a { color: var(--emerald); } a:hover { color: var(--up); }
 h1, h2, h3, .num { font-family: Outfit, Inter, sans-serif; }
+h1, h2, h3 { color: var(--up); }  /* títulos en verde de la marca (contraste AA sobre blanco) */
 h1 { margin: 6px 0 0; font-weight: 600; font-size: 40px; letter-spacing: -0.02em; line-height: 1.1; }
 h2 { margin: 0; font-weight: 600; font-size: 20px; }
 p { margin: 0; }
