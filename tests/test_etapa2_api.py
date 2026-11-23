@@ -121,9 +121,12 @@ def test_seguimientos(client):
 
 
 def test_avisos(client):
-    assert client.get("/api/avisos").get_json() == {"watchlist_threshold_pct": 5.0, "weekly_summary_enabled": True}
-    r = client.put("/api/avisos", json={"watchlist_threshold_pct": 3, "weekly_summary_enabled": False}, headers=H())
-    assert r.get_json() == {"watchlist_threshold_pct": 3.0, "weekly_summary_enabled": False}
+    assert client.get("/api/avisos").get_json() == {"watchlist_threshold_pct": 5.0, "weekly_summary_enabled": True,
+                                                    "news_max_per_day": 6}
+    r = client.put("/api/avisos", json={"watchlist_threshold_pct": 3, "weekly_summary_enabled": False,
+                                        "news_max_per_day": 2}, headers=H())
+    assert r.get_json() == {"watchlist_threshold_pct": 3.0, "weekly_summary_enabled": False, "news_max_per_day": 2}
+    assert client.put("/api/avisos", json={"news_max_per_day": 20}, headers=H()).status_code == 400
     assert client.put("/api/avisos", json={"watchlist_threshold_pct": 0.1}, headers=H()).status_code == 400
     assert client.put("/api/avisos", json={"weekly_summary_enabled": "si"}, headers=H()).status_code == 400
 

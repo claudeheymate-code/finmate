@@ -37,7 +37,7 @@ def captured(monkeypatch):
 
     monkeypatch.setattr(meta_cloud.httpx, "post", lambda url, json=None, timeout=None, headers=None: sent["posts"].append((url, json, headers)) or R())
     import finmate.agent.orchestrator as orch
-    monkeypatch.setattr(orch, "handle_message", lambda phone, text: sent["handled"].append((phone, text)) or "respuesta del bot")
+    monkeypatch.setattr(orch, "handle_message", lambda phone, text, **kw: sent["handled"].append((phone, text)) or "respuesta del bot")
     import finmate.whatsapp.messenger as msgr
     monkeypatch.setattr(msgr, "WHATSAPP_PROVIDER", "meta")
     monkeypatch.setattr(webhook, "RUN_IN_BACKGROUND", False)
@@ -102,7 +102,7 @@ def test_plantilla_por_nombre_con_variables(captured):
 
 def test_twilio_sigue_funcionando(anon, monkeypatch):
     import finmate.agent.orchestrator as orch
-    monkeypatch.setattr(orch, "handle_message", lambda phone, text: "hola desde twilio")
+    monkeypatch.setattr(orch, "handle_message", lambda phone, text, **kw: "hola desde twilio")
     r = anon.post("/whatsapp/webhook", data={"Body": "hola", "From": "whatsapp:+56900000000"})
     assert r.status_code == 200 and "hola desde twilio" in r.get_data(as_text=True)
 
