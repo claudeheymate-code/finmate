@@ -52,6 +52,7 @@ META_PHONE_NUMBER_ID = _key("META_PHONE_NUMBER_ID")    # "Identificador del núm
 META_VERIFY_TOKEN = _key("META_VERIFY_TOKEN")          # texto que inventas tú; el mismo va en la config del webhook en Meta
 META_APP_SECRET = _key("META_APP_SECRET")              # "Clave secreta de la app": valida que el webhook venga de Meta
 META_WABA_ID = _key("META_WABA_ID")                    # "Identificador de la cuenta de WhatsApp Business" (opcional: si está, el bot suscribe la app a esa cuenta al arrancar)
+META_REGISTER_PIN = _key("META_REGISTER_PIN")          # opcional: PIN de 6 dígitos (verificación en dos pasos). Si está, el bot registra el número en la Cloud API al arrancar (arregla el error #133010 "Account not registered")
 META_TEST_RECIPIENT = _key("META_TEST_RECIPIENT")      # opcional: al arrancar, el bot manda la plantilla hello_world a este número (para abrir el chat y probar)
 META_GRAPH_VERSION = os.getenv("META_GRAPH_VERSION", "v25.0")
 META_TEMPLATE_LANG = os.getenv("META_TEMPLATE_LANG", "es")
