@@ -120,6 +120,7 @@ def test_revision_al_arrancar(monkeypatch, caplog):
     monkeypatch.setattr(meta_cloud, "META_WHATSAPP_TOKEN", "tok")
     monkeypatch.setattr(meta_cloud, "META_PHONE_NUMBER_ID", "123")
     monkeypatch.setattr(meta_cloud, "META_WABA_ID", "999")
+    monkeypatch.setattr(meta_cloud, "META_TEST_RECIPIENT", "")
     calls = []
 
     class R:
@@ -134,3 +135,17 @@ def test_revision_al_arrancar(monkeypatch, caplog):
         meta_cloud.startup_check()
     assert ("POST", "https://graph.facebook.com/v25.0/999/subscribed_apps") in calls
     assert "token OK" in caplog.text and "suscrita" in caplog.text
+
+
+def test_mensaje_de_prueba_al_arrancar(monkeypatch, captured):
+    monkeypatch.setattr(meta_cloud, "META_TEST_RECIPIENT", "+56 9 5416 1465")
+    monkeypatch.setattr(meta_cloud, "META_WABA_ID", "")
+
+    class G:
+        status_code, text = 200, "{}"
+        def json(self):
+            return {}
+    monkeypatch.setattr(meta_cloud.httpx, "get", lambda url, **k: G())
+    meta_cloud.startup_check()
+    t = captured["posts"][-1][1]
+    assert t["to"] == "56954161465" and t["template"]["name"] == "hello_world" and t["template"]["language"]["code"] == "en_US"
