@@ -46,13 +46,9 @@ ITUNES_NS = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
 
 
 def _load_state() -> dict:
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    from finmate.db.state_store import load_json
+
+    return load_json(STATE_FILE, {})
 
 
 def _save_state(state: dict) -> None:
@@ -60,8 +56,9 @@ def _save_state(state: dict) -> None:
         for pid in list(state):
             seen = state[pid].get("seen", [])
             state[pid]["seen"] = seen[-50:]
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False)
+        from finmate.db.state_store import save_json
+
+        save_json(STATE_FILE, state)
     except Exception as e:
         logger.error(f"Error guardando estado de podcasts: {e}")
 
