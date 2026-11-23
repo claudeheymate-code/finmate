@@ -277,3 +277,18 @@ def get_all_tracked_symbols() -> List[Tuple[int, str, str]]:
         return sorted(rows)
     finally:
         session.close()
+
+
+def set_user_name_if_empty(user_id: int, name: str) -> None:
+    """Guarda el nombre de perfil de WhatsApp la primera vez que llega."""
+    name = (name or "").strip()[:120]
+    if not name:
+        return
+    session = get_session()
+    try:
+        user = session.get(User, user_id)
+        if user is not None and not user.name:
+            user.name = name
+            session.commit()
+    finally:
+        session.close()
