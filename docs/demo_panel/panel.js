@@ -379,10 +379,22 @@
       try { renderFollows(await api("POST", "/seguimientos", { tipo: $("#s-tipo").value, valor: $("#s-valor").value })); $("#s-msg").innerHTML = ""; if ($("#s-valor").tagName === "INPUT") $("#s-valor").value = ""; } catch (err) { $("#s-msg").innerHTML = box("error-box", err.message); }
     });
 
-    try { const a = await api("GET", "/avisos"); $("#a-thr").value = a.watchlist_threshold_pct; $("#a-weekly").checked = a.weekly_summary_enabled; } catch (e) { $("#a-msg").innerHTML = box("error-box", e.message); }
+    try {
+      const a = await api("GET", "/avisos");
+      $("#a-thr").value = a.watchlist_threshold_pct; $("#a-weekly").checked = a.weekly_summary_enabled;
+      if ($("#a-news")) $("#a-news").value = a.news_max_per_day;
+      if ($("#a-earn")) $("#a-earn").value = a.earnings_alerts || "mine";
+      if ($("#a-macro")) $("#a-macro").checked = !!a.macro_alerts;
+      if ($("#a-mnews")) $("#a-mnews").checked = !!a.market_news_alerts;
+    } catch (e) { $("#a-msg").innerHTML = box("error-box", e.message); }
     $("#a-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      try { await api("PUT", "/avisos", { watchlist_threshold_pct: $("#a-thr").value, weekly_summary_enabled: $("#a-weekly").checked }); $("#a-msg").innerHTML = '<span class="up small">Avisos guardados.</span>'; } catch (err) { $("#a-msg").innerHTML = box("error-box", err.message); }
+      const body = { watchlist_threshold_pct: $("#a-thr").value, weekly_summary_enabled: $("#a-weekly").checked };
+      if ($("#a-news")) body.news_max_per_day = parseInt($("#a-news").value || "0", 10);
+      if ($("#a-earn")) body.earnings_alerts = $("#a-earn").value;
+      if ($("#a-macro")) body.macro_alerts = $("#a-macro").checked;
+      if ($("#a-mnews")) body.market_news_alerts = $("#a-mnews").checked;
+      try { await api("PUT", "/avisos", body); $("#a-msg").innerHTML = '<span class="up small">Avisos guardados.</span>'; } catch (err) { $("#a-msg").innerHTML = box("error-box", err.message); }
     });
   }
 
