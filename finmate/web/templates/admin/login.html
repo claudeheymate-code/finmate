@@ -6,8 +6,8 @@
 <title>Finmate Admin — Entrar</title>
 {% include "admin/_app_head.html" %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css') }}">
-<link rel="stylesheet" href="{{ url_for('panel.static', filename='admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css', v=asset_v) }}">
+<link rel="stylesheet" href="{{ url_for('panel.static', filename='admin.css', v=asset_v) }}">
 </head>
 <body data-page="admin-login" class="admin">
 <div class="login">
@@ -40,6 +40,6 @@
     {% endif %}
   </section>
 </div>
-<script src="{{ url_for('panel.static', filename='admin.js') }}"></script>
+<script src="{{ url_for('panel.static', filename='admin.js', v=asset_v) }}"></script>
 </body>
 </html>
