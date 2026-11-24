@@ -171,9 +171,9 @@
     tb.innerHTML = rows.length ? rows.map((u) => `<tr>
       <td><p class="cell-title">${esc(u.name || "Sin nombre")}</p>${u.email ? `<p class="cell-sub"><a href="mailto:${esc(u.email)}">${esc(u.email)}</a></p>` : '<p class="cell-sub faint">Sin correo</p>'}</td>
       <td class="nowrap">+${esc(u.phone.replace(/^\+/, ""))}</td>
-      <td class="nowrap">${fmtDate(u.created_at)}</td>
+      <td class="nowrap hide-sm">${fmtDate(u.created_at)}</td>
       <td class="nowrap" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}</td>
-      <td class="r">${num(u.messages)}</td><td class="r">${num(u.watchlist)}</td><td class="r">${num(u.portfolio)}</td>
+      <td class="r">${num(u.messages)}</td><td class="r hide-sm">${num(u.watchlist)}</td><td class="r hide-sm">${num(u.portfolio)}</td>
       <td>${stPill(u.status)}</td>
       <td><div class="row-actions">${actionButtons(u)}</div></td></tr>`).join("")
       : '<tr><td colspan="9" class="empty">No hay usuarios con ese filtro.</td></tr>';
@@ -309,8 +309,67 @@
     });
   }
 
+  // ---------- celular: igual que la app de usuarios ----------
+  // Barra de pestañas abajo con la "píldora" azul, se esconde al bajar,
+  // deslizar con el dedo cambia de pestaña y no se puede hacer zoom.
+  const mq = window.matchMedia("(max-width: 760px)");
+  function initRail() {
+    const rail = $(".rail"); if (!rail) return;
+    const pill = $(".tab-pill", rail);
+    const links = $$("a", rail);
+    const place = (a) => { if (!pill || !a) return; pill.style.width = a.offsetWidth + "px"; pill.style.transform = `translateX(${a.offsetLeft}px)`; };
+    const current = () => links.find((a) => a.getAttribute("aria-current") === "page");
+    if (pill) { pill.style.transition = "none"; place(current()); requestAnimationFrame(() => { pill.style.transition = ""; }); }
+    window.addEventListener("resize", () => place(current()));
+    const go = (a) => {
+      if (!a || a === current()) return;
+      if (mq.matches && pill) {
+        links.forEach((x) => x.removeAttribute("aria-current")); a.setAttribute("aria-current", "page"); place(a);
+        setTimeout(() => { location.href = a.href; }, 200);
+      } else location.href = a.href;
+    };
+    links.forEach((a) => a.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); go(a); }));
+    // Deslizar entre pestañas (no dentro de tablas que se desplazan ni campos)
+    let x0 = null, y0 = 0;
+    document.addEventListener("touchstart", (e) => {
+      if (!mq.matches || e.touches.length !== 1 || e.target.closest(".table-wrap, input, textarea, select, .rail")) { x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener("touchend", (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+      const i = links.indexOf(current());
+      go(links[i + (dx < 0 ? 1 : -1)]);
+    }, { passive: true });
+    // Se esconde al bajar y vuelve al subir
+    let lastY = window.scrollY, acc = 0, ticking = false;
+    function update() {
+      ticking = false;
+      const y = Math.max(window.scrollY, 0), dy = y - lastY; lastY = y;
+      if (!mq.matches) { rail.classList.remove("rail-hidden"); return; }
+      const nearBottom = window.innerHeight + y >= document.documentElement.scrollHeight - 40;
+      if (y < 60 || nearBottom) { acc = 0; rail.classList.remove("rail-hidden"); return; }
+      acc = (acc > 0) === (dy > 0) ? acc + dy : dy;
+      if (acc > 24) rail.classList.add("rail-hidden"); else if (acc < -12) rail.classList.remove("rail-hidden");
+    }
+    window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+  }
+  function preventZoom() {
+    ["gesturestart", "gesturechange", "gestureend"].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+    document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    let lastTap = 0;
+    document.addEventListener("touchend", (e) => {
+      const now = Date.now();
+      if (now - lastTap < 300 && !e.target.closest("input, textarea, select")) e.preventDefault();
+      lastTap = now;
+    }, { passive: false });
+  }
+
+  preventZoom();
   if (page === "admin-login") pageLogin();
   else {
+    initRail();
     initCommon();
     if (page === "admin-costos") pageCostos();
     if (page === "admin-usuarios") pageUsuarios();

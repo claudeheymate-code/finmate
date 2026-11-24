@@ -69,7 +69,9 @@
 .hide-sm { display: inline; }
 
 @media (max-width: 760px) {
-  .admin .rail a[aria-current="page"] { background: var(--navy); color: #FFFFFF; }
+  .admin .rail a[aria-current="page"] { background: transparent; color: #FFFFFF; }
+  .admin-main { touch-action: pan-x pan-y; }
+  .admin .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .hide-sm { display: none; }
   .admin-stats { grid-template-columns: 1fr 1fr; }
   .badge { top: 2px; right: 18%; }
