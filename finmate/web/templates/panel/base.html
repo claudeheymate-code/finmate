@@ -7,7 +7,7 @@
 {% include "panel/_app_head.html" %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css') }}">
+<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css', v=asset_v) }}">
 </head>
 <body data-page="{{ page }}">
 <div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -56,6 +56,6 @@
     <a class="plus" href="{{ url_for('panel.gastos') }}#boleta" aria-label="Registrar gasto">{{ icon('plus', 20) }}</a>
   </nav></div>
 </div>
-<script src="{{ url_for('panel.static', filename='panel.js') }}"></script>
+<script src="{{ url_for('panel.static', filename='panel.js', v=asset_v) }}"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 <title>Finmate — Entrar</title>
 {% include "panel/_app_head.html" %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css') }}">
+<link rel="stylesheet" href="{{ url_for('panel.static', filename='panel.css', v=asset_v) }}">
 </head>
 <body data-page="acceso">
 <div class="orbs" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -40,6 +40,6 @@
     {% endif %}
   </section>
 </div>
-<script src="{{ url_for('panel.static', filename='panel.js') }}"></script>
+<script src="{{ url_for('panel.static', filename='panel.js', v=asset_v) }}"></script>
 </body>
 </html>
