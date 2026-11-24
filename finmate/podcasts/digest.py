@@ -221,7 +221,11 @@ def check_podcast_digests(messenger=None, now: Optional[dt.datetime] = None,
         if phones and messenger is None:
             from finmate.whatsapp.messenger import WhatsAppMessenger
             messenger = WhatsAppMessenger()
+        from finmate.services.workday import allow as _workday_allow
+
         for phone in phones:
+            if not _workday_allow(phone, msg, "podcast"):
+                continue
             try:
                 if TEMPLATE_MARKET_NOTIFY:
                     from finmate.alerts.pending import queue_pending
