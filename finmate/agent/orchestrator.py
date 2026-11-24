@@ -138,6 +138,7 @@ _NO_MEMORY_MSG = (
     "❌ No pude acceder a mi memoria en este momento (problema de base de datos). "
     "Prueba de nuevo en unos minutos."
 )
+_TOO_MANY_MSG = "Me llegaron muchos mensajes seguidos 😅 Dame unos minutos y vuelve a escribirme."
 _GENERIC_ERROR_MSG = "❌ Tuve un problema interno respondiendo. Prueba de nuevo en unos minutos."
 
 
@@ -201,10 +202,13 @@ def _record_usage(model: str, response) -> None:
 
 def handle_message(phone: str, user_message: str, name: str = None) -> str:
     """Punto de entrada único desde el webhook de WhatsApp."""
-    if _client is None:
-        logger.error("ANTHROPIC_API_KEY no configurada.")
-        return _NO_KEY_MSG
+    try:
+        from finmate.security.guard import note_message
 
+        if not note_message(phone):
+            return _TOO_MANY_MSG
+    except Exception:  # noqa: BLE001
+        pass
     # Memoria: si la base de datos no responde (p. ej. todavía no se
     # provisionó DATABASE_URL), se avisa con claridad en vez de que el
     # webhook rompa silenciosamente.
@@ -224,6 +228,11 @@ def handle_message(phone: str, user_message: str, name: str = None) -> str:
     status = getattr(user, "access_status", None) or "approved"
     if status != "approved":
         return _handle_without_access(user, phone, user_message, name, status, first=not history)
+
+    # El registro de números nuevos no usa Claude; desde aquí sí hace falta la clave.
+    if _client is None:
+        logger.error("ANTHROPIC_API_KEY no configurada.")
+        return _NO_KEY_MSG
 
     messages = [{"role": role, "content": content} for role, content in history]
     messages.append({"role": "user", "content": user_message})
