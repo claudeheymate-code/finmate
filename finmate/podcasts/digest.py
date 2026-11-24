@@ -18,9 +18,7 @@ y siempre enlaza al episodio original.
 import datetime as dt
 import email.utils
 import html
-import json
 import logging
-import os
 import re
 import xml.etree.ElementTree as ET
 from typing import Optional
@@ -33,7 +31,6 @@ from config.settings import (
     OPENAI_API_KEY,
     TRANSCRIBE_MODEL,
     TEMPLATE_MARKET_NOTIFY,
-    WHATSAPP_RECIPIENTS,
 )
 from finmate.podcasts.catalog import PODCASTS
 
