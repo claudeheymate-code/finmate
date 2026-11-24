@@ -17,7 +17,6 @@ import datetime as dt
 from sqlalchemy import (
     Boolean,
     Column,
-    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -270,6 +269,27 @@ class Feedback(Base):
     status = Column(String(12), nullable=True)      # panel admin: nuevo | en_curso | resuelto | descartado
     admin_note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+
+class SecurityEvent(Base):
+    """Actividad sospechosa o avisos de seguridad (panel admin → Inbox → Seguridad).
+
+    Los eventos repetidos (mismo tipo e IP en poco tiempo) se agrupan en una
+    sola fila sumando `count`, para que un ataque no llene la base.
+    """
+
+    __tablename__ = "security_events"
+
+    id = Column(Integer, primary_key=True)
+    kind = Column(String(40), nullable=False, index=True)
+    severity = Column(String(10), nullable=False)          # info | low | medium | high | critical
+    detail = Column(Text, nullable=False)
+    ip = Column(String(64), nullable=True)
+    path = Column(String(200), nullable=True)
+    count = Column(Integer, nullable=False, default=1)
+    status = Column(String(12), nullable=False, default="nuevo")   # nuevo | revisado
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False, index=True)
+    last_seen = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
 
 class KVState(Base):

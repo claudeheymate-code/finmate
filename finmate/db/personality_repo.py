@@ -1,6 +1,5 @@
 """Repositorio de configuración de personalidad por usuario (Plan Fase 1)."""
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
