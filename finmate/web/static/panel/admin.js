@@ -428,7 +428,20 @@
     }, { passive: false });
   }
 
+  // Al volver con "atrás" el navegador muestra la página guardada en memoria
+  // (con la pestaña equivocada marcada y datos viejos): se recarga. Lo mismo si
+  // la app estuvo más de 10 minutos en segundo plano.
+  function freshOnReturn() {
+    window.addEventListener("pageshow", (e) => { if (e.persisted) location.reload(); });
+    let hiddenAt = 0;
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000) location.reload();
+    });
+  }
+
   preventZoom();
+  freshOnReturn();
   if (page === "admin-login") pageLogin();
   else {
     initRail();

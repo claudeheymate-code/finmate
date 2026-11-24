@@ -474,6 +474,9 @@
     const EASE = "cubic-bezier(.22,.8,.24,1)";
     let idx = names.indexOf(document.body.dataset.page);
     if (idx < 0) return;
+    let moveToken = 0;
+    // estado del gesto con el dedo
+    let sx = 0, sy = 0, lastX = 0, lastT = 0, vx = 0, dx = 0, lock = null, on = false;
     const started = new Set([names[idx]]);
 
     function startPane(i) {
@@ -499,9 +502,12 @@
     }
     // Las pestañas vecinas se alinean con lo que el usuario está viendo
     // (si bajó en la página, la vecina se muestra desde arriba igual).
+    // Al soltar (on=false) se limpian TODAS, incluida la que quedó activa: antes
+    // la nueva pestaña conservaba el desplazamiento y aparecía un espacio en
+    // blanco bajo el encabezado (o la pantalla entera en blanco).
     function alignNeighbors(on) {
       const y = on ? window.scrollY : 0;
-      panes.forEach((p, i) => { if (i !== idx) p.style.transform = y ? "translateY(" + y + "px)" : ""; });
+      panes.forEach((p, i) => { p.style.transform = y && i !== idx ? "translateY(" + y + "px)" : ""; });
     }
     function markActive() {
       panes.forEach((p, i) => {
@@ -523,7 +529,9 @@
       idx = i;
       placePill(0);
       setTrack(-idx * width(), ms);
+      const token = ++moveToken;
       const finish = () => {
+        if (token !== moveToken) return;   // otro cambio de pestaña empezó después
         markActive();
         document.dispatchEvent(new Event("finmate:pane"));
         alignNeighbors(false);
@@ -544,6 +552,22 @@
     }
     markActive(); layout();
     window.addEventListener("resize", layout);
+    // Volver a la app (cambiar de app o de pestaña del navegador): se deja todo
+    // en su lugar por si quedó un gesto o una animación a medias. Si estuvo
+    // más de 10 minutos en segundo plano, se recarga para traer datos frescos.
+    let hiddenAt = 0;
+    function recover() {
+      on = false; lock = null; dx = 0; moveToken++;
+      rail.classList.remove("dragging");
+      alignNeighbors(false); markActive(); layout();
+      track.style.transition = "none";
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) { hiddenAt = Date.now(); recover(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000) { location.reload(); return; }
+      recover();
+    });
+    window.addEventListener("pageshow", (e) => { if (e.persisted) location.reload(); });
     mq.addEventListener ? mq.addEventListener("change", layout) : mq.addListener(layout);
     window.addEventListener("popstate", () => {
       const i = links.findIndex((a) => a.href === location.href || a.pathname === location.pathname);
@@ -567,7 +591,6 @@
       }
       return false;
     }
-    let sx = 0, sy = 0, lastX = 0, lastT = 0, vx = 0, dx = 0, lock = null, on = false;
     main.addEventListener("touchstart", (e) => {
       on = false;
       if (!mq.matches || e.touches.length !== 1) return;
