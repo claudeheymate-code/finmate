@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://finnhub.io/api/v1"
 
 
+_BLOCKED: dict = {}
+
+
 class FinnhubClient:
     """Cliente para la API de Finnhub."""
 
@@ -30,6 +33,10 @@ class FinnhubClient:
 
     async def _get(self, endpoint: str, params: dict = None) -> dict | list | None:
         """Realiza un GET a la API de Finnhub."""
+        import time as _time
+
+        if _BLOCKED.get(endpoint, 0) > _time.time():
+            return None  # endpoint de pago (403): no se insiste hasta mañana
         url = f"{BASE_URL}{endpoint}"
         try:
             async with httpx.AsyncClient(timeout=15) as client:
@@ -37,7 +44,13 @@ class FinnhubClient:
                 resp.raise_for_status()
                 return resp.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"Finnhub HTTP error {e.response.status_code}: {e}")
+            if e.response.status_code == 403:
+                # El plan gratis no incluye este endpoint (ej. calendario económico): se
+                # deja de pedir por 24 h en vez de registrar un error cada 30 min.
+                _BLOCKED[endpoint] = _time.time() + 24 * 3600
+                logger.info(f"Finnhub: {endpoint} no está en el plan gratis (403); se omite por 24 h.")
+            else:
+                logger.error(f"Finnhub HTTP error {e.response.status_code} en {endpoint}")
             return None
         except Exception as e:
             logger.error(f"Finnhub request error: {e}")
