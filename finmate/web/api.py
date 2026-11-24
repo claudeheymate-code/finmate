@@ -94,6 +94,9 @@ def request_code():
         return _err("Número inválido. Usa el formato +56 9 1234 5678.")
     user = repository.find_user_by_phone(phone)
     if user is None:
+        from finmate.security.guard import note_unknown_number
+
+        note_unknown_number(phone)
         return _err("Ese número todavía no usa Finmate. Escríbele \"hola\" a Finmate por WhatsApp y vuelve a intentar.", 404)
     if not repository.is_approved(user):
         return _err("Tu acceso a Finmate todavía no está aprobado. Te avisaremos por WhatsApp.", 403)
@@ -118,6 +121,9 @@ def verify_code():
     if not phone or not code.isdigit() or len(code) != 6:
         return _err("Escribe el código de 6 dígitos que te llegó por WhatsApp.")
     if not login_codes.verify_code(phone, code):
+        from finmate.security.guard import note_login_failure
+
+        note_login_failure(phone)
         return _err("Código incorrecto o vencido. Pide uno nuevo.", 401)
     user = repository.find_user_by_phone(phone)
     if user is None:

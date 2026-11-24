@@ -111,6 +111,9 @@ def oauth_callback():
     state = request.args.get("state", "")
     expected = session.pop("admin_oauth_state", None)
     if not expected or not secrets.compare_digest(state, expected):
+        _sec("admin_oauth_error", "low" if not expected else "medium",
+             "Llegó una respuesta de Google para el admin sin un ingreso iniciado o con un código de seguridad "
+             "distinto. Suele ser una pestaña vieja; si se repite, alguien podría estar intentando colarse.")
         return redirect(url_for("admin.login", error="La sesión de Google venció. Intenta de nuevo."))
     code = request.args.get("code")
     if not code:
@@ -127,12 +130,25 @@ def oauth_callback():
     email = (info.get("email") or "").lower()
     if not info.get("email_verified") or not _is_admin_email(email):
         logger.warning(f"Admin: intento de ingreso rechazado ({email or 'sin correo'})")
+        _sec("admin_denied", "high", f"Alguien intentó entrar al panel de administrador con la cuenta de Google "
+             f"{email or '(sin correo verificado)'}, que no tiene acceso. Se rechazó.")
         return redirect(url_for("admin.login", error=f"La cuenta {email or ''} no tiene acceso al panel de administrador."))
     session["admin_email"] = email
     session["admin_name"] = info.get("name") or email
     session.permanent = True
     logger.info(f"Admin: ingreso de {email}")
+    _sec("admin_login", "info", f"Ingreso al panel de administrador con {email}. Si no fuiste tú, cambia la "
+         "contraseña de tu cuenta de Google y revisa los accesos.")
     return redirect(url_for("admin.costos"))
+
+
+def _sec(kind: str, severity: str, detail: str) -> None:
+    try:
+        from finmate.security.monitor import record_event
+
+        record_event(kind, severity, detail)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 @admin_bp.post("/api/dev-login")
@@ -241,7 +257,57 @@ def api_resumen():
     counts = _user_counts()
     return jsonify({"subscriptions": data, "monthly_fixed": subs.monthly_totals(data),
                     "usage": _usage_with_costs(request.args.get("mes")), "users": counts,
-                    "feedback_new": _feedback_new_count()})
+                    "feedback_new": _feedback_new_count(), "security": _security_counts()})
+
+
+def _security_counts() -> dict:
+    try:
+        from finmate.security.monitor import open_counts
+
+        c = open_counts()
+        return {"open": sum(c.values()) - c.get("info", 0), "urgent": c.get("high", 0) + c.get("critical", 0),
+                "by_severity": c}
+    except Exception:  # noqa: BLE001
+        return {"open": 0, "urgent": 0, "by_severity": {}}
+
+
+# ── API: seguridad ──────────────────────────────────────────────────────
+
+@admin_bp.get("/api/seguridad")
+@admin_api
+def api_security():
+    from finmate.security.checks import last_report
+    from finmate.security.monitor import list_events
+
+    return jsonify({"events": list_events(), "counts": _security_counts(), "last_check": last_report()})
+
+
+@admin_bp.put("/api/seguridad/<int:eid>")
+@admin_api
+def api_security_status(eid):
+    from finmate.security.monitor import set_status
+
+    try:
+        n = set_status(eid, _body().get("status", "revisado"))
+    except ValueError as e:
+        return _err(str(e))
+    return jsonify({"ok": True, "updated": n})
+
+
+@admin_bp.post("/api/seguridad/revisar-todo")
+@admin_api
+def api_security_all():
+    from finmate.security.monitor import set_status
+
+    return jsonify({"ok": True, "updated": set_status(None, "revisado")})
+
+
+@admin_bp.post("/api/seguridad/chequear")
+@admin_api
+def api_security_check():
+    from finmate.security.checks import run_checks
+
+    return jsonify(run_checks(f"manual ({g.admin})"))
 
 
 @admin_bp.post("/api/suscripciones")

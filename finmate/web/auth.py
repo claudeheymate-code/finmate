@@ -58,9 +58,14 @@ def current_user() -> Optional[User]:
         return None
     s = get_session()
     try:
-        return s.get(User, uid)
+        user = s.get(User, uid)
     finally:
         s.close()
+    # Si el admin le quitó el acceso, la sesión abierta deja de servir al tiro.
+    if user is None or (user.access_status or "approved") != "approved":
+        session.pop("uid", None)
+        return None
+    return user
 
 
 def api_login_required(fn):
