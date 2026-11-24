@@ -492,3 +492,78 @@ archivos quedan escritos en disco y Joaco los commitea/pushea él mismo.
   vencimiento (Joaco). Render: el servicio "finmate" sigue fallando; requiere que Joaco
   inicie sesión y lo suspenda.
 - 90/90 tests.
+
+## Actualización 23 nov 2026 — Panel de administrador (desplegado en Railway)
+
+URL: https://web-production-3626a.up.railway.app/admin/ (login con Google, solo
+`ADMIN_EMAILS`, por defecto claude.heymate@gmail.com). Mismo diseño que el panel de usuarios.
+- **Pestañas:** Costos (suscripciones editables en kv `admin:subscriptions` + consumo real del
+  mes de Claude y WhatsApp, `finmate/services/usage.py`, precios editables en `admin:prices`),
+  Usuarios (inicio, último mensaje, nº de mensajes, aprobar/quitar acceso), Inbox (solicitudes
+  de números nuevos + feedback con estado y nota interna), Fuentes (catálogo
+  `finmate/admin/sources.py` con botón "Probar", notas e ideas).
+- **Acceso por aprobación:** `users.access_status` (NULL = aprobado, así los usuarios antiguos
+  siguen entrando). Con `ACCESS_APPROVAL_REQUIRED=true` (default) un número nuevo queda
+  `pending`: el bot le responde que su acceso está pendiente (sin llamar a Claude), se avisa a
+  `WHATSAPP_RECIPIENTS` con link al Inbox y no puede pedir código para el panel. Al aprobar se le
+  manda bienvenida por WhatsApp (si está dentro de las 24 h).
+- Código: `finmate/web/admin.py`, `finmate/admin/`, `templates/admin/`, `static/panel/admin.{css,js}`.
+  Tests: `tests/test_admin.py` (12). Suite completa: 124/124.
+- **Google OAuth listo (23 nov):** proyecto Google Cloud `finmate-515700`, app "Finmate Admin"
+  en modo Prueba (usuario de prueba: claude.heymate@gmail.com), cliente web "Finmate Admin
+  (Railway)". Variables cargadas en Railway; login probado y funcionando. Ojo: tras cambiar
+  variables en Railway hubo que hacer Redeploy a mano. `ADMIN_DEV_LOGIN` nunca en producción.
+  Pendiente: completar el costo del chip prepago en Costos.
+- **Registro (23 nov, noche):** un número nuevo pendiente recibe un pedido de *nombre y apellido*
+  y *correo* (`finmate/agent/signup.py`, reglas simples sin Claude; el borrador vive en kv
+  `signup:<user_id>`). Con ambos datos se guardan en `users.name`/`users.email`/`registered_at`,
+  y se avisa al admin por WhatsApp (`WHATSAPP_RECIPIENTS`) y por correo (mismo envío que el
+  feedback: SMTP o FormSubmit a claude.heymate@gmail.com). Admin → Usuarios muestra el correo y
+  tiene "Descargar CSV" (`/admin/api/usuarios.csv`). 126/126 tests.
+- **Íconos y app admin en celular (23 nov, noche):** ícono nuevo (logo de Joaco). App de usuarios:
+  fondo blanco (`icon-*.png`, `apple-touch-icon.png`, `manifest.json`, cache `?v=4`). App admin:
+  fondo azul #082449 con la F blanca (`admin-*.png`, `admin-manifest.json` con scope `/admin/`,
+  `templates/admin/_app_head.html`), se instala aparte como "Finmate Admin". En celular el admin
+  usa lo mismo que la de usuarios: barra abajo con píldora, se esconde al bajar, deslizar cambia
+  de pestaña, sin zoom, y las tablas se ven como tarjetas (`.admin-table.stack`). Demo pública
+  regenerada con el ícono nuevo. 127/127 tests.
+- **Mensaje de aprobación (23 nov):** al aprobar en el admin, el usuario recibe por WhatsApp
+  `approval_message()` (`finmate/web/admin.py`): aviso de aprobado, link a `/panel/`, qué tiene
+  cada pestaña y para qué sirve la app. Se guarda en el historial. Solo llega si el usuario
+  escribió en las últimas 24 h (ventana de WhatsApp); si no, el admin lo ve y el usuario se
+  entera al volver a escribir. 128/128 tests.
+
+## Actualización 24 nov 2026 — Limpieza completa + capas de seguridad
+
+**Fuente de verdad:** GitHub `main`. Antes de editar en una sesión nueva, clonar el repo
+(`git clone https://github.com/claudeheymate-code/finmate.git`, es público) y comparar con la
+carpeta local; subir con el editor web de GitHub (no hay credenciales para push).
+
+- **Bug grave de seguridad corregido:** el webhook aceptaba la ruta antigua de Twilio (formulario
+  sin firma): cualquiera podía hacerse pasar por cualquier número y recibir la respuesta del bot
+  (portafolio, link de acceso al panel). Se sacó Twilio completo (messenger, webhook, settings,
+  dependencia `twilio`). Todo POST al webhook que no sea JSON firmado por Meta → 403 + evento.
+- **Claves en los logs:** las URLs de Finnhub/Marketaux dejaban la clave a la vista en Railway.
+  `finmate/security/logfilter.py` las oculta (token=, api_token=, sk-…, EAA…) y baja el ruido
+  (httpx, apscheduler, "0 alertas enviadas"). **Recomendado rotar FINNHUB_API_KEY y
+  MARKETAUX_API_KEY** (estuvieron visibles en los logs).
+- **Servidor:** `railway.json` tenía `--preload` (pisa al Procfile): la conexión a la base se
+  creaba antes del fork → cuelgues intermitentes. Ahora: sin preload, 8 hilos, timeout 120 s.
+- **Páginas:** CSS/JS con versión por deploy (`asset_v` en templates, evita mezclar caché vieja →
+  páginas descuadradas); `api()` con timeout (20 s, chat 90 s) y mensaje claro en vez de quedar
+  "Cargando…". Auditoría con navegador headless: 20 páginas (celular y escritorio) sin errores
+  ni desbordes.
+- **Limpieza:** fuera FMP (`fmp_client.py`; índices del resumen semanal ahora con Finnhub SPY/DIA/
+  QQQ), `alerts_log_repo.py` (nunca se usó), `finmate-icon-white.png`, imports sin uso.
+  La tabla `alerts_log` sigue en la base (no se borra nada de datos).
+- **Bot:** registro de números nuevos ya no depende de la clave de Claude; límite de 25 mensajes/
+  10 min por número (protege el gasto); sesión del panel se corta al quitar el acceso.
+- **Seguridad (`finmate/security/`):** `guard.py` (bloqueo de escaneos /.env /wp-admin…, límite
+  por IP 300/min y 20 ingresos/10 min, fuerza bruta de códigos → bloqueo 30 min, anti-CSRF en
+  toda escritura, CSP/HSTS/X-Frame…), `monitor.py` (tabla `security_events`, agrupa repetidos,
+  WhatsApp al admin si es grave, máx. 1 por tipo cada 30 min), `checks.py` (configuración
+  insegura, integridad de archivos vs. arranque y vs. GitHub por `RAILWAY_GIT_COMMIT_SHA`,
+  librerías vulnerables vía OSV, gasto de Claude > `SECURITY_CLAUDE_MONTHLY_ALERT_USD`).
+  Admin → Inbox → **Seguridad** (estado, eventos, "Ejecutar chequeo ahora", marcar revisado).
+- **Jobs:** chequeo diario 4:17 y revisión mensual día 1 a las 10:07 (recordatorio de limpieza
+  en el Inbox + WhatsApp). 145/145 tests (`tests/test_seguridad.py`, 17 nuevos).

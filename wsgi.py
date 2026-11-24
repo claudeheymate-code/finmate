@@ -4,6 +4,7 @@ Inicia el scheduler antes de servir la app.
 """
 
 import logging
+import threading
 import sys
 
 logging.basicConfig(
@@ -22,6 +23,7 @@ import finmate.whatsapp.messenger  # noqa: E402,F401
 import finmate.alerts.watchlist_alerts  # noqa: E402,F401
 import finmate.alerts.news_alerts  # noqa: E402,F401
 import finmate.services.quotes  # noqa: E402,F401
+import finmate.security.checks  # noqa: E402,F401  (carga temprana)
 
 # Iniciar scheduler al cargar el módulo. Sin --preload: corre dentro del
 # único worker, así la base y los clientes HTTP no se heredan de un fork.
@@ -39,8 +41,6 @@ except Exception as _e:  # noqa: BLE001
 # WhatsApp por Meta: revisar token y suscripción al arrancar, en segundo plano
 # (si Meta tarda o falla, el bot arranca igual).
 try:
-    import threading
-
     from finmate.whatsapp.meta_cloud import startup_check
 
     threading.Thread(target=startup_check, daemon=True).start()
@@ -49,3 +49,21 @@ except Exception as _e:  # noqa: BLE001
 
 # Gunicorn usa esta variable
 application = app
+
+
+# Seguridad: línea base de integridad de archivos al arrancar y un primer
+# chequeo (configuración, GitHub, librerías) un minuto después, en segundo plano.
+try:
+    from finmate.security.checks import run_checks, snapshot_baseline
+
+    snapshot_baseline()
+
+    def _first_security_check():
+        import time as _t
+
+        _t.sleep(60)
+        run_checks("arranque")
+
+    threading.Thread(target=_first_security_check, daemon=True).start()
+except Exception as _e:  # noqa: BLE001
+    logging.getLogger(__name__).error(f"No se pudo iniciar el chequeo de seguridad: {_e}")

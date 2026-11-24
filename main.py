@@ -11,7 +11,6 @@ Ejecuta:
 import asyncio
 import logging
 import sys
-import threading
 from datetime import datetime
 
 from flask import Flask
@@ -45,6 +44,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("finmate")
 
+# Seguridad: ocultar claves y tokens en los logs (antes las URLs de Finnhub y
+# Marketaux quedaban con la clave a la vista en Railway).
+from finmate.security import logfilter as _logfilter  # noqa: E402
+
+_logfilter.install()
+
 # ============================================================
 # Base de datos (Fase 0 — memoria persistente del agente)
 # Se corre aquí, a nivel de módulo, para que también se ejecute cuando
@@ -70,7 +75,34 @@ except Exception as e:
 # Flask App
 # ============================================================
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024   # nada legítimo manda más de 2 MB
 app.register_blueprint(whatsapp_bp, url_prefix="/whatsapp")
+
+# Seguridad: filtro de tráfico (escaneos, floods, fuerza bruta, anti-CSRF) y
+# encabezados de seguridad en todas las respuestas. Ver finmate/security/.
+from finmate.security import guard as _guard  # noqa: E402
+
+_guard.install(app)
+
+
+def _asset_version() -> str:
+    """Versión de los CSS/JS: cambia con cada deploy, así el celular no mezcla
+    archivos viejos guardados en caché con páginas nuevas (se veían descuadradas)."""
+    import hashlib
+    import os
+    from pathlib import Path
+
+    sha = os.getenv("RAILWAY_GIT_COMMIT_SHA", "")
+    if sha:
+        return sha[:10]
+    h = hashlib.sha1()
+    for p in sorted(Path(__file__).parent.joinpath("finmate/web/static/panel").glob("*.*")):
+        if p.suffix in (".css", ".js"):
+            h.update(p.read_bytes())
+    return h.hexdigest()[:10]
+
+
+app.jinja_env.globals["asset_v"] = _asset_version()
 
 # ============================================================
 # Panel web (etapas 2 y 3): API JSON en /api y páginas en /panel.
@@ -107,13 +139,9 @@ app.register_blueprint(admin_bp, url_prefix="/admin")
 
 @app.route("/")
 def index():
-    return {
-        "app": "Finmate",
-        "version": "2.0.0-fase0",
-        "status": "running",
-        "description": "Agente financiero personal para WhatsApp",
-        "timestamp": datetime.utcnow().isoformat(),
-    }
+    from flask import redirect
+
+    return redirect("/panel/")
 
 
 @app.route("/health")
@@ -217,6 +245,28 @@ def run_podcast_digests():
         logger.error(f"Error en resúmenes de podcasts (no afecta el resto del bot): {e}")
 
 
+def run_security_daily():
+    """Job diario: configuración, integridad de archivos, librerías y consumo."""
+    try:
+        from finmate.security.checks import run_checks
+        from finmate.security.monitor import prune
+
+        run_checks("diario")
+        prune()
+    except Exception as e:
+        logger.error(f"Error en el chequeo diario de seguridad (no afecta el resto del bot): {e}")
+
+
+def run_security_monthly():
+    """Job mensual (día 1): chequeo completo + recordatorio de limpieza en el Inbox y por WhatsApp."""
+    try:
+        from finmate.security.checks import run_monthly_review
+
+        run_monthly_review()
+    except Exception as e:
+        logger.error(f"Error en la revisión mensual de seguridad (no afecta el resto del bot): {e}")
+
+
 def start_scheduler():
     """Inicializa y arranca el scheduler."""
     tz = pytz.timezone(TIMEZONE)
@@ -304,6 +354,12 @@ def start_scheduler():
         name="Alerta cierre de mercado",
         replace_existing=True,
     )
+
+    # Seguridad: chequeo diario (4:17) y revisión mensual el día 1 a las 10:07, hora de Chile
+    scheduler.add_job(run_security_daily, CronTrigger(hour=4, minute=17),
+                      id="security_daily", name="Chequeo diario de seguridad", replace_existing=True)
+    scheduler.add_job(run_security_monthly, CronTrigger(day=1, hour=10, minute=7),
+                      id="security_monthly", name="Revisión mensual de seguridad", replace_existing=True)
 
     scheduler.start()
     logger.info(
