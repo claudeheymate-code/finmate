@@ -41,7 +41,16 @@
   async function api(method, path, body) {
     const opts = { method: method, credentials: "same-origin", headers: { "X-Finmate": "1" } };
     if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
-    const r = await fetch("/api" + path, opts);
+    // Sin respuesta en un tiempo razonable se avisa, en vez de quedar "Cargando…" para siempre.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), path === "/chat" ? 90000 : 20000);
+    opts.signal = ctrl.signal;
+    let r;
+    try { r = await fetch("/api" + path, opts); }
+    catch (e) {
+      throw new Error(e.name === "AbortError" ? "Finmate está tardando más de lo normal. Intenta de nuevo en un momento."
+                                              : "Sin conexión. Revisa tu internet e intenta de nuevo.");
+    } finally { clearTimeout(timer); }
     if (r.status === 401 && document.body.dataset.page !== "acceso") { location.href = "/panel/acceso"; throw new Error("no_autenticado"); }
     let data = null;
     try { data = await r.json(); } catch (e) { data = null; }

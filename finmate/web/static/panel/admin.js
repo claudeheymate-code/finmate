@@ -11,7 +11,13 @@
   async function api(method, path, body) {
     const opts = { method, headers: { "X-Finmate": "1" }, credentials: "same-origin" };
     if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
-    const r = await fetch("/admin/api" + path, opts);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), path.includes("probar") || path.includes("chequear") ? 60000 : 20000);
+    opts.signal = ctrl.signal;
+    let r;
+    try { r = await fetch("/admin/api" + path, opts); }
+    catch (e) { throw new Error(e.name === "AbortError" ? "El servidor está tardando más de lo normal. Intenta de nuevo." : "Sin conexión."); }
+    finally { clearTimeout(timer); }
     if (r.status === 401 && page !== "admin-login") { location.href = "/admin/login"; throw new Error("no_autenticado"); }
     let data = {};
     try { data = await r.json(); } catch (e) { /* sin cuerpo */ }
@@ -48,7 +54,7 @@
     if (out) out.addEventListener("click", async () => { try { await api("POST", "/logout"); } catch (e) {} location.href = "/admin/login"; });
     const badge = $("#inbox-badge");
     if (badge) api("GET", "/resumen").then((d) => {
-      const n = ((d.users || {}).pending || 0) + (d.feedback_new || 0);
+      const n = ((d.users || {}).pending || 0) + (d.feedback_new || 0) + ((d.security || {}).open || 0);
       if (n > 0) { badge.textContent = n > 99 ? "99+" : n; badge.hidden = false; }
       if (page === "admin-costos") renderCostos(d);
     }).catch(() => {});
@@ -94,8 +100,11 @@
       <td class="r" data-label="Costo">${s.cycle === "gratis" ? "Gratis" : money(s.cost, s.currency)}</td>
       <td class="nowrap" data-label="Renueva">${s.renews_on ? fmtDate(s.renews_on) : "—"}</td>
       <td class="hide-sm"><span class="cell-sub">${esc(s.notes)}</span></td>
-      <td class="r">${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Facturación ↗</a>` : ""}</td></tr>`).join("");
-    $$("tr.clickable", tb).forEach((tr) => tr.addEventListener("click", () => openSubForm(SUBS.find((s) => s.id === tr.dataset.id))));
+      <td class="r">${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">Facturación ↗</a>` : ""}</td></tr>`).join("");
+    $$("tr.clickable", tb).forEach((tr) => tr.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;   // el link de facturación abre su página, no el formulario
+      openSubForm(SUBS.find((s) => s.id === tr.dataset.id));
+    }));
   }
 
   function openSubForm(s) {
@@ -259,7 +268,60 @@
     renderRequests(d.requests || []);
     renderFeedback();
   }
+  // ---------- Inbox: seguridad ----------
+  let SEC = [], SFILTER = "open";
+  const SEV = { critical: "Crítico", high: "Alto", medium: "Medio", low: "Bajo", info: "Info" };
+  function renderSecurity(d) {
+    if (d) {
+      SEC = d.events || [];
+      const c = d.counts || {}, box = $("#sec-status"), last = d.last_check || {};
+      box.classList.remove("warn", "bad");
+      if (c.urgent) { box.classList.add("bad"); $("#sec-title").textContent = `${c.urgent} alerta(s) importante(s) por revisar`; }
+      else if (c.open) { box.classList.add("warn"); $("#sec-title").textContent = `${c.open} aviso(s) por revisar`; }
+      else $("#sec-title").textContent = "Todo en orden";
+      $("#sec-sub").textContent = last.at ? `Último chequeo automático: ${fmtDate(last.at, true)} (${last.trigger || ""})${last.ok ? " · sin problemas" : ""}` : "Todavía no corre el primer chequeo automático.";
+    }
+    const ul = $("#sec-list");
+    const rows = SEC.filter((e) => SFILTER === "all" || (e.status === "nuevo" && e.severity !== "info"));
+    if (!rows.length) { ul.innerHTML = `<li class="empty">${SFILTER === "all" ? "Sin eventos registrados." : "Nada por revisar. 👌"}</li>`; return; }
+    ul.innerHTML = rows.map((e) => `<li data-eid="${e.id}" class="${e.status === "revisado" ? "sec-done" : ""}"><div class="inbox-item">
+        <p class="strong">${esc(e.title)}</p>
+        <div class="meta"><span class="st sev-${esc(e.severity)}">${SEV[e.severity] || esc(e.severity)}</span>
+          <span>${fmtDate(e.last_seen, true)}</span>${e.count > 1 ? `<span>· ${num(e.count)} veces</span>` : ""}
+          ${e.ip ? `<span>· IP ${esc(e.ip)}</span>` : ""}${e.path ? `<span>· ${esc(e.path)}</span>` : ""}</div>
+        <div class="quote sec-detail">${esc(e.detail)}</div></div>
+      <div class="row-actions">${e.status === "nuevo" ? `<button class="btn ghost sm" data-sec="revisado">Revisado</button>` : `<button class="btn ghost sm" data-sec="nuevo">Volver a abrir</button>`}</div></li>`).join("");
+    $$("button[data-sec]", ul).forEach((b) => b.addEventListener("click", async () => {
+      const li = b.closest("li"); b.disabled = true;
+      try { await api("PUT", "/seguridad/" + li.dataset.eid, { status: b.dataset.sec }); await loadSecurity(); }
+      catch (err) { $("#sec-msg").innerHTML = box("error-box", err.message); b.disabled = false; }
+    }));
+  }
+  async function loadSecurity() { renderSecurity(await api("GET", "/seguridad")); }
+  function initSecurity() {
+    if (!$("#sec-list")) return;
+    $$("#sec-filter .chip").forEach((ch) => ch.addEventListener("click", () => {
+      $$("#sec-filter .chip").forEach((x) => x.setAttribute("aria-pressed", "false")); ch.setAttribute("aria-pressed", "true");
+      SFILTER = ch.dataset.f; renderSecurity();
+    }));
+    $("#sec-all").addEventListener("click", async () => {
+      try { await api("POST", "/seguridad/revisar-todo"); await loadSecurity(); $("#sec-msg").innerHTML = okMsg("Todo marcado como revisado."); }
+      catch (e) { $("#sec-msg").innerHTML = box("error-box", e.message); }
+    });
+    $("#sec-check").addEventListener("click", async (ev) => {
+      const b = ev.currentTarget; b.disabled = true; b.textContent = "Revisando…";
+      try {
+        const r = await api("POST", "/seguridad/chequear");
+        await loadSecurity();
+        $("#sec-msg").innerHTML = okMsg(r.ok ? "Chequeo terminado: sin problemas." : "Chequeo terminado: revisa los avisos nuevos.");
+      } catch (e) { $("#sec-msg").innerHTML = box("error-box", e.message); }
+      b.disabled = false; b.textContent = "Ejecutar chequeo ahora";
+    });
+    loadSecurity().catch((e) => { $("#sec-list").innerHTML = `<li>${box("error-box", e.message)}</li>`; });
+  }
+
   function pageInbox() {
+    initSecurity();
     $$("#fb-filter .chip").forEach((ch) => ch.addEventListener("click", () => {
       $$("#fb-filter .chip").forEach((x) => x.setAttribute("aria-pressed", "false")); ch.setAttribute("aria-pressed", "true");
       FFILTER = ch.dataset.f; renderFeedback();

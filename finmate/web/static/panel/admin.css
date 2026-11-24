@@ -97,3 +97,18 @@
   .admin-table.stack .row-actions { justify-content: flex-start; }
   .admin-table.stack .row-actions .btn { flex: 1 1 0; height: 40px; }
 }
+
+/* ── Inbox: seguridad ── */
+.sec-status { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 14px 16px; border-radius: 18px;
+  background: #EAF7F2; border: 1px solid #CFEDE2; }
+.sec-status .sec-dot { flex: 0 0 12px; width: 12px; height: 12px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 4px rgba(0,138,108,.15); }
+.sec-status.warn { background: #FFF6E5; border-color: #F6E2B8; }
+.sec-status.warn .sec-dot { background: #D98A00; box-shadow: 0 0 0 4px rgba(217,138,0,.15); }
+.sec-status.bad { background: #FFF1EB; border-color: #F7D3C4; }
+.sec-status.bad .sec-dot { background: var(--down); box-shadow: 0 0 0 4px rgba(214,69,32,.15); }
+.st.sev-critical { background: #D64520; color: #FFFFFF; }
+.st.sev-high { background: #FFF1EB; color: var(--down); }
+.st.sev-medium { background: #FFF6E5; color: #A15C00; }
+.st.sev-low, .st.sev-info { background: rgba(8,36,72,0.06); color: var(--faint); }
+.sec-detail { white-space: pre-line; }
+li.sec-done { opacity: .62; }
