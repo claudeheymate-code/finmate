@@ -452,10 +452,12 @@ def approval_message(name) -> str:
         "• *Resumen*: cómo va tu portafolio hoy\n"
         "• *Inversiones*: tus posiciones, ganancias y watchlist\n"
         "• *Gastos*: en qué se va tu plata cada mes\n"
-        "• *Ajustes*: qué avisos recibes y cómo te hablo\n\n"
+        "• *Ajustes*: tu horario, qué avisos recibes y cómo te hablo\n\n"
         "La idea es que tengas tus inversiones y tus finanzas personales a mano, "
-        "sin tener que buscar en mil páginas. Para entrar, pon tu número y te mando un código por aquí. "
-        "Tip: agrégala a la pantalla de inicio de tu celular para abrirla como una app.\n\n"
+        "sin tener que buscar en mil páginas. Para entrar, pon tu número y te mando un código por aquí.\n\n"
+        "📲 *Importante: agrega el link a la pantalla de inicio* para usarla como app:\n"
+        "• *iPhone*: ábrelo en Safari → botón Compartir (□↑) → \"Agregar a inicio\"\n"
+        "• *Android*: ábrelo en Chrome → menú ⋮ → \"Agregar a la pantalla principal\"\n\n"
         "¿Partimos? Cuéntame qué acciones tienes o cuáles te gustaría seguir."
     )
 
