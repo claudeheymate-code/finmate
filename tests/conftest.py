@@ -60,3 +60,13 @@ def client(app):
 
 def H():
     return {"X-Finmate": "1"}
+
+
+@pytest.fixture(autouse=True)
+def reset_security_guard():
+    """Todos los tests salen de la misma IP: se reinician los límites entre tests."""
+    from finmate.security import guard
+
+    guard.reset()
+    yield
+    guard.reset()

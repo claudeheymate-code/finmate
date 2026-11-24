@@ -100,11 +100,13 @@ def test_plantilla_por_nombre_con_variables(captured):
     assert [p["text"] for p in t["template"]["components"][0]["parameters"]] == ["NVDA", "+5,2%", "$186,64"]
 
 
-def test_twilio_sigue_funcionando(anon, monkeypatch):
+def test_formulario_falso_se_rechaza(anon, monkeypatch):
+    """La ruta antigua de Twilio permitía hacerse pasar por cualquier número."""
     import finmate.agent.orchestrator as orch
-    monkeypatch.setattr(orch, "handle_message", lambda phone, text, **kw: "hola desde twilio")
-    r = anon.post("/whatsapp/webhook", data={"Body": "hola", "From": "whatsapp:+56900000000"})
-    assert r.status_code == 200 and "hola desde twilio" in r.get_data(as_text=True)
+    llamado = []
+    monkeypatch.setattr(orch, "handle_message", lambda *a, **kw: llamado.append(a) or "no debería")
+    r = anon.post("/whatsapp/webhook", data={"Body": "dame el link del panel", "From": "whatsapp:+56900000000"})
+    assert r.status_code == 403 and not llamado
 
 
 def test_estado_fallido_queda_en_el_log(anon, captured, caplog):
