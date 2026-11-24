@@ -567,3 +567,33 @@ carpeta local; subir con el editor web de GitHub (no hay credenciales para push)
   Admin → Inbox → **Seguridad** (estado, eventos, "Ejecutar chequeo ahora", marcar revisado).
 - **Jobs:** chequeo diario 4:17 y revisión mensual día 1 a las 10:07 (recordatorio de limpieza
   en el Inbox + WhatsApp). 145/145 tests (`tests/test_seguridad.py`, 17 nuevos).
+
+## Actualización 24 nov 2026 (tarde) — Arreglos del bot, fotos/PDF y "jornada"
+
+- **Por qué a veces respondía "no puedo procesar":** (1) fotos, stickers y
+  reacciones recibían "solo puedo leer texto" → ahora reacciones/stickers se
+  ignoran y fotos/PDF se procesan; (2) se acababan las rondas de tools y salía
+  "No pude generar una respuesta" → ahora 8 rondas, 1500 tokens y, si no hay
+  texto, se fuerza una respuesta final (`tool_choice=none`); (3) errores 401 de
+  la key vieja de Claude (20–23 nov) → ahora un 401 o falta de créditos crea un
+  evento `claude_error` en el Inbox de seguridad del admin.
+- **Fotos y documentos:** `meta_cloud.parse_incoming` trae `media`,
+  `download_media()` las baja (máx 15 MB). `webhook._queue_media` agrupa los
+  archivos que llegan juntos (4 s) y llama a `handle_message(attachments=...)`.
+  Imágenes (≤5 MB), PDF y CSV/texto. Con adjuntos se usa
+  `ANTHROPIC_MODEL_ANALYSIS` (Sonnet). Tools nuevas en
+  `agent/document_tools.py`: `add_expenses_batch` (cartolas/boletas, siempre
+  con confirmación previa) e `import_portfolio` (pantallazo/cartola de
+  inversiones, modo replace). 36 tools.
+- **Jornada por usuario:** columnas `workday_enabled/start/end/weekends` en
+  `notification_settings` (default 08:30–18:30 lun–vie). `services/workday.py`:
+  fuera de la jornada los avisos proactivos (watchlist, noticias, macro,
+  podcasts, broadcast, resumen semanal) se guardan (`held:{uid}`) en vez de
+  mandarse. `services/daily_brief.py`: al inicio y al cierre manda un párrafo
+  con lo relevante (índices, sus símbolos, noticias, portafolio, Chile y, al
+  inicio, calendario + lo retenido). Job `workday_briefs` cada 5 min en
+  `main.py` (reemplazó a los avisos de apertura/cierre de mercado). Se
+  configura en Ajustes → "Tu jornada" o por chat (`set_notification_settings`).
+- Logs más limpios: Finnhub 403 bloquea ese endpoint 24 h; gcal sin
+  credenciales se loguea una vez; aviso de discrepancia de watchlist 1 vez/día.
+- 165 tests pasan.
