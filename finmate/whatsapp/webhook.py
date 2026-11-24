@@ -1,13 +1,15 @@
 """
-Finmate - Webhook de WhatsApp (Meta Cloud API o Twilio)
+Finmate - Webhook de WhatsApp (Meta Cloud API)
 Recibe mensajes entrantes y responde con información financiera.
 
-La misma ruta /whatsapp/webhook atiende a los dos proveedores:
-  - Meta: GET para verificar el webhook (una vez, al configurarlo) y POST
-    con JSON. Se responde 200 al tiro y la respuesta del bot se manda
-    aparte, en un hilo, porque Meta reintenta si tarda unos segundos y el
-    agente puede demorar más (se ignoran los reintentos por id de mensaje).
-  - Twilio: POST con formulario; se responde con TwiML, como siempre.
+Meta: GET para verificar el webhook (una vez, al configurarlo) y POST con
+JSON firmado. Se responde 200 al tiro y la respuesta del bot se manda
+aparte, en un hilo, porque Meta reintenta si tarda unos segundos y el
+agente puede demorar más (se ignoran los reintentos por id de mensaje).
+
+Seguridad: la ruta antigua de Twilio (formulario sin firma) se sacó el
+24 nov 2026: permitía hacerse pasar por cualquier número. Todo POST que no
+sea JSON firmado por Meta se rechaza y queda registrado como sospechoso.
 
 Fase 0: el enrutado por palabra exacta (hola/ayuda/mercados/...) se
 reemplazó por el orquestador del agente (finmate.agent.orchestrator), que
@@ -22,11 +24,9 @@ import os
 import threading
 import time
 from collections import OrderedDict
-from datetime import datetime, timezone
 
 import httpx
 from flask import Blueprint, abort, request
-from twilio.twiml.messaging_response import MessagingResponse
 
 from config.settings import FINNHUB_API_KEY, ALPHA_VANTAGE_API_KEY, META_VERIFY_TOKEN
 from finmate.whatsapp import meta_cloud
@@ -330,13 +330,15 @@ def _incoming_meta():
     raw = request.get_data()
     if not meta_cloud.valid_signature(raw, request.headers.get("X-Hub-Signature-256")):
         logger.warning("Webhook de Meta con firma inválida: se ignora.")
+        _security("webhook_bad_signature", "high",
+                  "Llegó al webhook de WhatsApp un mensaje con firma inválida (no lo firmó Meta). Se rechazó.")
         abort(403)
     payload = request.get_json(silent=True) or {}
     for st in meta_cloud.parse_statuses(payload):
         if st["status"] == "failed":
             logger.warning(f"Meta: mensaje a {st['to']} FALLÓ: {'; '.join(st['errors']) or 'sin detalle'}")
         else:
-            logger.info(f"Meta: estado {st['status']} para {st['to']}")
+            logger.debug(f"Meta: estado {st['status']} para {st['to']}")
     if not payload:
         logger.info("Webhook de Meta sin contenido JSON")
     for msg in meta_cloud.parse_incoming(payload):
@@ -352,27 +354,19 @@ def _incoming_meta():
 
 @whatsapp_bp.route("/webhook", methods=["POST"])
 def incoming_message():
-    """Procesa mensajes entrantes de WhatsApp vía el orquestador del agente."""
+    """Procesa mensajes entrantes de WhatsApp (solo Meta, con firma válida)."""
     if request.is_json:
         return _incoming_meta()
+    _security("webhook_forged", "high",
+              "Alguien envió al webhook de WhatsApp un mensaje que no viene de Meta "
+              f"(formato {request.content_type or 'desconocido'}). Se rechazó.")
+    abort(403)
 
-    # Twilio (formulario + respuesta TwiML).
-    # Import diferido: evita el ciclo de imports (agent.tools importa de este
-    # mismo módulo para reusar _get_market_data).
-    from finmate.agent.orchestrator import handle_message
 
-    incoming_msg = request.values.get("Body", "").strip()
-    from_number = request.values.get("From", "")
-    resp = MessagingResponse()
-    msg = resp.message()
+def _security(kind: str, severity: str, detail: str) -> None:
+    try:
+        from finmate.security.monitor import record_event
 
-    logger.info(f"Mensaje recibido de {from_number}: {incoming_msg}")
-
-    if not incoming_msg:
-        msg.body("No recibí ningún texto. Escríbeme algo y te respondo.")
-        return str(resp)
-
-    reply_text = handle_message(from_number, incoming_msg)
-    msg.body(reply_text)
-
-    return str(resp)
+        record_event(kind, severity, detail)
+    except Exception:  # noqa: BLE001
+        pass

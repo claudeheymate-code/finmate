@@ -1,26 +1,14 @@
 """
-Finmate - Mensajería WhatsApp (Meta directo o Twilio)
-Envía mensajes formateados a los destinatarios configurados.
+Finmate - Mensajería WhatsApp (Meta Cloud API).
 
-El proveedor sale de WHATSAPP_PROVIDER (config/settings.py): "meta" usa la
-WhatsApp Cloud API sin intermediario (finmate/whatsapp/meta_cloud.py);
-"twilio" sigue funcionando igual que antes. El resto del código no cambia:
-siempre llama a send_message / broadcast / send_template.
+El resto del código siempre llama a send_message / broadcast / send_template;
+el envío real lo hace finmate/whatsapp/meta_cloud.py.
 """
 
-import json
 import logging
 from typing import Optional
 
-from twilio.rest import Client as TwilioClient
-
-from config.settings import (
-    TWILIO_ACCOUNT_SID,
-    TWILIO_AUTH_TOKEN,
-    TWILIO_WHATSAPP_FROM,
-    WHATSAPP_PROVIDER,
-    WHATSAPP_RECIPIENTS,
-)
+from config.settings import WHATSAPP_PROVIDER, WHATSAPP_RECIPIENTS
 from finmate.whatsapp import meta_cloud
 
 logger = logging.getLogger(__name__)
@@ -30,150 +18,64 @@ MAX_MESSAGE_LENGTH = 1500
 
 
 class WhatsAppMessenger:
-    """Envía mensajes por WhatsApp usando Meta (Cloud API) o Twilio."""
+    """Envía mensajes por WhatsApp usando la Cloud API de Meta."""
 
     def __init__(self):
         self.provider = WHATSAPP_PROVIDER
-        self.from_number = TWILIO_WHATSAPP_FROM
-        if self.provider == "meta":
-            self.client = None
-            if not meta_cloud.is_configured():
-                logger.error("WHATSAPP_PROVIDER=meta pero faltan META_WHATSAPP_TOKEN o META_PHONE_NUMBER_ID")
-            return
-        if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
-            logger.error("Twilio credentials no configuradas")
-            self.client = None
-        else:
-            self.client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        if not meta_cloud.is_configured():
+            logger.error("Faltan META_WHATSAPP_TOKEN o META_PHONE_NUMBER_ID: no se pueden enviar mensajes")
 
     def _split_message(self, text: str) -> list[str]:
-        """
-        Divide un mensaje largo en partes que respeten el límite de WhatsApp.
-        Intenta cortar en saltos de línea para no romper el formato.
-        """
+        """Divide un mensaje largo en partes que respeten el límite de WhatsApp,
+        cortando en saltos de línea o espacios para no romper el formato."""
         if len(text) <= MAX_MESSAGE_LENGTH:
             return [text]
-
         parts = []
         while text:
             if len(text) <= MAX_MESSAGE_LENGTH:
                 parts.append(text)
                 break
-
-            # Buscar el último salto de línea antes del límite
             cut_point = text.rfind("\n", 0, MAX_MESSAGE_LENGTH)
             if cut_point == -1 or cut_point < MAX_MESSAGE_LENGTH // 2:
-                # Si no hay buen punto de corte, cortar en espacio
                 cut_point = text.rfind(" ", 0, MAX_MESSAGE_LENGTH)
             if cut_point == -1:
                 cut_point = MAX_MESSAGE_LENGTH
-
             parts.append(text[:cut_point].strip())
             text = text[cut_point:].strip()
-
         return parts
 
     def send_message(self, to: str, body: str) -> bool:
         """Envía un mensaje a un número específico."""
-        if self.provider == "meta":
-            parts = self._split_message(body)
-            ok = True
-            for i, part in enumerate(parts):
-                if len(parts) > 1:
-                    part = f"({i + 1}/{len(parts)})\n{part}"
-                ok = meta_cloud.send_text(to, part) and ok
-            return ok
-        if not self.client:
-            logger.error("Twilio client no inicializado")
-            return False
-
         parts = self._split_message(body)
-        success = True
-
+        ok = True
         for i, part in enumerate(parts):
-            try:
-                if len(parts) > 1:
-                    part = f"({i + 1}/{len(parts)})\n{part}"
-
-                message = self.client.messages.create(
-                    from_=self.from_number,
-                    body=part,
-                    to=to,
-                )
-                logger.info(f"Mensaje enviado a {to}: SID {message.sid}")
-            except Exception as e:
-                logger.error(f"Error enviando mensaje a {to}: {e}")
-                success = False
-
-        return success
+            if len(parts) > 1:
+                part = f"({i + 1}/{len(parts)})\n{part}"
+            ok = meta_cloud.send_text(to, part) and ok
+        return ok
 
     def broadcast(self, body: str, recipients: Optional[list[str]] = None) -> dict:
-        """
-        Envía un mensaje a todos los destinatarios configurados.
-        Retorna un dict con el resultado por número.
-        """
+        """Envía un mensaje a todos los destinatarios. Retorna el resultado por número."""
         targets = recipients or WHATSAPP_RECIPIENTS
         if not targets:
             logger.warning("No hay destinatarios configurados para WhatsApp")
             return {}
-
-        results = {}
-        for number in targets:
-            results[number] = self.send_message(number, body)
-
-        sent = sum(1 for v in results.values() if v)
-        logger.info(f"Broadcast completado: {sent}/{len(targets)} exitosos")
+        results = {number: self.send_message(number, body) for number in targets}
+        logger.info(f"Broadcast completado: {sum(results.values())}/{len(targets)} exitosos")
         return results
 
-    # ----------------------------------------------------------
-    # Content Templates (Fase 1.6)
-    #
-    # Para mensajes que el bot manda por iniciativa propia (fuera de la
-    # ventana de 24hs de mensajería libre de WhatsApp) hace falta un
-    # Content Template aprobado por Meta, no `body` libre. Se identifican
-    # por su Content SID (HXxxxxx...), creado en Twilio Content Template
-    # Builder — ver TWILIO_TEMPLATE_* en config/settings.py.
-    # ----------------------------------------------------------
-    def send_template(
-        self, to: str, content_sid: str, content_variables: Optional[dict] = None
-    ) -> bool:
-        """Envía un mensaje usando una plantilla aprobada por Meta. Con Meta
-        directo, `content_sid` es el NOMBRE de la plantilla en WhatsApp Manager."""
-        if self.provider == "meta":
-            return meta_cloud.send_template(to, content_sid, content_variables)
-        if not self.client:
-            logger.error("Twilio client no inicializado")
-            return False
+    def send_template(self, to: str, content_sid: str, content_variables: Optional[dict] = None) -> bool:
+        """Envía una plantilla aprobada por Meta. `content_sid` es el NOMBRE de la
+        plantilla en WhatsApp Manager (se mantiene el nombre del parámetro)."""
+        return meta_cloud.send_template(to, content_sid, content_variables)
 
-        try:
-            message = self.client.messages.create(
-                from_=self.from_number,
-                to=to,
-                content_sid=content_sid,
-                content_variables=json.dumps(content_variables or {}),
-            )
-            logger.info(f"Template enviado a {to}: SID {message.sid} (content {content_sid})")
-            return True
-        except Exception as e:
-            logger.error(f"Error enviando template {content_sid} a {to}: {e}")
-            return False
-
-    def broadcast_template(
-        self,
-        content_sid: str,
-        content_variables: Optional[dict] = None,
-        recipients: Optional[list[str]] = None,
-    ) -> dict:
-        """Envía un Content Template a todos los destinatarios configurados."""
+    def broadcast_template(self, content_sid: str, content_variables: Optional[dict] = None,
+                           recipients: Optional[list[str]] = None) -> dict:
+        """Envía una plantilla a todos los destinatarios."""
         targets = recipients or WHATSAPP_RECIPIENTS
         if not targets:
             logger.warning("No hay destinatarios configurados para WhatsApp")
             return {}
-
-        results = {}
-        for number in targets:
-            results[number] = self.send_template(number, content_sid, content_variables)
-
-        sent = sum(1 for v in results.values() if v)
-        logger.info(f"Broadcast de template completado: {sent}/{len(targets)} exitosos")
+        results = {number: self.send_template(number, content_sid, content_variables) for number in targets}
+        logger.info(f"Broadcast de plantilla completado: {sum(results.values())}/{len(targets)} exitosos")
         return results

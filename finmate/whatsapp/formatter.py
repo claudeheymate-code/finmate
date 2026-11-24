@@ -5,7 +5,6 @@ Usa formato compatible con WhatsApp (bold con *, italic con _).
 """
 
 from datetime import datetime
-from typing import Optional
 
 
 # Mapeo de países a banderas (emoji)
@@ -201,10 +200,10 @@ def format_earnings_alert(earning: dict) -> str:
             diff = float(eps_actual) - float(eps_estimate)
             if diff > 0:
                 lines.append(f"✅ *EPS: ${eps_actual}* (superó estimación de ${eps_estimate})")
-                lines.append(f"📊 _Esto indica que la empresa tuvo mejor desempeño al esperado, lo que suele ser positivo para la acción._")
+                lines.append("📊 _Esto indica que la empresa tuvo mejor desempeño al esperado, lo que suele ser positivo para la acción._")
             else:
                 lines.append(f"❌ *EPS: ${eps_actual}* (no alcanzó estimación de ${eps_estimate})")
-                lines.append(f"📊 _Resultados por debajo de expectativas, lo que podría generar presión bajista en la acción._")
+                lines.append("📊 _Resultados por debajo de expectativas, lo que podría generar presión bajista en la acción._")
         except (ValueError, TypeError):
             lines.append(f"EPS: {eps_actual} (est: {eps_estimate})")
 
@@ -226,7 +225,7 @@ def format_economic_alert(event: dict) -> str:
     previous = event.get("previous")
 
     lines = [
-        f"🌍 *ALERTA — DATO MACROECONÓMICO*",
+        "🌍 *ALERTA — DATO MACROECONÓMICO*",
         "",
         f"{flag} *{event_name}* ({country})",
         "",
