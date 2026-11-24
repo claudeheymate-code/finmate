@@ -121,13 +121,16 @@ def test_seguimientos(client):
 
 
 def test_avisos(client):
-    base = {"earnings_alerts": "mine", "macro_alerts": False, "market_news_alerts": False}
+    base = {"earnings_alerts": "mine", "macro_alerts": False, "market_news_alerts": False,
+            "workday_enabled": True, "workday_start": "08:30", "workday_end": "18:30", "workday_weekends": False}
     assert client.get("/api/avisos").get_json() == {"watchlist_threshold_pct": 5.0, "weekly_summary_enabled": True,
                                                     "news_max_per_day": 6, **base}
     r = client.put("/api/avisos", json={"watchlist_threshold_pct": 3, "weekly_summary_enabled": False,
                                         "news_max_per_day": 2, "earnings_alerts": "all", "macro_alerts": True}, headers=H())
     assert r.get_json() == {"watchlist_threshold_pct": 3.0, "weekly_summary_enabled": False, "news_max_per_day": 2,
-                            "earnings_alerts": "all", "macro_alerts": True, "market_news_alerts": False}
+                            "earnings_alerts": "all", "macro_alerts": True, "market_news_alerts": False,
+                            "workday_enabled": True, "workday_start": "08:30", "workday_end": "18:30",
+                            "workday_weekends": False}
     assert client.put("/api/avisos", json={"earnings_alerts": "algunas"}, headers=H()).status_code == 400
     assert client.put("/api/avisos", json={"macro_alerts": "si"}, headers=H()).status_code == 400
     assert client.put("/api/avisos", json={"news_max_per_day": 20}, headers=H()).status_code == 400

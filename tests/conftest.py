@@ -70,3 +70,18 @@ def reset_security_guard():
     guard.reset()
     yield
     guard.reset()
+
+
+@pytest.fixture(autouse=True)
+def jornada_siempre_abierta(request, monkeypatch):
+    """Los tests de alertas no deben depender de la hora a la que corren: la
+    jornada se considera abierta, salvo en los tests de jornada (marcados)."""
+    if request.node.get_closest_marker("jornada_real"):
+        return
+    from finmate.services import workday
+
+    monkeypatch.setattr(workday, "in_workday", lambda *a, **k: True)
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "jornada_real: usa el horario de jornada real (no el abierto por defecto)")

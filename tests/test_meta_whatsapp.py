@@ -8,10 +8,12 @@ import pytest
 from finmate.whatsapp import meta_cloud, webhook
 
 
-def _payload(text="hola", msg_id="wamid.1", frm="56912345678", mtype="text"):
+def _payload(text="hola", msg_id="wamid.1", frm="56912345678", mtype="text", media=None):
     m = {"from": frm, "id": msg_id, "timestamp": "1", "type": mtype}
     if mtype == "text":
         m["text"] = {"body": text}
+    elif media is not None:
+        m[mtype] = media
     return {"object": "whatsapp_business_account", "entry": [{"id": "WABA", "changes": [{"field": "messages", "value": {
         "messaging_product": "whatsapp", "metadata": {"phone_number_id": "123"},
         "contacts": [{"wa_id": frm, "profile": {"name": "Joaco"}}], "messages": [m]}}]}]}
@@ -37,7 +39,9 @@ def captured(monkeypatch):
 
     monkeypatch.setattr(meta_cloud.httpx, "post", lambda url, json=None, timeout=None, headers=None: sent["posts"].append((url, json, headers)) or R())
     import finmate.agent.orchestrator as orch
-    monkeypatch.setattr(orch, "handle_message", lambda phone, text, **kw: sent["handled"].append((phone, text)) or "respuesta del bot")
+    sent["attachments"] = []
+    monkeypatch.setattr(orch, "handle_message", lambda phone, text, **kw: (sent["handled"].append((phone, text)),
+                        sent["attachments"].append(kw.get("attachments") or [])) and "respuesta del bot")
     import finmate.whatsapp.messenger as msgr
     monkeypatch.setattr(msgr, "WHATSAPP_PROVIDER", "meta")
     monkeypatch.setattr(webhook, "RUN_IN_BACKGROUND", False)
@@ -69,11 +73,56 @@ def test_reintento_de_meta_no_duplica_respuesta(anon, captured):
     assert len(captured["handled"]) == 1
 
 
-def test_mensaje_no_texto(anon, captured):
-    anon.post("/whatsapp/webhook", json=_payload(mtype="image", msg_id="wamid.img"))
-    assert captured["handled"] == []
-    body = [p[1] for p in captured["posts"] if p[1].get("type") == "text"][0]["text"]["body"]
-    assert "texto" in body
+def _bodies(captured):
+    return [p[1]["text"]["body"] for p in captured["posts"] if p[1].get("type") == "text"]
+
+
+def test_reacciones_y_stickers_no_se_responden(anon, captured):
+    anon.post("/whatsapp/webhook", json=_payload(mtype="reaction", msg_id="wamid.r", media={"emoji": "👍"}))
+    anon.post("/whatsapp/webhook", json=_payload(mtype="sticker", msg_id="wamid.s", media={"id": "x"}))
+    assert captured["handled"] == [] and _bodies(captured) == []
+
+
+def test_audio_tiene_respuesta_corta(anon, captured):
+    anon.post("/whatsapp/webhook", json=_payload(mtype="audio", msg_id="wamid.a", media={"id": "m1", "mime_type": "audio/ogg"}))
+    assert captured["handled"] == [] and "audios" in _bodies(captured)[0]
+
+
+def test_foto_se_descarga_y_va_a_claude(anon, captured, monkeypatch):
+    monkeypatch.setattr(meta_cloud, "download_media", lambda mid: (b"\xff\xd8jpg", "image/jpeg"))
+    anon.post("/whatsapp/webhook", json=_payload(mtype="image", msg_id="wamid.img",
+                                                 media={"id": "m1", "mime_type": "image/jpeg", "caption": "mi cartola"}))
+    assert captured["handled"] == [("whatsapp:+56912345678", "mi cartola")]
+    att = captured["attachments"][0]
+    assert att[0]["kind"] == "image" and att[0]["media_type"] == "image/jpeg" and att[0]["data"]
+    assert _bodies(captured) == ["respuesta del bot"]
+
+
+def test_pdf_se_manda_como_documento(anon, captured, monkeypatch):
+    monkeypatch.setattr(meta_cloud, "download_media", lambda mid: (b"%PDF-1.4", "application/pdf"))
+    anon.post("/whatsapp/webhook", json=_payload(mtype="document", msg_id="wamid.pdf",
+                                                 media={"id": "m2", "mime_type": "application/pdf", "filename": "cartola.pdf"}))
+    assert captured["attachments"][0][0]["kind"] == "pdf"
+
+
+def test_formato_no_soportado_avisa(anon, captured, monkeypatch):
+    monkeypatch.setattr(meta_cloud, "download_media", lambda mid: (b"PK", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+    anon.post("/whatsapp/webhook", json=_payload(mtype="document", msg_id="wamid.x",
+                                                 media={"id": "m3", "filename": "gastos.xlsx"}))
+    assert captured["handled"] == [] and "PDF" in _bodies(captured)[0]
+
+
+def test_varias_fotos_seguidas_van_en_una_respuesta(anon, captured, monkeypatch):
+    import time
+
+    monkeypatch.setattr(webhook, "RUN_IN_BACKGROUND", True)
+    monkeypatch.setattr(webhook, "MEDIA_GROUP_SECONDS", 0.3)
+    monkeypatch.setattr(meta_cloud, "download_media", lambda mid: (b"\xff\xd8", "image/jpeg"))
+    for i in range(3):
+        webhook._answer_meta({"id": f"w{i}", "from": "56912345678", "type": "image", "text": "", "name": "",
+                              "media": {"id": f"m{i}", "mime_type": "image/jpeg", "caption": ""}})
+    time.sleep(0.8)
+    assert len(captured["handled"]) == 1 and len(captured["attachments"][0]) == 3
 
 
 def test_avisos_de_estado_se_ignoran(anon, captured):
