@@ -501,11 +501,14 @@ def avisos_put():
         if isinstance(news, bool) or not isinstance(news, int):
             return _err("news_max_per_day tiene que ser un número entero de 0 a 10.")
     flags = {}
-    for k in ("macro_alerts", "market_news_alerts"):
+    for k in ("macro_alerts", "market_news_alerts", "workday_enabled", "workday_weekends"):
         if k in b:
             if not isinstance(b[k], bool):
                 return _err(f"{k} tiene que ser true o false.")
             flags[k] = b[k]
+    for k in ("workday_start", "workday_end"):
+        if k in b:
+            flags[k] = str(b[k])
     earnings = b.get("earnings_alerts") if "earnings_alerts" in b else None
     try:
         return jsonify(settings_repo.set_notification_settings(
