@@ -37,6 +37,7 @@ TITLES = {
     "integrity": "Archivos del servidor modificados",
     "dependency_vuln": "Vulnerabilidad en una librería",
     "spend_spike": "Consumo de Claude fuera de lo normal",
+    "claude_error": "Claude no está respondiendo",
     "monthly_review": "Revisión mensual de limpieza y seguridad",
     "check_ok": "Chequeo de seguridad sin problemas",
 }
