@@ -206,3 +206,15 @@ def test_interpretar_nombre_y_correo():
     assert parse_signup("pedro@x.com") == (None, "pedro@x.com")
     assert parse_signup("Mi nombre es ana maría soto") == ("Ana María Soto", None)
     assert parse_signup("¿qué es finmate?") == (None, None)
+
+
+def test_apps_separadas_con_su_icono(app, admin):
+    user_page = app.test_client().get("/panel/acceso").get_data(as_text=True)
+    assert "manifest.json" in user_page and "admin-manifest" not in user_page
+    for html in (admin.get("/admin/").get_data(as_text=True),
+                 app.test_client().get("/admin/login").get_data(as_text=True)):
+        assert "admin-manifest.json" in html and "admin-apple-touch-icon.png" in html
+        assert "user-scalable=no" in html
+    m = app.test_client().get("/panel/static/admin-manifest.json").get_json()
+    assert m["scope"] == "/admin/" and m["start_url"] == "/admin/" and m["name"] == "Finmate Admin"
+    assert app.test_client().get("/panel/static/admin-icon-512.png").status_code == 200
