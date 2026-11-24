@@ -373,6 +373,27 @@ def api_users_csv():
                     headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
+def approval_message(name) -> str:
+    """WhatsApp que recibe el usuario cuando el admin aprueba su acceso."""
+    nombre = f" {name.split()[0]}" if name else ""
+    link = f"{settings.PANEL_BASE_URL.rstrip('/')}/panel/"
+    return (
+        f"¡Hola{nombre}! Tu acceso a Finmate fue *aprobado* 🎉\n\n"
+        "Desde ahora puedes escribirme por aquí cuando quieras: te cuento cómo se mueven tus acciones, "
+        "te aviso de noticias y resultados importantes, y anoto tus gastos.\n\n"
+        f"📱 *Tu app Finmate:* {link}\n"
+        "Ahí ves todo ordenado en un solo lugar:\n"
+        "• *Resumen*: cómo va tu portafolio hoy\n"
+        "• *Inversiones*: tus posiciones, ganancias y watchlist\n"
+        "• *Gastos*: en qué se va tu plata cada mes\n"
+        "• *Ajustes*: qué avisos recibes y cómo te hablo\n\n"
+        "La idea es que tengas tus inversiones y tus finanzas personales a mano, "
+        "sin tener que buscar en mil páginas. Para entrar, pon tu número y te mando un código por aquí. "
+        "Tip: agrégala a la pantalla de inicio de tu celular para abrirla como una app.\n\n"
+        "¿Partimos? Cuéntame qué acciones tienes o cuáles te gustaría seguir."
+    )
+
+
 @admin_bp.post("/api/usuarios/<int:uid>/acceso")
 @admin_api
 def api_user_access(uid):
@@ -394,15 +415,21 @@ def api_user_access(uid):
             set_onboarding_status(uid, "en_curso")
         except Exception:
             pass
+        msg = approval_message(user.name)
         try:
             from finmate.whatsapp.messenger import WhatsAppMessenger
 
-            nombre = f" {user.name.split()[0]}" if user.name else ""
-            notified = WhatsAppMessenger().send_message(
-                user.phone, f"¡Listo{nombre}! Ya tienes acceso a Finmate 🎉 Escríbeme cuando quieras y te ayudo a dejarlo configurado.")
+            notified = WhatsAppMessenger().send_message(user.phone, msg)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Admin: no pude avisar a {user.phone}: {e}")
             notified = False
+        if notified:
+            try:  # queda en el historial, así el bot sabe que ya le dio la bienvenida
+                from finmate.db.repository import save_turn
+
+                save_turn(uid, "assistant", msg)
+            except Exception:
+                pass
     logger.info(f"Admin {g.admin}: usuario {uid} → {status}")
     return jsonify({"ok": True, "status": status, "notified": notified})
 
