@@ -218,3 +218,21 @@ def test_apps_separadas_con_su_icono(app, admin):
     m = app.test_client().get("/panel/static/admin-manifest.json").get_json()
     assert m["scope"] == "/admin/" and m["start_url"] == "/admin/" and m["name"] == "Finmate Admin"
     assert app.test_client().get("/panel/static/admin-icon-512.png").status_code == 200
+
+
+def test_al_aprobar_llega_whatsapp_con_link_a_la_app(admin, monkeypatch):
+    from finmate.db.repository import get_or_create_user, get_recent_history
+
+    sent = _fake_whatsapp(monkeypatch)
+    u = get_or_create_user("whatsapp:+56988880009", new_status="pending")
+    from finmate.db.repository import save_registration
+
+    save_registration(u.id, "Camila Rojas", "camila@mail.cl")
+    r = admin.post(f"/admin/api/usuarios/{u.id}/acceso", json={"action": "approve"}, headers=H)
+    assert r.get_json()["notified"] is True
+    to, body = sent[-1]
+    assert to == "whatsapp:+56988880009"
+    assert "Camila" in body and "aprobado" in body and "/panel/" in body
+    for parte in ("Resumen", "Inversiones", "Gastos", "Ajustes"):
+        assert parte in body
+    assert any(role == "assistant" and "/panel/" in txt for role, txt in get_recent_history(u.id))
