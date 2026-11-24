@@ -112,3 +112,8 @@
 .st.sev-low, .st.sev-info { background: rgba(8,36,72,0.06); color: var(--faint); }
 .sec-detail { white-space: pre-line; }
 li.sec-done { opacity: .62; }
+
+/* ── Barra de carga al cambiar de pestaña ── */
+.nav-progress { position: fixed; z-index: 100; top: 0; left: 0; height: 3px; width: 0; background: var(--emerald);
+  box-shadow: 0 0 8px rgba(0,155,119,.5); transition: width 2.5s cubic-bezier(.1,.7,.2,1); pointer-events: none; }
+.nav-progress.go { width: 85%; }

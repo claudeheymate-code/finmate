@@ -22,7 +22,40 @@
     let data = {};
     try { data = await r.json(); } catch (e) { /* sin cuerpo */ }
     if (!r.ok) throw new Error(data.error || ("Error " + r.status));
+    if (method === "GET") cachePut(path, data);
+    else cacheClear();   // algo cambió (aprobar, revisar, guardar): lo guardado ya no sirve
     return data;
+  }
+
+  // ---------- datos al instante ----------
+  // Cada pestaña del admin es una página aparte. Para que no quede "Cargando…"
+  // 1-3 s al cambiar, se guarda lo último que llegó de cada consulta (solo en
+  // esta sesión del navegador) y se muestra de inmediato mientras llega lo nuevo.
+  const CK = "fm-admin:";
+  function cachePut(path, data) { try { sessionStorage.setItem(CK + path, JSON.stringify({ t: Date.now(), d: data })); } catch (e) { /* sin espacio o modo privado */ } }
+  function cacheGet(path) { try { return JSON.parse(sessionStorage.getItem(CK + path) || "null"); } catch (e) { return null; } }
+  function cacheClear() { try { Object.keys(sessionStorage).filter((k) => k.startsWith(CK)).forEach((k) => sessionStorage.removeItem(k)); } catch (e) {} }
+  // Muestra lo guardado (si hay) y después lo nuevo, solo si cambió.
+  async function live(path, render, onError) {
+    const c = cacheGet(path);
+    let shown = null;
+    if (c) { try { render(c.d, true); shown = JSON.stringify(c.d); } catch (e) { shown = null; } }
+    try {
+      const d = await api("GET", path);
+      if (JSON.stringify(d) !== shown) render(d, false);
+    } catch (e) { if (shown === null && onError) onError(e); }
+  }
+  // Con la página ya lista, trae en segundo plano los datos de las otras pestañas
+  const PRELOAD = ["/badge", "/resumen", "/usuarios", "/inbox", "/seguridad", "/fuentes"];
+  function preloadOthers() {
+    const later = window.requestIdleCallback || ((f) => setTimeout(f, 300));
+    setTimeout(() => later(async () => {
+      for (const p of PRELOAD) {
+        const c = cacheGet(p);
+        if (c && Date.now() - c.t < 60000) continue;
+        try { await api("GET", p); } catch (e) { return; }
+      }
+    }), 1200);
   }
 
   const fmtDate = (iso, withTime) => {
@@ -51,17 +84,19 @@
   // ---------- Común ----------
   function initCommon() {
     const out = $("#logout");
-    if (out) out.addEventListener("click", async () => { try { await api("POST", "/logout"); } catch (e) {} location.href = "/admin/login"; });
+    if (out) out.addEventListener("click", async () => { cacheClear(); try { await api("POST", "/logout"); } catch (e) {} location.href = "/admin/login"; });
     const badge = $("#inbox-badge");
-    if (badge) api("GET", "/resumen").then((d) => {
-      const n = ((d.users || {}).pending || 0) + (d.feedback_new || 0) + ((d.security || {}).open || 0);
-      if (n > 0) { badge.textContent = n > 99 ? "99+" : n; badge.hidden = false; }
-      if (page === "admin-costos") renderCostos(d);
-    }).catch(() => {});
+    if (badge) live("/badge", (d) => {
+      const n = d.total || 0;
+      badge.textContent = n > 99 ? "99+" : n; badge.hidden = !(n > 0);
+    });
+    if (page === "admin-costos") live("/resumen", renderCostos);
+    preloadOthers();
   }
 
   // ---------- Login ----------
   function pageLogin() {
+    cacheClear();
     const f = $("#admin-dev-login"); if (!f) return;
     f.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -205,8 +240,8 @@
       } catch (e) { $(msgSel).innerHTML = box("error-box", e.message); b.disabled = false; }
     }));
   }
-  async function loadUsers() {
-    const d = await api("GET", "/usuarios");
+  async function loadUsers() { showUsers(await api("GET", "/usuarios")); }
+  function showUsers(d) {
     USERS = d.users || [];
     const c = d.counts || {};
     $("#us-approved").textContent = num(c.approved); $("#us-active").textContent = num(c.active_7d);
@@ -219,7 +254,7 @@
       $$("#us-filter .chip").forEach((x) => x.setAttribute("aria-pressed", "false")); ch.setAttribute("aria-pressed", "true");
       UFILTER = ch.dataset.f; renderUsers();
     }));
-    loadUsers().catch((e) => { $("#us-rows").innerHTML = `<tr><td colspan="9">${box("error-box", e.message)}</td></tr>`; });
+    live("/usuarios", showUsers, (e) => { $("#us-rows").innerHTML = `<tr><td colspan="9">${box("error-box", e.message)}</td></tr>`; });
   }
 
   // ---------- Inbox ----------
@@ -262,8 +297,10 @@
       }));
     });
   }
-  async function loadInbox() {
-    const d = await api("GET", "/inbox");
+  async function loadInbox() { showInbox(await api("GET", "/inbox")); }
+  function showInbox(d, fromCache) {
+    const typing = document.activeElement && document.activeElement.closest && document.activeElement.closest("#ib-fb");
+    if (typing && fromCache === false) return;   // no borrar lo que estás escribiendo
     FB = d.feedback || [];
     renderRequests(d.requests || []);
     renderFeedback();
@@ -317,7 +354,7 @@
       } catch (e) { $("#sec-msg").innerHTML = box("error-box", e.message); }
       b.disabled = false; b.textContent = "Ejecutar chequeo ahora";
     });
-    loadSecurity().catch((e) => { $("#sec-list").innerHTML = `<li>${box("error-box", e.message)}</li>`; });
+    live("/seguridad", (d) => renderSecurity(d), (e) => { $("#sec-list").innerHTML = `<li>${box("error-box", e.message)}</li>`; });
   }
 
   function pageInbox() {
@@ -326,7 +363,7 @@
       $$("#fb-filter .chip").forEach((x) => x.setAttribute("aria-pressed", "false")); ch.setAttribute("aria-pressed", "true");
       FFILTER = ch.dataset.f; renderFeedback();
     }));
-    loadInbox().catch((e) => { $("#ib-req").innerHTML = `<li>${box("error-box", e.message)}</li>`; });
+    live("/inbox", showInbox, (e) => { $("#ib-req").innerHTML = `<li>${box("error-box", e.message)}</li>`; });
   }
 
   // ---------- Fuentes ----------
@@ -362,13 +399,23 @@
     b.disabled = false;
   }
   function pageFuentes() {
-    api("GET", "/fuentes").then((d) => { renderSources(d.sources || []); $("#src-ideas").value = d.ideas || ""; })
-      .catch((e) => { $("#src-grid").innerHTML = box("error-box", e.message); });
+    live("/fuentes", (d, fromCache) => {
+      const a = document.activeElement;
+      if (fromCache === false && a && (a.closest("#src-grid") || a.id === "src-ideas")) return;   // estás escribiendo
+      renderSources(d.sources || []); $("#src-ideas").value = d.ideas || "";
+    }, (e) => { $("#src-grid").innerHTML = box("error-box", e.message); });
     $("#src-test-all").addEventListener("click", async () => { for (const c of $$(".src-card")) await testSource(c); });
     $("#src-ideas-save").addEventListener("click", async () => {
       try { await api("PUT", "/fuentes/_ideas/nota", { note: $("#src-ideas").value }); $("#src-ideas-msg").innerHTML = okMsg("Ideas guardadas."); }
       catch (e) { $("#src-ideas-msg").innerHTML = box("error-box", e.message); }
     });
+  }
+
+  // Barra fina arriba mientras abre la otra pestaña (así se nota que está cargando)
+  function showProgress() {
+    let bar = $(".nav-progress");
+    if (!bar) { bar = document.createElement("div"); bar.className = "nav-progress"; document.body.appendChild(bar); }
+    requestAnimationFrame(() => bar.classList.add("go"));
   }
 
   // ---------- celular: igual que la app de usuarios ----------
@@ -387,8 +434,9 @@
       if (!a || a === current()) return;
       if (mq.matches && pill) {
         links.forEach((x) => x.removeAttribute("aria-current")); a.setAttribute("aria-current", "page"); place(a);
-        setTimeout(() => { location.href = a.href; }, 200);
-      } else location.href = a.href;
+        showProgress();
+        setTimeout(() => { location.href = a.href; }, 120);
+      } else { showProgress(); location.href = a.href; }
     };
     links.forEach((a) => a.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); go(a); }));
     // Deslizar entre pestañas (no dentro de tablas que se desplazan ni campos)
