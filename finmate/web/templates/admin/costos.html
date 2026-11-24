@@ -13,7 +13,7 @@
 <section class="card glass">
   <div class="card-head"><div><h2>Suscripciones</h2><p>Servicios que usa Finmate. Toca uno para editarlo.</p></div>
     <button class="btn" type="button" id="sub-add">Agregar suscripción</button></div>
-  <div class="table-wrap"><table class="admin-table"><thead><tr>
+  <div class="table-wrap"><table class="admin-table stack"><thead><tr>
     <th>Servicio</th><th>Ciclo</th><th class="r">Costo</th><th>Renueva</th><th>Notas</th><th></th></tr></thead>
     <tbody id="sub-rows"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table></div>
   <form id="sub-form" class="sub-form" hidden>
@@ -37,7 +37,7 @@
 <section class="card glass">
   <div class="card-head"><div><h2>Consumo medido</h2><p id="u-month">El bot cuenta lo que usa de Claude y de WhatsApp.</p></div></div>
   <h3 class="sub-h">Claude (por modelo)</h3>
-  <div class="table-wrap"><table class="admin-table"><thead><tr>
+  <div class="table-wrap"><table class="admin-table stack"><thead><tr>
     <th>Modelo</th><th class="r">Llamadas</th><th class="r">Tokens entrada</th><th class="r">Tokens salida</th><th class="r">Precio (USD/millón)</th><th class="r">Costo estimado</th></tr></thead>
     <tbody id="u-claude"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table></div>
   <p class="faint small" style="margin-top:8px">Estimación con los precios que configures aquí. El cobro real está en la <a href="https://platform.claude.com/settings/billing" target="_blank" rel="noopener">consola de Claude</a>.</p>
