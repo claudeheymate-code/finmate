@@ -22,6 +22,9 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 TOKEN_FILE = "token.json"
 
 
+_WARNED_NO_CREDS = False
+
+
 class GoogleCalendarClient:
     """Gestiona eventos financieros en Google Calendar."""
 
@@ -50,10 +53,10 @@ class GoogleCalendarClient:
 
             if not creds:
                 if not os.path.exists(GOOGLE_CREDENTIALS_FILE):
-                    logger.error(
-                        f"Archivo de credenciales '{GOOGLE_CREDENTIALS_FILE}' no encontrado. "
-                        "Descárgalo desde Google Cloud Console."
-                    )
+                    global _WARNED_NO_CREDS
+                    if not _WARNED_NO_CREDS:  # antes se repetía como ERROR cada 30 min
+                        _WARNED_NO_CREDS = True
+                        logger.info(f"Google Calendar desactivado: no está '{GOOGLE_CREDENTIALS_FILE}' (opcional).")
                     return
 
                 try:
