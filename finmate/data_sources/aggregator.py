@@ -1,6 +1,7 @@
 """
 Finmate - Agregador de Datos Financieros
-Combina información de Finnhub, FMP y Alpha Vantage en una sola interfaz.
+Combina información de Finnhub y Alpha Vantage en una sola interfaz.
+(FMP se sacó: su plan gratis expiró y cada llamada fallaba.)
 Deduplica, prioriza y normaliza los datos.
 """
 
@@ -9,7 +10,6 @@ import logging
 from datetime import datetime, timedelta
 
 from .finnhub_client import FinnhubClient
-from .fmp_client import FMPClient
 from .alpha_vantage_client import AlphaVantageClient
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,6 @@ class FinancialDataAggregator:
 
     def __init__(self):
         self.finnhub = FinnhubClient()
-        self.fmp = FMPClient()
         self.alpha_vantage = AlphaVantageClient()
 
     # ----------------------------------------------------------
@@ -35,14 +34,14 @@ class FinancialDataAggregator:
     # ----------------------------------------------------------
     async def get_top_news(self, limit: int = 10) -> list[dict]:
         """
-        Obtiene las noticias más relevantes combinando Finnhub y FMP.
+        Obtiene las noticias más relevantes desde Finnhub.
         Deduplica por similitud de título.
         """
-        finnhub_news, fmp_news = await asyncio.gather(
-            self.finnhub.get_market_news(),
-            self.fmp.get_general_news(limit=30),
-            return_exceptions=True,
-        )
+        try:
+            finnhub_news = await self.finnhub.get_market_news()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Noticias de Finnhub no disponibles: {e}")
+            finnhub_news = []
 
         all_news = []
 
@@ -54,17 +53,6 @@ class FinancialDataAggregator:
                     "source": n.get("source", "Finnhub"),
                     "url": n.get("url", ""),
                     "datetime": n.get("datetime", ""),
-                    "type": "market_news",
-                })
-
-        if isinstance(fmp_news, list):
-            for n in fmp_news:
-                all_news.append({
-                    "title": n.get("title", ""),
-                    "summary": n.get("text", ""),
-                    "source": n.get("source", "FMP"),
-                    "url": n.get("url", ""),
-                    "datetime": n.get("published", ""),
                     "type": "market_news",
                 })
 
@@ -88,14 +76,14 @@ class FinancialDataAggregator:
         self, from_date: str = None, to_date: str = None
     ) -> list[dict]:
         """
-        Calendario de earnings combinando Finnhub y FMP.
+        Calendario de earnings desde Finnhub.
         Filtra para mostrar solo empresas relevantes.
         """
-        finnhub_earnings, fmp_earnings = await asyncio.gather(
-            self.finnhub.get_earnings_calendar(from_date, to_date),
-            self.fmp.get_earnings_calendar(from_date, to_date),
-            return_exceptions=True,
-        )
+        try:
+            finnhub_earnings = await self.finnhub.get_earnings_calendar(from_date, to_date)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Calendario de resultados no disponible: {e}")
+            finnhub_earnings = []
 
         earnings_map = {}  # symbol -> datos
 
@@ -113,22 +101,6 @@ class FinancialDataAggregator:
                         "revenue_estimate": e.get("revenue_estimate"),
                         "revenue_actual": e.get("revenue_actual"),
                         "source": "finnhub",
-                    }
-
-        # FMP complementa
-        if isinstance(fmp_earnings, list):
-            for e in fmp_earnings:
-                symbol = e.get("symbol", "")
-                if symbol and symbol not in earnings_map:
-                    earnings_map[symbol] = {
-                        "symbol": symbol,
-                        "date": e.get("date", ""),
-                        "hour": "",
-                        "eps_estimate": e.get("eps_estimate"),
-                        "eps_actual": e.get("eps_actual"),
-                        "revenue_estimate": e.get("revenue_estimate"),
-                        "revenue_actual": e.get("revenue_actual"),
-                        "source": "fmp",
                     }
 
         # Priorizar empresas top
@@ -149,14 +121,14 @@ class FinancialDataAggregator:
         self, from_date: str = None, to_date: str = None
     ) -> list[dict]:
         """
-        Calendario macroeconómico combinando Finnhub y FMP.
+        Calendario macroeconómico desde Finnhub.
         Solo eventos de impacto medio y alto.
         """
-        finnhub_econ, fmp_econ = await asyncio.gather(
-            self.finnhub.get_economic_calendar(from_date, to_date),
-            self.fmp.get_economic_calendar(from_date, to_date),
-            return_exceptions=True,
-        )
+        try:
+            finnhub_econ = await self.finnhub.get_economic_calendar(from_date, to_date)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Calendario económico no disponible: {e}")
+            finnhub_econ = []
 
         events_map = {}
 
@@ -174,22 +146,6 @@ class FinancialDataAggregator:
                     "actual": e.get("actual"),
                     "source": "finnhub",
                 }
-
-        if isinstance(fmp_econ, list):
-            for e in fmp_econ:
-                key = f"{e.get('country', '')}_{e.get('event', '')}_{e.get('date', '')}"
-                if key not in events_map:
-                    events_map[key] = {
-                        "country": e.get("country", ""),
-                        "event": e.get("event", ""),
-                        "date": e.get("date", ""),
-                        "time": "",
-                        "impact": e.get("impact", "medium"),
-                        "forecast": e.get("forecast"),
-                        "previous": e.get("previous"),
-                        "actual": e.get("actual"),
-                        "source": "fmp",
-                    }
 
         events = list(events_map.values())
         # Priorizar por impacto y fecha
@@ -226,6 +182,23 @@ class FinancialDataAggregator:
         }
 
     # ----------------------------------------------------------
+    # Índices principales (ETFs que los siguen, cotizados en Finnhub)
+    # ----------------------------------------------------------
+    async def get_major_indices(self) -> list[dict]:
+        from finmate.services.quotes import get_quote
+
+        out = []
+        for symbol, name in (("SPY", "S&P 500"), ("DIA", "Dow Jones"), ("QQQ", "Nasdaq 100")):
+            try:
+                q = await asyncio.to_thread(get_quote, symbol)
+            except Exception:  # noqa: BLE001
+                q = None
+            if q and q.get("price"):
+                out.append({"symbol": symbol, "name": name, "price": q["price"],
+                            "change": None, "change_pct": q.get("change_pct")})
+        return out
+
+    # ----------------------------------------------------------
     # Resumen completo semanal
     # ----------------------------------------------------------
     async def get_weekly_data(self) -> dict:
@@ -241,8 +214,8 @@ class FinancialDataAggregator:
             self.get_earnings_calendar(today, next_week),
             self.get_economic_calendar(today, next_week),
             self.get_us_macro_snapshot(),
-            self.fmp.get_major_indices(),
-            self.fmp.get_market_movers(),
+            self.get_major_indices(),
+            asyncio.sleep(0, result={}),  # "más subieron/bajaron": no hay fuente gratis desde que salió FMP
             return_exceptions=True,
         )
 
