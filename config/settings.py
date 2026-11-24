@@ -30,23 +30,16 @@ def _redis_url(raw: str) -> str:
 
 
 # ============================================================
-# TWILIO (WhatsApp)
+# WhatsApp: destinatarios administradores
 # ============================================================
-TWILIO_ACCOUNT_SID = _key("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = _key("TWILIO_AUTH_TOKEN")
-TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")  # Sandbox default
-
 # Lista de números a los que se envían alertas (formato: whatsapp:+56912345678)
 WHATSAPP_RECIPIENTS = [
     r.strip() for r in os.getenv("WHATSAPP_RECIPIENTS", "").split(",") if r.strip()
 ]
 
 # ============================================================
-# META — WhatsApp Cloud API (alternativa a Twilio, sin intermediario)
+# META — WhatsApp Cloud API (único proveedor; Twilio se sacó el 24 nov 2026)
 # ============================================================
-# Si META_WHATSAPP_TOKEN y META_PHONE_NUMBER_ID están cargadas, el bot usa
-# Meta directo; si no, sigue usando Twilio como hasta ahora. Se puede forzar
-# con WHATSAPP_PROVIDER=meta o WHATSAPP_PROVIDER=twilio.
 META_WHATSAPP_TOKEN = _key("META_WHATSAPP_TOKEN")      # token permanente (usuario del sistema)
 META_PHONE_NUMBER_ID = _key("META_PHONE_NUMBER_ID")    # "Identificador del número de teléfono" (15 dígitos)
 META_VERIFY_TOKEN = _key("META_VERIFY_TOKEN")          # texto que inventas tú; el mismo va en la config del webhook en Meta
@@ -56,14 +49,12 @@ META_REGISTER_PIN = _key("META_REGISTER_PIN")          # opcional: PIN de 6 díg
 META_TEST_RECIPIENT = _key("META_TEST_RECIPIENT")      # opcional: al arrancar, el bot manda la plantilla hello_world a este número (para abrir el chat y probar)
 META_GRAPH_VERSION = os.getenv("META_GRAPH_VERSION", "v25.0")
 META_TEMPLATE_LANG = os.getenv("META_TEMPLATE_LANG", "es")
-WHATSAPP_PROVIDER = (os.getenv("WHATSAPP_PROVIDER", "").strip().lower()
-                     or ("meta" if META_WHATSAPP_TOKEN and META_PHONE_NUMBER_ID else "twilio"))
+WHATSAPP_PROVIDER = "meta"
 
 # ============================================================
 # APIs Financieras (gratuitas)
 # ============================================================
 FINNHUB_API_KEY = _key("FINNHUB_API_KEY")
-FMP_API_KEY = _key("FMP_API_KEY")  # Financial Modeling Prep
 ALPHA_VANTAGE_API_KEY = _key("ALPHA_VANTAGE_API_KEY")
 
 # --- Etapa A de fuentes (16 nov 2026) ---
@@ -119,38 +110,18 @@ ALERT_CHECK_INTERVAL_MINUTES = int(os.getenv("ALERT_CHECK_INTERVAL_MINUTES", "30
 WATCHLIST_ALERT_THRESHOLD_PCT = float(os.getenv("WATCHLIST_ALERT_THRESHOLD_PCT", "5"))
 
 # ============================================================
-# WhatsApp Business Templates (Fase 1.6)
-# Content SIDs (HXxxxxx...) de los templates aprobados por Meta, creados en
-# Twilio Content Template Builder. Un mensaje que el bot manda por su
-# propia iniciativa (no como respuesta directa) necesita un template
-# aprobado fuera de la ventana de 24hs de mensajería libre de WhatsApp.
-#
-# Mientras estas variables no estén configuradas, el bot sigue mandando
-# los mensajes como texto libre (así funciona hoy en el sandbox de Twilio,
-# que no exige templates) — no se rompe nada existente. En cuanto Joaco
-# cree los templates en Twilio y pegue aquí sus SIDs, el envío pasa a usar
-# el template corto + cola de contenido pendiente (ver
-# finmate/alerts/pending.py) automáticamente.
+# Plantillas de WhatsApp (aprobadas por Meta)
 # ============================================================
-TWILIO_TEMPLATE_WATCHLIST_ALERT_SID = os.getenv("TWILIO_TEMPLATE_WATCHLIST_ALERT_SID", "")
-TWILIO_TEMPLATE_MARKET_NOTIFY_SID = os.getenv("TWILIO_TEMPLATE_MARKET_NOTIFY_SID", "")
-TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID = os.getenv("TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID", "")
-
 # Con Meta directo las plantillas se identifican por su NOMBRE (el que se le
 # pone en WhatsApp Manager), no por un SID. Mismas reglas: vacías = texto libre.
 META_TEMPLATE_WATCHLIST_ALERT = os.getenv("META_TEMPLATE_WATCHLIST_ALERT", "")
 META_TEMPLATE_MARKET_NOTIFY = os.getenv("META_TEMPLATE_MARKET_NOTIFY", "")
 META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY = os.getenv("META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY", "")
 
-# Lo que usa el resto del código: el identificador de plantilla del proveedor activo.
-if WHATSAPP_PROVIDER == "meta":
-    TEMPLATE_WATCHLIST_ALERT = META_TEMPLATE_WATCHLIST_ALERT
-    TEMPLATE_MARKET_NOTIFY = META_TEMPLATE_MARKET_NOTIFY
-    TEMPLATE_WEEKLY_SUMMARY_NOTIFY = META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY
-else:
-    TEMPLATE_WATCHLIST_ALERT = TWILIO_TEMPLATE_WATCHLIST_ALERT_SID
-    TEMPLATE_MARKET_NOTIFY = TWILIO_TEMPLATE_MARKET_NOTIFY_SID
-    TEMPLATE_WEEKLY_SUMMARY_NOTIFY = TWILIO_TEMPLATE_WEEKLY_SUMMARY_NOTIFY_SID
+# Lo que usa el resto del código.
+TEMPLATE_WATCHLIST_ALERT = META_TEMPLATE_WATCHLIST_ALERT
+TEMPLATE_MARKET_NOTIFY = META_TEMPLATE_MARKET_NOTIFY
+TEMPLATE_WEEKLY_SUMMARY_NOTIFY = META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY
 
 # ============================================================
 # Zona horaria
@@ -158,7 +129,7 @@ else:
 TIMEZONE = os.getenv("TIMEZONE", "America/Santiago")
 
 # ============================================================
-# Flask (webhook de Twilio)
+# Flask
 # ============================================================
 FLASK_PORT = int(os.getenv("PORT", "5000"))
 FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
