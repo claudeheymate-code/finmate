@@ -76,3 +76,24 @@
   .admin-stats { grid-template-columns: 1fr 1fr; }
   .badge { top: 2px; right: 18%; }
 }
+
+/* ── Celular: barra de arriba en una línea y tablas como tarjetas ── */
+@media (max-width: 760px) {
+  .admin .topbar { flex-wrap: nowrap; }
+  .admin .topbar .brand span:not(.admin-tag) { font-size: 22px; }
+  .admin .admin-tag { font-size: 11px; padding: 3px 8px; }
+  .admin .card-head .field { flex: 1 1 100% !important; }
+  .admin-table.stack, .admin-table.stack tbody { display: block; min-width: 0; width: 100%; }
+  .admin-table.stack thead { display: none; }
+  .admin-table.stack tr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .admin-table.stack tr:last-child { border-bottom: 0; }
+  .admin-table.stack td { display: block; padding: 0; border: 0; text-align: left; white-space: normal; }
+  .admin-table.stack td.hide-sm { display: none; }
+  .admin-table.stack td:first-child, .admin-table.stack td:last-child { grid-column: 1 / -1; }
+  .admin-table.stack td:last-child:empty { display: none; }
+  .admin-table.stack td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px;
+    font-size: 11.5px; font-weight: 600; color: var(--faint); letter-spacing: .01em; }
+  .admin-table.stack td.empty { grid-column: 1 / -1; text-align: center; }
+  .admin-table.stack .row-actions { justify-content: flex-start; }
+  .admin-table.stack .row-actions .btn { flex: 1 1 0; height: 40px; }
+}

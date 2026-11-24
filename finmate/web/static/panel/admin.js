@@ -90,10 +90,10 @@
     if (!SUBS.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">No hay suscripciones. Agrega la primera.</td></tr>'; return; }
     tb.innerHTML = SUBS.map((s) => `<tr class="clickable" data-id="${esc(s.id)}">
       <td><p class="cell-title">${esc(s.name)}${s.essential ? '<span class="ess">esencial</span>' : ""}</p><p class="cell-sub">${esc(s.detail)}</p></td>
-      <td class="nowrap">${esc(s.cycle)}</td>
-      <td class="r">${s.cycle === "gratis" ? "Gratis" : money(s.cost, s.currency)}</td>
-      <td class="nowrap">${s.renews_on ? fmtDate(s.renews_on) : "—"}</td>
-      <td><span class="cell-sub">${esc(s.notes)}</span></td>
+      <td class="nowrap" data-label="Ciclo">${esc(s.cycle)}</td>
+      <td class="r" data-label="Costo">${s.cycle === "gratis" ? "Gratis" : money(s.cost, s.currency)}</td>
+      <td class="nowrap" data-label="Renueva">${s.renews_on ? fmtDate(s.renews_on) : "—"}</td>
+      <td class="hide-sm"><span class="cell-sub">${esc(s.notes)}</span></td>
       <td class="r">${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Facturación ↗</a>` : ""}</td></tr>`).join("");
     $$("tr.clickable", tb).forEach((tr) => tr.addEventListener("click", () => openSubForm(SUBS.find((s) => s.id === tr.dataset.id))));
   }
@@ -115,10 +115,10 @@
       const rows = u.claude || [];
       tb.innerHTML = rows.length ? rows.map((m) => `<tr>
         <td class="nowrap"><span class="cell-title">${esc(m.model)}</span></td>
-        <td class="r">${num(m.calls)}</td><td class="r">${num(m.input_tokens)}</td><td class="r">${num(m.output_tokens)}</td>
-        <td class="r nowrap"><input class="price-in" data-model="${esc(m.model)}" data-k="in" type="number" min="0" step="0.01" value="${m.price_in ?? ""}" aria-label="Precio entrada"> /
+        <td class="r" data-label="Respuestas">${num(m.calls)}</td><td class="r" data-label="Tokens entrada">${num(m.input_tokens)}</td><td class="r" data-label="Tokens salida">${num(m.output_tokens)}</td>
+        <td class="r nowrap" data-label="Precio US$/M (entrada / salida)"><input class="price-in" data-model="${esc(m.model)}" data-k="in" type="number" min="0" step="0.01" value="${m.price_in ?? ""}" aria-label="Precio entrada"> /
           <input class="price-in" data-model="${esc(m.model)}" data-k="out" type="number" min="0" step="0.01" value="${m.price_out ?? ""}" aria-label="Precio salida"></td>
-        <td class="r">${m.cost_usd == null ? '<span class="faint">falta precio</span>' : money(m.cost_usd, "USD")}</td></tr>`).join("")
+        <td class="r" data-label="Costo">${m.cost_usd == null ? '<span class="faint">falta precio</span>' : money(m.cost_usd, "USD")}</td></tr>`).join("")
         : '<tr><td colspan="6" class="empty">Todavía no hay consumo registrado este mes.</td></tr>';
       $$(".price-in", tb).forEach((inp) => inp.addEventListener("change", async () => {
         const model = inp.dataset.model;
@@ -170,11 +170,11 @@
     const tb = $("#us-rows");
     tb.innerHTML = rows.length ? rows.map((u) => `<tr>
       <td><p class="cell-title">${esc(u.name || "Sin nombre")}</p>${u.email ? `<p class="cell-sub"><a href="mailto:${esc(u.email)}">${esc(u.email)}</a></p>` : '<p class="cell-sub faint">Sin correo</p>'}</td>
-      <td class="nowrap">+${esc(u.phone.replace(/^\+/, ""))}</td>
-      <td class="nowrap hide-sm">${fmtDate(u.created_at)}</td>
-      <td class="nowrap" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}</td>
-      <td class="r">${num(u.messages)}</td><td class="r hide-sm">${num(u.watchlist)}</td><td class="r hide-sm">${num(u.portfolio)}</td>
-      <td>${stPill(u.status)}</td>
+      <td class="nowrap" data-label="WhatsApp">+${esc(u.phone.replace(/^\+/, ""))}</td>
+      <td class="nowrap hide-sm" data-label="Inicio">${fmtDate(u.created_at)}</td>
+      <td class="nowrap" data-label="Último mensaje" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}</td>
+      <td class="r" data-label="Mensajes">${num(u.messages)}</td><td class="r hide-sm">${num(u.watchlist)}</td><td class="r hide-sm">${num(u.portfolio)}</td>
+      <td data-label="Acceso">${stPill(u.status)}</td>
       <td><div class="row-actions">${actionButtons(u)}</div></td></tr>`).join("")
       : '<tr><td colspan="9" class="empty">No hay usuarios con ese filtro.</td></tr>';
     bindAccess(tb, loadUsers, "#us-msg");
