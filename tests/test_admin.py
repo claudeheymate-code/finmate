@@ -236,3 +236,26 @@ def test_al_aprobar_llega_whatsapp_con_link_a_la_app(admin, monkeypatch):
     for parte in ("Resumen", "Inversiones", "Gastos", "Ajustes"):
         assert parte in body
     assert any(role == "assistant" and "/panel/" in txt for role, txt in get_recent_history(u.id))
+
+
+def test_usuarios_trae_conteos_en_una_consulta_y_badge(admin):
+    from finmate.db.repository import add_or_update_holding, add_to_watchlist, get_or_create_user
+    from finmate.db.models import User, get_session
+
+    u = get_or_create_user("whatsapp:+56970707071")
+    add_to_watchlist(u.id, "NVDA"); add_to_watchlist(u.id, "AAPL")
+    add_or_update_holding(u.id, "MSFT", 3, 100)
+    p = get_or_create_user("whatsapp:+56970707072")
+    s = get_session()
+    try:
+        s.query(User).filter_by(id=p.id).update({"access_status": "pending"}); s.commit()
+    finally:
+        s.close()
+
+    d = admin.get("/admin/api/usuarios", headers=H).get_json()
+    row = next(r for r in d["users"] if r["id"] == u.id)
+    assert (row["watchlist"], row["portfolio"]) == (2, 1)
+    assert d["counts"]["pending"] >= 1 and d["counts"]["total"] == len(d["users"])
+
+    b = admin.get("/admin/api/badge", headers=H).get_json()
+    assert b["pending"] >= 1 and b["total"] == b["pending"] + b["feedback_new"] + b["security_open"]
