@@ -152,9 +152,40 @@ def parse_incoming(payload: dict) -> list[dict]:
                 elif mtype == "interactive":
                     it = m.get("interactive") or {}
                     text = ((it.get("button_reply") or it.get("list_reply") or {}).get("title", ""))
+                media = None
+                if mtype in ("image", "document", "audio", "video", "sticker"):
+                    md = m.get(mtype) or {}
+                    media = {"id": md.get("id", ""), "mime_type": md.get("mime_type", ""),
+                             "filename": md.get("filename", ""), "caption": (md.get("caption") or "").strip()}
+                    text = media["caption"]
                 out.append({"id": m.get("id", ""), "from": m.get("from", ""), "type": mtype,
-                            "text": text.strip(), "name": names.get(m.get("from"), "")})
+                            "text": text.strip(), "name": names.get(m.get("from"), ""), "media": media})
     return out
+
+
+MAX_MEDIA_BYTES = 15 * 1024 * 1024   # WhatsApp permite hasta 100 MB en documentos; Claude, mucho menos
+
+
+def download_media(media_id: str):
+    """Descarga un archivo que mandó el usuario. Devuelve (bytes, mime_type) o (None, motivo)."""
+    if not media_id or not is_configured():
+        return None, "sin_configurar"
+    headers = {"Authorization": f"Bearer {META_WHATSAPP_TOKEN}"}
+    try:
+        with httpx.Client(timeout=30) as c:
+            meta = c.get(f"{GRAPH_BASE}/{META_GRAPH_VERSION}/{media_id}", headers=headers)
+            meta.raise_for_status()
+            info = meta.json()
+            if int(info.get("file_size") or 0) > MAX_MEDIA_BYTES:
+                return None, "muy_grande"
+            r = c.get(info["url"], headers=headers, follow_redirects=True)
+            r.raise_for_status()
+            if len(r.content) > MAX_MEDIA_BYTES:
+                return None, "muy_grande"
+            return r.content, (info.get("mime_type") or r.headers.get("content-type") or "").split(";")[0]
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"No pude descargar el archivo {media_id} de Meta: {type(e).__name__}")
+        return None, "error"
 
 
 def parse_statuses(payload: dict) -> list[dict]:

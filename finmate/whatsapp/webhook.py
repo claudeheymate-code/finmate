@@ -301,29 +301,129 @@ def _first_time(msg_id: str) -> bool:
         return True
 
 
+# Tipos de mensaje que no necesitan respuesta (reacciones con emoji, stickers,
+# avisos del sistema). Antes el bot contestaba "solo puedo leer texto" a cada uno.
+_SILENT_TYPES = {"reaction", "sticker", "unsupported", "system", "ephemeral", "request_welcome", "order"}
+_SHORT_REPLIES = {
+    "audio": "Todavía no puedo escuchar audios 🙉 Escríbeme lo que necesitas, o mándame una foto o PDF y lo reviso.",
+    "video": "Todavía no puedo ver videos. Si es un pantallazo o una cartola, mándamelo como foto o PDF y lo reviso.",
+    "location": "Recibí tu ubicación, pero por ahora no la uso para nada. ¿En qué te ayudo?",
+    "contacts": "Recibí el contacto, pero por ahora no lo uso para nada. ¿En qué te ayudo?",
+}
+
+# Fotos y documentos que llegan seguidos (p. ej. 6 páginas de una cartola) se juntan
+# unos segundos y se analizan en una sola respuesta.
+MEDIA_GROUP_SECONDS = 4.0
+_MEDIA_BUF: dict = {}
+_MEDIA_LOCK = threading.Lock()
+_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+_TEXT_TYPES = {"text/plain", "text/csv", "text/tab-separated-values", "application/csv"}
+MAX_IMAGE_BYTES = 5 * 1024 * 1024        # límite de Claude por imagen
+
+
+def _send(phone: str, reply: str, wa_from: str) -> None:
+    from finmate.whatsapp.messenger import WhatsAppMessenger
+
+    ok = WhatsAppMessenger().send_message(phone, reply)
+    logger.info(f"Respuesta a {wa_from} {'enviada' if ok else 'NO enviada'} ({len(reply)} caracteres)")
+
+
 def _answer_meta(msg: dict) -> None:
     import faulthandler
     import sys
 
-    logger.info(f"Procesando respuesta para {msg.get('from')}…")
+    mtype = msg.get("type") or "text"
+    logger.info(f"Procesando mensaje ({mtype}) de {msg.get('from')}…")
     # Si algo se traba más de 90 s, deja en el log dónde está cada hilo.
     faulthandler.dump_traceback_later(90, exit=False, file=sys.stderr)
     try:
         from finmate.agent.orchestrator import handle_message
-        from finmate.whatsapp.messenger import WhatsAppMessenger
 
         phone = meta_cloud.to_internal(msg["from"])
         meta_cloud.mark_as_read(msg["id"])
-        if not msg["text"]:
-            reply = "Por ahora solo puedo leer mensajes de texto. Escríbeme tu pregunta y te respondo."
-        else:
-            reply = handle_message(phone, msg["text"], name=msg.get("name") or None)
-        ok = WhatsAppMessenger().send_message(phone, reply)
-        logger.info(f"Respuesta a {msg['from']} {'enviada' if ok else 'NO enviada'} ({len(reply)} caracteres)")
+        if mtype in ("image", "document"):
+            _queue_media(phone, msg)
+            return
+        if mtype in _SILENT_TYPES:
+            return
+        if mtype in _SHORT_REPLIES:
+            _send(phone, _SHORT_REPLIES[mtype], msg["from"])
+            return
+        if not msg.get("text"):
+            return
+        reply = handle_message(phone, msg["text"], name=msg.get("name") or None)
+        _send(phone, reply, msg["from"])
     except Exception as e:
         logger.error(f"Error respondiendo a {msg.get('from')} por Meta: {e}", exc_info=True)
     finally:
         faulthandler.cancel_dump_traceback_later()
+
+
+def _queue_media(phone: str, msg: dict) -> None:
+    if not RUN_IN_BACKGROUND:
+        _process_media(phone, [msg])
+        return
+    with _MEDIA_LOCK:
+        entry = _MEDIA_BUF.get(phone)
+        if entry:
+            entry["timer"].cancel()
+        else:
+            entry = _MEDIA_BUF[phone] = {"msgs": []}
+        entry["msgs"].append(msg)
+        t = threading.Timer(MEDIA_GROUP_SECONDS, _flush_media, args=(phone,))
+        t.daemon = True
+        entry["timer"] = t
+        t.start()
+
+
+def _flush_media(phone: str) -> None:
+    with _MEDIA_LOCK:
+        entry = _MEDIA_BUF.pop(phone, None)
+    if entry:
+        try:
+            _process_media(phone, entry["msgs"])
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Error procesando archivos de {phone}: {e}", exc_info=True)
+
+
+def _process_media(phone: str, msgs: list) -> None:
+    """Descarga las fotos/PDFs y se los pasa a Claude junto con el texto que venga."""
+    import base64
+
+    from finmate.agent.orchestrator import handle_message
+
+    attachments, problems, captions = [], [], []
+    for m in msgs[:10]:
+        media = m.get("media") or {}
+        if media.get("caption"):
+            captions.append(media["caption"])
+        data, mime = meta_cloud.download_media(media.get("id", ""))
+        name = media.get("filename") or ("foto" if m.get("type") == "image" else "documento")
+        if data is None:
+            problems.append(f"{name} ({'es muy pesado' if mime == 'muy_grande' else 'no pude descargarlo'})")
+            continue
+        mime = (mime or media.get("mime_type") or "").lower()
+        if mime in _IMAGE_TYPES:
+            if len(data) > MAX_IMAGE_BYTES:
+                problems.append(f"{name} (la imagen pesa más de 5 MB)")
+                continue
+            attachments.append({"kind": "image", "media_type": mime, "data": base64.b64encode(data).decode(), "name": name})
+        elif mime == "application/pdf":
+            attachments.append({"kind": "pdf", "media_type": mime, "data": base64.b64encode(data).decode(), "name": name})
+        elif mime in _TEXT_TYPES or name.lower().endswith((".csv", ".txt")):
+            attachments.append({"kind": "text", "text": data.decode("utf-8", errors="replace")[:60000], "name": name})
+        else:
+            problems.append(f"{name} (formato {mime or 'desconocido'}: mándalo como PDF, foto o CSV)")
+    wa_from = msgs[0].get("from", "")
+    if not attachments:
+        detail = "; ".join(problems) or "no pude leerlos"
+        _send(phone, f"No pude revisar lo que me mandaste: {detail}. Puedo leer fotos, PDFs y archivos CSV.", wa_from)
+        return
+    text = "\n".join(captions)
+    if problems:
+        text += ("\n" if text else "") + "(Algunos archivos no se pudieron leer: " + "; ".join(problems) + ")"
+    reply = handle_message(phone, text, name=msgs[0].get("name") or None, attachments=attachments)
+    _send(phone, reply, wa_from)
 
 
 def _incoming_meta():
