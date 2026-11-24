@@ -33,6 +33,20 @@
       <div class="field" id="s-valor-wrap"><label for="s-valor">Qué seguir</label><select id="s-valor"></select></div>
       <button class="btn ghost" type="submit">Seguir</button>
     </form><div id="s-msg" style="margin-top:10px"></div></section>
+  <section class="card glass" id="jornada"><h2>Tu jornada</h2><p class="faint small" style="margin-top:4px">Al inicio y al cierre te mando un resumen del mercado en un párrafo. Durante la jornada te aviso lo importante; fuera de ella solo te respondo si me escribes (lo que pase en esas horas va en el resumen siguiente).</p>
+    <form id="w-form">
+      <ul class="list">
+        <li><div class="grow"><p class="strong">Usar jornada</p><p class="faint small">Si la apagas, los avisos llegan a cualquier hora y no hay resúmenes</p></div>
+          <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="w-on" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activada</label></li>
+        <li class="w-row"><div class="grow"><p class="strong">Inicio</p><p class="faint small">Resumen de lo que pasó desde la jornada anterior</p></div>
+          <div class="field" style="flex:0 0 130px"><label for="w-start" class="sr-only">Hora de inicio</label><input id="w-start" type="time" step="300"></div></li>
+        <li class="w-row"><div class="grow"><p class="strong">Término</p><p class="faint small">Resumen de cómo cerró el día</p></div>
+          <div class="field" style="flex:0 0 130px"><label for="w-end" class="sr-only">Hora de término</label><input id="w-end" type="time" step="300"></div></li>
+        <li class="w-row"><div class="grow"><p class="strong">Fines de semana</p><p class="faint small">Si no, la jornada corre de lunes a viernes</p></div>
+          <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="w-weekends" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Incluir</label></li>
+      </ul>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px"><button class="btn" type="submit">Guardar jornada</button><span id="w-msg"></span></div>
+    </form></section>
   <section class="card glass" id="avisos"><h2>Avisos</h2><p class="faint small" style="margin-top:4px">Cuándo te escribe Finmate</p>
     <form id="a-form">
       <ul class="list">
@@ -46,7 +60,7 @@
           <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-macro" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
         <li><div class="grow"><p class="strong">Noticias generales del mercado</p><p class="faint small">Las noticias más importantes del día, aunque no sean de tus activos</p></div>
           <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-mnews" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
-        <li><div class="grow"><p class="strong">Resumen semanal</p><p class="faint small">Domingos a las 20:00 (hora de Chile)</p></div>
+        <li><div class="grow"><p class="strong">Resumen semanal</p><p class="faint small">Domingos a las 20:00 (hora de Chile; si es fuera de tu jornada, va en el resumen del lunes)</p></div>
           <label style="display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer"><input id="a-weekly" type="checkbox" style="width:22px;height:22px;accent-color:var(--emerald)">Activado</label></li>
         <li><div class="grow"><p class="strong">WhatsApp vinculado</p><p class="faint small">{{ phone }} · los cambios se sincronizan con el chat</p></div><span class="pill-status">Conectado</span></li>
       </ul>
