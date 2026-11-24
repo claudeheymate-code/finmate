@@ -359,38 +359,55 @@ def api_prices():
 
 # ── API: usuarios ───────────────────────────────────────────────────────
 
-def _user_rows():
+def _user_rows(with_lists: bool = False):
+    """Usuarios con sus mensajes (y, si se pide, cuántos activos siguen y tienen).
+
+    Todo sale de UNA consulta: antes se hacían 2 consultas extra por usuario y
+    la pestaña Usuarios tardaba ~3 s en cargar (Neon está lejos de Railway).
+    """
     from sqlalchemy import case, func
 
-    from finmate.db.models import ConversationTurn, User, get_session
+    from finmate.db.models import ConversationTurn, PortfolioHolding, User, WatchlistItem, get_session
 
     s = get_session()
     try:
-        is_user = case((ConversationTurn.role == "user", 1), else_=0)
-        q = (s.query(User, func.coalesce(func.sum(is_user), 0),
-                     func.max(case((ConversationTurn.role == "user", ConversationTurn.timestamp), else_=None)))
-             .outerjoin(ConversationTurn, ConversationTurn.user_id == User.id)
-             .group_by(User.id)
-             .order_by(User.created_at.desc()))
+        turns = (s.query(ConversationTurn.user_id.label("uid"),
+                         func.sum(case((ConversationTurn.role == "user", 1), else_=0)).label("n"),
+                         func.max(case((ConversationTurn.role == "user", ConversationTurn.timestamp), else_=None)).label("last"))
+                 .group_by(ConversationTurn.user_id).subquery())
+        cols = [User, func.coalesce(turns.c.n, 0), turns.c.last]
+        q = s.query(*cols).outerjoin(turns, turns.c.uid == User.id)
+        if with_lists:
+            wl = (s.query(WatchlistItem.user_id.label("uid"), func.count(WatchlistItem.id).label("n"))
+                  .group_by(WatchlistItem.user_id).subquery())
+            pf = (s.query(PortfolioHolding.user_id.label("uid"), func.count(PortfolioHolding.id).label("n"))
+                  .group_by(PortfolioHolding.user_id).subquery())
+            q = (q.add_columns(func.coalesce(wl.c.n, 0), func.coalesce(pf.c.n, 0))
+                 .outerjoin(wl, wl.c.uid == User.id).outerjoin(pf, pf.c.uid == User.id))
         rows = []
-        for u, n, last in q.all():
-            rows.append({"id": u.id, "name": u.name or "", "phone": u.phone.replace("whatsapp:", ""),
-                         "email": u.email or "",
-                         "registered_at": u.registered_at.isoformat() if u.registered_at else None,
-                         "created_at": u.created_at.isoformat() if u.created_at else None,
-                         "last_message_at": last.isoformat() if last else None, "messages": int(n or 0),
-                         "status": u.access_status or "approved"})
+        for rec in q.order_by(User.created_at.desc()).all():
+            u, n, last = rec[0], rec[1], rec[2]
+            row = {"id": u.id, "name": u.name or "", "phone": u.phone.replace("whatsapp:", ""),
+                   "email": u.email or "",
+                   "registered_at": u.registered_at.isoformat() if u.registered_at else None,
+                   "created_at": u.created_at.isoformat() if u.created_at else None,
+                   "last_message_at": last.isoformat() if last else None, "messages": int(n or 0),
+                   "status": u.access_status or "approved"}
+            if with_lists:
+                row["watchlist"], row["portfolio"] = int(rec[3] or 0), int(rec[4] or 0)
+            rows.append(row)
         return rows
     finally:
         s.close()
 
 
-def _user_counts() -> dict:
-    try:
-        rows = _user_rows()
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Admin: no pude contar usuarios: {e}")
-        return {}
+def _user_counts(rows=None) -> dict:
+    if rows is None:
+        try:
+            rows = _user_rows()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Admin: no pude contar usuarios: {e}")
+            return {}
     week = dt.datetime.utcnow() - dt.timedelta(days=7)
     return {
         "total": len(rows),
@@ -405,16 +422,30 @@ def _user_counts() -> dict:
 @admin_bp.get("/api/usuarios")
 @admin_api
 def api_users():
-    from finmate.db.repository import get_portfolio, get_watchlist
+    rows = _user_rows(with_lists=True)
+    return jsonify({"users": rows, "counts": _user_counts(rows)})
 
-    rows = _user_rows()
-    for r in rows:
+
+@admin_bp.get("/api/badge")
+@admin_api
+def api_badge():
+    """Solo el número del Inbox (pendientes + feedback nuevo + seguridad), sin el
+    resumen de costos completo: lo pide cada pestaña al abrir."""
+    from finmate.db.models import User, get_session
+
+    pending = 0
+    try:
+        s = get_session()
         try:
-            r["watchlist"] = len(get_watchlist(r["id"]))
-            r["portfolio"] = len(get_portfolio(r["id"]))
-        except Exception:
-            r["watchlist"] = r["portfolio"] = None
-    return jsonify({"users": rows, "counts": _user_counts()})
+            pending = s.query(User).filter(User.access_status == "pending").count()
+        finally:
+            s.close()
+    except Exception:  # noqa: BLE001
+        pass
+    sec = _security_counts()
+    fb = _feedback_new_count()
+    return jsonify({"pending": pending, "feedback_new": fb, "security_open": sec.get("open", 0),
+                    "total": pending + fb + sec.get("open", 0)})
 
 
 @admin_bp.get("/api/usuarios.csv")
