@@ -21,6 +21,7 @@ un `phone` propagado desde el orquestador.
 import logging
 from typing import Optional
 
+from finmate.agent.document_tools import tool_add_expenses_batch, tool_import_portfolio
 from finmate.agent.finance_tools import (
     tool_add_expense,
     tool_get_monthly_summary,
@@ -213,6 +214,48 @@ TOOLS = [
         },
     },
     {
+        "name": "add_expenses_batch",
+        "description": "Registra varios gastos o ingresos de una vez, por ejemplo los movimientos leídos de una cartola o boleta que el usuario mandó en foto o PDF. Usar SOLO después de que el usuario confirme. Cada item tiene los mismos campos que add_expense.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "items": {"type": "array", "description": "Movimientos a registrar", "items": {
+                    "type": "object",
+                    "properties": {
+                        "tipo": {"type": "string", "enum": ["gasto", "ingreso"]},
+                        "amount": {"type": "number", "description": "Monto (positivo; el tipo define el signo)"},
+                        "category": {"type": "string"},
+                        "description": {"type": "string"},
+                        "merchant": {"type": "string"},
+                        "date_str": {"type": "string", "description": "YYYY-MM-DD"},
+                    },
+                    "required": ["tipo", "amount", "category", "description"],
+                }},
+            },
+            "required": ["items"],
+        },
+    },
+    {
+        "name": "import_portfolio",
+        "description": "Carga en el portafolio del usuario las posiciones leídas de un pantallazo o cartola de su corredora. Usar SOLO después de que el usuario confirme. mode='replace' deja exactamente la cantidad (y costo promedio) del documento; mode='add' suma a lo que ya tenía.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "positions": {"type": "array", "items": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "Ticker, ej: AAPL, SPY, NVDA"},
+                        "quantity": {"type": "number"},
+                        "avg_cost": {"type": "number", "description": "Precio promedio de compra por unidad (opcional)"},
+                    },
+                    "required": ["symbol", "quantity"],
+                }},
+                "mode": {"type": "string", "enum": ["replace", "add"]},
+            },
+            "required": ["positions"],
+        },
+    },
+    {
         "name": "manage_expense_categories",
         "description": "Lista, agrega o saca categorías de gasto del usuario (afecta solo su cuenta). Usar cuando pregunte qué categorías tiene, o pida 'agrega la categoría X' / 'saca la categoría Y'. Sacar una no borra los gastos que ya tenía ahí. 'Otros' no se puede sacar.",
         "input_schema": {
@@ -365,7 +408,7 @@ TOOLS = [
     },
     {
         "name": "set_notification_settings",
-        "description": "Cambia la frecuencia de avisos. watchlist_threshold_pct: avisar cuando un activo de la watchlist se mueva más de X% en el día (0.5 a 50; más bajo = más avisos). news_max_per_day: máximo de avisos de noticias de sus activos por día (0 = ninguno, hasta 10). weekly_summary_enabled: resumen semanal del domingo. Pasa solo lo que el usuario quiera cambiar. Guía para traducir lo que diga: 'pocos mensajes' ≈ umbral 7 y 2 noticias/día; 'normal' ≈ umbral 5 y 4 noticias/día; 'todo lo que pase' ≈ umbral 3 y 8 noticias/día.",
+        "description": "Cambia la frecuencia de avisos y la jornada del usuario (horas de inicio y término). watchlist_threshold_pct: avisar cuando un activo de la watchlist se mueva más de X% en el día (0.5 a 50; más bajo = más avisos). news_max_per_day: máximo de avisos de noticias de sus activos por día (0 = ninguno, hasta 10). weekly_summary_enabled: resumen semanal del domingo. Pasa solo lo que el usuario quiera cambiar. Guía para traducir lo que diga: 'pocos mensajes' ≈ umbral 7 y 2 noticias/día; 'normal' ≈ umbral 5 y 4 noticias/día; 'todo lo que pase' ≈ umbral 3 y 8 noticias/día.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -375,6 +418,10 @@ TOOLS = [
                 "earnings_alerts": {"type": "string", "enum": ["off", "mine", "all"], "description": "Resultados trimestrales de empresas: off=ninguno, mine=solo de sus activos (portafolio y watchlist), all=todas"},
                 "macro_alerts": {"type": "boolean", "description": "Datos macro apenas se publican (inflación, empleo, tasas)"},
                 "market_news_alerts": {"type": "boolean", "description": "Noticias generales importantes del mercado, aunque no sean de sus activos"},
+                "workday_start": {"type": "string", "description": "Hora de inicio de su jornada, HH:MM (ej. 08:30). Al inicio recibe un resumen del mercado en un párrafo."},
+                "workday_end": {"type": "string", "description": "Hora de término de su jornada, HH:MM (ej. 18:30). Al cierre recibe otro resumen. Fuera de la jornada el bot no le escribe por su cuenta: solo responde si pregunta."},
+                "workday_weekends": {"type": "boolean", "description": "Si la jornada también corre sábado y domingo (por defecto no)"},
+                "workday_enabled": {"type": "boolean", "description": "false = sin jornada: los avisos llegan a cualquier hora y no hay resúmenes de inicio/cierre"},
             },
         },
     },
@@ -431,6 +478,8 @@ _USER_SCOPED_TOOLS = {
     "set_personality":           tool_set_personality,
     # Finanzas personales
     "add_expense":               tool_add_expense,
+    "add_expenses_batch":        tool_add_expenses_batch,
+    "import_portfolio":          tool_import_portfolio,
     "get_monthly_summary":       tool_get_monthly_summary,
     "get_recent_transactions":   lambda user_id, _input: tool_get_recent_transactions(user_id),
     "manage_expense_categories": tool_manage_expense_categories,

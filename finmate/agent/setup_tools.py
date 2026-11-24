@@ -106,7 +106,11 @@ def tool_get_notification_settings(user_id: int) -> str:
         f"Resumen semanal (domingo): {'activado' if n['weekly_summary_enabled'] else 'desactivado'}.\n"
         f"Resultados de empresas: {_EARN[n['earnings_alerts']]}.\n"
         f"Datos macro: {'sí' if n['macro_alerts'] else 'no'}. "
-        f"Noticias generales del mercado: {'sí' if n['market_news_alerts'] else 'no'}."
+        f"Noticias generales del mercado: {'sí' if n['market_news_alerts'] else 'no'}.\n"
+        + (f"Jornada: de {n['workday_start']} a {n['workday_end']}"
+           f"{', todos los días' if n['workday_weekends'] else ', de lunes a viernes'} (resumen al inicio y al cierre; "
+           "fuera de ese horario solo respondo si me preguntas)."
+           if n["workday_enabled"] else "Jornada: desactivada (los avisos llegan a cualquier hora).")
     )
 
 
@@ -125,6 +129,10 @@ def tool_set_notification_settings(user_id: int, tool_input: dict) -> str:
             earnings_alerts=tool_input.get("earnings_alerts"),
             macro_alerts=tool_input.get("macro_alerts"),
             market_news_alerts=tool_input.get("market_news_alerts"),
+            workday_enabled=tool_input.get("workday_enabled"),
+            workday_start=tool_input.get("workday_start"),
+            workday_end=tool_input.get("workday_end"),
+            workday_weekends=tool_input.get("workday_weekends"),
         )
     except ValueError as e:
         return f"No pude guardar ese ajuste: {e}"

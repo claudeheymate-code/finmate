@@ -82,13 +82,17 @@ y podcasts, lleva su portafolio y sus gastos), y ofrece dejarlo configurado
 en un par de minutos. Luego guíalo de a un paso por mensaje, en este orden,
 saltándote lo que ya tenga configurado:
   1. Watchlist: qué acciones, ETFs o cripto quiere seguir (agrégalas).
-  2. Frecuencia de avisos: pregunta si prefiere pocos mensajes, lo normal o
+  2. Su jornada: a qué hora empieza y termina su día (por defecto 08:30 a
+     18:30, lunes a viernes). Explícale en una línea que al inicio y al cierre
+     le mandas un resumen del mercado en un párrafo, que durante la jornada le
+     avisas lo importante y que fuera de ella solo respondes si te escribe.
+  3. Frecuencia de avisos: pregunta si prefiere pocos mensajes, lo normal o
      enterarse de todo, y guárdalo; menciona el resumen semanal del domingo
      y pregunta si también quiere resultados de empresas (solo de sus
      activos o de todas), datos macro y noticias generales del mercado.
-  3. Portafolio: si quiere cargar lo que tiene (símbolo, cantidad y precio de
-     compra), o dejarlo para después.
-  4. Extras opcionales en una línea: resumen diario del podcast Primer Click,
+  4. Portafolio: si quiere cargar lo que tiene (símbolo, cantidad y precio de
+     compra) o mandarte un pantallazo de su corredora, o dejarlo para después.
+  5. Extras opcionales en una línea: resumen diario del podcast Primer Click,
      indicadores económicos o registrar gastos.
 Si en cualquier momento dice que lo deja para después, respétalo. Al
 terminar (o si lo posterga), marca la bienvenida como terminada y cierra con
@@ -104,6 +108,23 @@ algo o qué dicen las noticias, busca y lee los artículos (no te quedes en el
 titular) y responde con lo que dicen, citando el medio. Para resultados o
 anuncios oficiales de empresas de EE.UU., revisa sus reportes en la SEC.
 Resume con tus palabras; no copies párrafos de los artículos.
+
+FOTOS Y DOCUMENTOS (cartolas, boletas, pantallazos de tu corredora):
+Cuando el usuario mande una foto o un PDF, léelo con atención y dile en
+pocas líneas qué encontraste. Según lo que sea:
+  - Cartola o estado de cuenta bancaria / boleta: lista los movimientos que
+    son gastos o ingresos (fecha, comercio, monto, categoría que propones) y
+    pregunta si los registras. Al confirmar, regístralos todos juntos con
+    add_expenses_batch. Ignora pagos de la tarjeta, traspasos entre sus
+    cuentas y cargos repetidos. Si son más de 25, muestra un resumen por
+    categoría y registra igual el detalle.
+  - Pantallazo o cartola de inversiones: lista las posiciones (ticker,
+    cantidad, precio promedio si aparece) y pregunta si actualizas su
+    portafolio con eso. Al confirmar, usa import_portfolio (modo "replace"
+    para dejar las cantidades exactas que muestra el documento).
+  - Otra cosa (un gráfico, una noticia, un informe): explícalo o resúmelo.
+Si algo no se lee bien (montos cortados, foto borrosa), dilo y pide otra
+foto en vez de adivinar. Nunca registres nada sin que el usuario confirme.
 
 No inventes posiciones, precios, noticias ni resultados: si no tienes el
 dato, dilo con naturalidad."""
@@ -128,7 +149,8 @@ IMPORTANTE: la personalidad afecta el ESTILO de cómo cuentas las cosas, nunca l
 
 _ANALYSIS_TRIGGERS = ("por qué", "porque", "analiza", "explica", "riesgo", "conviene", "oportunidad")
 
-_MAX_TOOL_ROUNDS = 4  # corta el loop si el modelo pidiera tools indefinidamente
+_MAX_TOOL_ROUNDS = 8  # corta el loop si el modelo pidiera tools indefinidamente
+_MAX_TOKENS = 1500    # 600 cortaba respuestas largas (resúmenes, análisis de cartolas)
 
 _NO_KEY_MSG = (
     "⚠️ Finmate todavía no tiene configurada su inteligencia (falta ANTHROPIC_API_KEY). "
@@ -156,7 +178,7 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str, personality
 
     response = _client.messages.create(
         model=model,
-        max_tokens=600,
+        max_tokens=_MAX_TOKENS,
         system=system,
         tools=TOOLS,
         messages=messages,
@@ -180,7 +202,7 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str, personality
 
         response = _client.messages.create(
             model=model,
-            max_tokens=600,
+            max_tokens=_MAX_TOKENS,
             system=system,
             tools=TOOLS,
             messages=messages,
@@ -188,7 +210,44 @@ def _run_agent(messages: list, model: str, user_id: int, phone: str, personality
         _record_usage(model, response)
 
     final_text = "".join(block.text for block in response.content if block.type == "text").strip()
+    if not final_text:
+        # Se acabaron las rondas de tools (o el modelo no escribió nada): antes se respondía
+        # "No pude generar una respuesta". Ahora se le pide que conteste con lo que ya tiene.
+        logger.warning(f"Respuesta sin texto (stop_reason={response.stop_reason}, rondas={rounds}); se fuerza el cierre.")
+        if response.stop_reason == "tool_use":
+            messages.append({"role": "assistant", "content": response.content})
+            messages.append({"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": b.id, "content": "Sin más consultas: responde ya con lo que tienes."}
+                for b in response.content if b.type == "tool_use"]})
+        else:
+            messages.append({"role": "user", "content": "Responde ahora al usuario con lo que ya sabes, en pocas líneas."})
+        response = _client.messages.create(
+            model=model, max_tokens=_MAX_TOKENS, system=system, tools=TOOLS,
+            tool_choice={"type": "none"}, messages=messages)
+        _record_usage(model, response)
+        final_text = "".join(block.text for block in response.content if block.type == "text").strip()
     return final_text or "No pude generar una respuesta esta vez. Prueba de nuevo en un momento."
+
+
+def _report_claude_problem(e: Exception) -> None:
+    """Si Claude rechaza la clave o no hay créditos, se avisa en el admin (Inbox → Seguridad):
+    así se sabe por qué el bot contestó "Tuve un problema interno"."""
+    text = str(e).lower()
+    if "authentication" in text or "x-api-key" in text or "401" in text:
+        detail = ("Claude rechazó la clave (ANTHROPIC_API_KEY): el bot no puede responder. "
+                  "Crea una clave nueva en platform.claude.com y pégala en Railway.")
+    elif "credit" in text or "balance" in text or "billing" in text:
+        detail = "La cuenta de Claude se quedó sin créditos: el bot no puede responder. Carga saldo en platform.claude.com."
+    elif "overloaded" in text or "529" in text or "rate" in text:
+        return  # pasajero; no vale la pena alertar
+    else:
+        detail = f"Claude respondió con un error inesperado ({type(e).__name__}). Si se repite, revisa los logs."
+    try:
+        from finmate.security.monitor import record_event
+
+        record_event("claude_error", "high", detail, ip=None, path=None)
+    except Exception:
+        pass
 
 
 def _record_usage(model: str, response) -> None:
@@ -200,8 +259,38 @@ def _record_usage(model: str, response) -> None:
         pass
 
 
-def handle_message(phone: str, user_message: str, name: str = None) -> str:
-    """Punto de entrada único desde el webhook de WhatsApp."""
+def _attachment_note(attachments: list) -> str:
+    """Texto que queda en el historial en vez del archivo (no se guardan las fotos)."""
+    n_img = sum(1 for a in attachments if a.get("kind") == "image")
+    names = [a.get("name") for a in attachments if a.get("kind") != "image" and a.get("name")]
+    parts = []
+    if n_img:
+        parts.append(f"{n_img} foto{'s' if n_img > 1 else ''}")
+    if names:
+        parts.append("archivo(s): " + ", ".join(names[:5]))
+    return f"[Mandó {' y '.join(parts)}]"
+
+
+def _content_blocks(user_message: str, attachments: list) -> list:
+    blocks = []
+    for a in attachments:
+        if a.get("kind") == "image":
+            blocks.append({"type": "image", "source": {"type": "base64", "media_type": a["media_type"], "data": a["data"]}})
+        elif a.get("kind") == "pdf":
+            blocks.append({"type": "document", "source": {"type": "base64", "media_type": "application/pdf",
+                                                          "data": a["data"]}, "title": a.get("name") or "documento"})
+        elif a.get("kind") == "text":
+            blocks.append({"type": "document", "source": {"type": "text", "media_type": "text/plain",
+                                                          "data": a.get("text", "")}, "title": a.get("name") or "archivo"})
+    blocks.append({"type": "text", "text": user_message or "Revisa lo que te acabo de mandar."})
+    return blocks
+
+
+def handle_message(phone: str, user_message: str, name: str = None, attachments: list = None) -> str:
+    """Punto de entrada único desde el webhook de WhatsApp (y el chat del panel).
+    `attachments`: fotos o documentos ya descargados (ver webhook._process_media)."""
+    attachments = attachments or []
+    history_text = (f"{_attachment_note(attachments)} {user_message}".strip() if attachments else user_message)
     try:
         from finmate.security.guard import note_message
 
@@ -227,7 +316,7 @@ def handle_message(phone: str, user_message: str, name: str = None) -> str:
     # Acceso: números nuevos esperan aprobación en el panel admin (Inbox).
     status = getattr(user, "access_status", None) or "approved"
     if status != "approved":
-        return _handle_without_access(user, phone, user_message, name, status, first=not history)
+        return _handle_without_access(user, phone, history_text, name, status, first=not history)
 
     # El registro de números nuevos no usa Claude; desde aquí sí hace falta la clave.
     if _client is None:
@@ -235,9 +324,10 @@ def handle_message(phone: str, user_message: str, name: str = None) -> str:
         return _NO_KEY_MSG
 
     messages = [{"role": role, "content": content} for role, content in history]
-    messages.append({"role": "user", "content": user_message})
+    messages.append({"role": "user", "content": _content_blocks(user_message, attachments) if attachments else user_message})
 
-    model = _pick_model(user_message)
+    # Con fotos o documentos se usa el modelo de análisis (lee mejor cartolas y tablas).
+    model = ANTHROPIC_MODEL_ANALYSIS if attachments else _pick_model(user_message)
 
     try:
         personality = get_personality(user.id)
@@ -262,12 +352,13 @@ def handle_message(phone: str, user_message: str, name: str = None) -> str:
     except Exception as e:
         logger.error(f"Error en el orquestador respondiendo a {phone}: {e}", exc_info=True)
         final_text = _GENERIC_ERROR_MSG
+        _report_claude_problem(e)
 
     # Se guarda igual aunque haya habido error de LLM, así el historial
     # refleja lo que el usuario realmente vio en WhatsApp. Si esto falla
     # (DB caída justo ahora) no vale la pena romper la respuesta ya generada.
     try:
-        save_turn(user.id, "user", user_message)
+        save_turn(user.id, "user", history_text)
         save_turn(user.id, "assistant", final_text)
     except Exception as e:
         logger.error(f"No se pudo guardar el turno de conversación de {phone}: {e}", exc_info=True)
