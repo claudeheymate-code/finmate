@@ -20,9 +20,7 @@ entra bien en un template). Si no está configurado, se cae al mensaje de
 texto libre de siempre (sirve para sandbox/desarrollo). Ver
 finmate/alerts/pending.py para el porqué de esta distinción.
 """
-import json
 import logging
-import os
 import threading
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -203,5 +201,6 @@ def _check_watchlist_alerts(
             client.close()
 
     _save_state(state)
-    logger.info(f"Chequeo de alertas de watchlist completado: {alerts_sent} alertas enviadas")
+    (logger.info if alerts_sent else logger.debug)(
+        f"Chequeo de alertas de watchlist completado: {alerts_sent} alertas enviadas")
     return alerts_sent

@@ -18,9 +18,7 @@ Separado a propósito de los otros state files del proyecto
 dedup de alertas de watchlist ya enviadas): este no es un dedup, es una
 cola de contenido todavía no entregado.
 """
-import json
 import logging
-import os
 from typing import Optional
 
 logger = logging.getLogger(__name__)

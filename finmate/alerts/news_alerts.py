@@ -20,9 +20,7 @@ error aquí nunca toca el resto de las alertas.
 """
 import datetime as dt
 import hashlib
-import json
 import logging
-import os
 import re
 from collections import defaultdict
 from typing import Callable, Optional
@@ -234,6 +232,6 @@ def check_news_alerts(
                 sent += 1
 
     _save_state(state, today)
-    logger.info(f"Chequeo de noticias: {len(items)} revisadas, {sent} mensajes enviados"
+    (logger.info if sent else logger.debug)(f"Chequeo de noticias: {len(items)} revisadas, {sent} mensajes enviados"
                 + (" (corrida de calentamiento)" if warmup else ""))
     return sent

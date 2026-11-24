@@ -14,16 +14,12 @@ texto libre, igual que hasta ahora (sandbox/desarrollo).
 """
 
 import asyncio
-import json
 import logging
-import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 from config.settings import (
     TEMPLATE_MARKET_NOTIFY,
     TEMPLATE_WEEKLY_SUMMARY_NOTIFY,
-    WHATSAPP_RECIPIENTS,
 )
 from finmate.alerts.pending import queue_pending
 from finmate.data_sources.aggregator import FinancialDataAggregator
