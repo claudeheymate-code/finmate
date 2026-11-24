@@ -395,7 +395,24 @@
       if ($("#a-earn")) $("#a-earn").value = a.earnings_alerts || "mine";
       if ($("#a-macro")) $("#a-macro").checked = !!a.macro_alerts;
       if ($("#a-mnews")) $("#a-mnews").checked = !!a.market_news_alerts;
+      if ($("#w-form")) {
+        $("#w-on").checked = a.workday_enabled !== false;
+        $("#w-start").value = a.workday_start || "08:30"; $("#w-end").value = a.workday_end || "18:30";
+        $("#w-weekends").checked = !!a.workday_weekends;
+        const sync = () => document.querySelectorAll("#w-form .w-row").forEach((r) => { r.style.opacity = $("#w-on").checked ? "" : ".45"; });
+        $("#w-on").addEventListener("change", sync); sync();
+      }
     } catch (e) { $("#a-msg").innerHTML = box("error-box", e.message); }
+    if ($("#w-form")) $("#w-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = { workday_enabled: $("#w-on").checked, workday_start: $("#w-start").value, workday_end: $("#w-end").value,
+                     workday_weekends: $("#w-weekends").checked };
+      try {
+        await api("PUT", "/avisos", body);
+        $("#w-msg").innerHTML = '<span class="up small">' + (body.workday_enabled
+          ? "Jornada guardada: de " + body.workday_start + " a " + body.workday_end + "." : "Jornada desactivada.") + "</span>";
+      } catch (err) { $("#w-msg").innerHTML = box("error-box", err.message); }
+    });
     $("#a-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const body = { watchlist_threshold_pct: $("#a-thr").value, weekly_summary_enabled: $("#a-weekly").checked };
