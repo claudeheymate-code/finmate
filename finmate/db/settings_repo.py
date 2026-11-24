@@ -15,6 +15,23 @@ MIN_THRESHOLD = 0.5
 MAX_THRESHOLD = 50.0
 MAX_NEWS_PER_DAY = 10
 EARNINGS_OPTIONS = ("off", "mine", "all")
+DEFAULT_WORKDAY = ("08:30", "18:30")
+
+
+def _clean_hhmm(value, label: str) -> str:
+    """Acepta "8", "8:30", "08:30", "8.30" o "830" → "08:30"."""
+    raw = str(value).strip().lower().replace("h", "").replace(".", ":").replace(" ", "")
+    if raw.isdigit() and len(raw) in (3, 4):
+        raw = raw[:-2] + ":" + raw[-2:]
+    if raw.isdigit():
+        raw += ":00"
+    try:
+        hh, mm = (int(x) for x in raw.split(":", 1))
+    except ValueError:
+        raise ValueError(f"La hora de {label} no se entiende ('{value}'). Usa el formato 08:30.")
+    if not (0 <= hh <= 23 and 0 <= mm <= 59):
+        raise ValueError(f"La hora de {label} no es válida ('{value}').")
+    return f"{hh:02d}:{mm:02d}"
 
 
 def _defaults() -> dict:
@@ -25,6 +42,10 @@ def _defaults() -> dict:
         "earnings_alerts": "mine",
         "macro_alerts": False,
         "market_news_alerts": False,
+        "workday_enabled": True,
+        "workday_start": DEFAULT_WORKDAY[0],
+        "workday_end": DEFAULT_WORKDAY[1],
+        "workday_weekends": False,
     }
 
 
@@ -47,6 +68,14 @@ def get_notification_settings(user_id: int) -> dict:
                 out["macro_alerts"] = bool(row.macro_alerts)
             if getattr(row, "market_news_alerts", None) is not None:
                 out["market_news_alerts"] = bool(row.market_news_alerts)
+            if getattr(row, "workday_enabled", None) is not None:
+                out["workday_enabled"] = bool(row.workday_enabled)
+            if getattr(row, "workday_start", None):
+                out["workday_start"] = row.workday_start
+            if getattr(row, "workday_end", None):
+                out["workday_end"] = row.workday_end
+            if getattr(row, "workday_weekends", None) is not None:
+                out["workday_weekends"] = bool(row.workday_weekends)
         return out
     finally:
         session.close()
@@ -60,8 +89,12 @@ def set_notification_settings(
     earnings_alerts: Optional[str] = None,
     macro_alerts: Optional[bool] = None,
     market_news_alerts: Optional[bool] = None,
+    workday_enabled: Optional[bool] = None,
+    workday_start: Optional[str] = None,
+    workday_end: Optional[str] = None,
+    workday_weekends: Optional[bool] = None,
 ) -> dict:
-    """Actualiza solo lo que se pasa. Valida el umbral (0,5% a 50%)."""
+    """Actualiza solo lo que se pasa. Valida el umbral (0,5% a 50%) y las horas de la jornada."""
     from finmate.db.models import NotificationSettings, get_session
 
     if watchlist_threshold_pct is not None:
@@ -78,6 +111,15 @@ def set_notification_settings(
         news_max_per_day = n
     if earnings_alerts is not None and earnings_alerts not in EARNINGS_OPTIONS:
         raise ValueError("Resultados de empresas: elige 'off' (ninguno), 'mine' (solo mis activos) o 'all' (todas).")
+    if workday_start is not None:
+        workday_start = _clean_hhmm(workday_start, "inicio")
+    if workday_end is not None:
+        workday_end = _clean_hhmm(workday_end, "término")
+    if workday_start is not None or workday_end is not None:
+        cur = get_notification_settings(user_id)
+        st, en = workday_start or cur["workday_start"], workday_end or cur["workday_end"]
+        if st == en:
+            raise ValueError("La jornada tiene que empezar y terminar a horas distintas.")
 
     session = get_session()
     try:
@@ -97,6 +139,14 @@ def set_notification_settings(
             row.macro_alerts = bool(macro_alerts)
         if market_news_alerts is not None:
             row.market_news_alerts = bool(market_news_alerts)
+        if workday_enabled is not None:
+            row.workday_enabled = bool(workday_enabled)
+        if workday_start is not None:
+            row.workday_start = workday_start
+        if workday_end is not None:
+            row.workday_end = workday_end
+        if workday_weekends is not None:
+            row.workday_weekends = bool(workday_weekends)
         session.commit()
     finally:
         session.close()

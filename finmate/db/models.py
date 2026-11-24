@@ -246,6 +246,11 @@ class NotificationSettings(Base):
     earnings_alerts = Column(String(10), nullable=True)   # "off" | "mine" | "all" (None = "mine")
     macro_alerts = Column(Boolean, nullable=True)         # datos macro publicados (None = no)
     market_news_alerts = Column(Boolean, nullable=True)   # noticias generales del mercado (None = no)
+    # Jornada: resumen al inicio y al cierre; avisos solo dentro; fuera, solo responde.
+    workday_enabled = Column(Boolean, nullable=True)      # None = sí
+    workday_start = Column(String(5), nullable=True)      # "HH:MM" (None = 08:30)
+    workday_end = Column(String(5), nullable=True)        # "HH:MM" (None = 18:30)
+    workday_weekends = Column(Boolean, nullable=True)     # None = no (solo lunes a viernes)
     updated_at = Column(
         DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False
     )
@@ -360,6 +365,10 @@ _ADDED_COLUMNS = {
         "earnings_alerts": "VARCHAR(10)",
         "macro_alerts": "BOOLEAN",
         "market_news_alerts": "BOOLEAN",
+        "workday_enabled": "BOOLEAN",
+        "workday_start": "VARCHAR(5)",
+        "workday_end": "VARCHAR(5)",
+        "workday_weekends": "BOOLEAN",
     },
     "transactions": {
         "occasion": "VARCHAR(200)",
