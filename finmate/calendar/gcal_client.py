@@ -13,7 +13,6 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 import os
-import json
 
 from config.settings import GOOGLE_CREDENTIALS_FILE, GOOGLE_CALENDAR_ID
 
