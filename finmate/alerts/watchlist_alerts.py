@@ -71,6 +71,19 @@ def _save_state(state: dict) -> None:
         logger.error(f"Error guardando estado de alertas de watchlist: {e}")
 
 
+_logged_once: set = set()
+
+
+def _first_log_today(key: str) -> bool:
+    """Para no repetir la misma advertencia cada 20 segundos."""
+    if key in _logged_once:
+        return False
+    if len(_logged_once) > 5000:
+        _logged_once.clear()
+    _logged_once.add(key)
+    return True
+
+
 def check_watchlist_alerts(
     messenger: Optional[WhatsAppMessenger] = None,
     quote_fn: Optional[Callable[[str], Optional[dict]]] = None,
@@ -155,11 +168,16 @@ def _check_watchlist_alerts(
                     rest_change = float((rest or {}).get("change_pct"))
                 except (TypeError, ValueError):
                     rest_change = None
-                if rest_change is None or abs(rest_change - change_pct) > EXTREME_MOVE_TOLERANCE_PCT:
-                    logger.warning(
-                        f"Watchlist: {symbol} {change_pct:+.2f}% en vivo no coincide con la "
-                        f"cotización normal ({rest_change}); no se avisa."
-                    )
+                # Si la cotización normal también muestra un movimiento grande, el
+                # movimiento es real y se avisa con esa cifra (antes se descartaba si
+                # el precio en vivo difería unos puntos: 24 nov, NVDA +31% sin aviso).
+                if rest_change is None or (abs(rest_change - change_pct) > EXTREME_MOVE_TOLERANCE_PCT
+                                           and abs(rest_change) < thresholds.get(user_id, WATCHLIST_ALERT_THRESHOLD_PCT)):
+                    if _first_log_today(f"mismatch:{symbol}:{today}"):
+                        logger.warning(
+                            f"Watchlist: {symbol} {change_pct:+.2f}% en vivo no coincide con la "
+                            f"cotización normal ({rest_change}); no se avisa."
+                        )
                     continue
                 quote = rest
                 change_pct = rest_change
@@ -172,6 +190,13 @@ def _check_watchlist_alerts(
 
             change_fmt = _format_number(change_pct, suffix="%")
             price_fmt = _format_number(quote["price"], prefix="$")
+
+            # Jornada: fuera de horario no se escribe; el aviso entra en el próximo resumen.
+            from finmate.services.workday import allow as _workday_allow
+
+            if not _workday_allow(phone, f"{symbol} se movió {change_fmt} (precio {price_fmt})", "watchlist"):
+                state[state_key] = True
+                continue
 
             try:
                 if TEMPLATE_WATCHLIST_ALERT:

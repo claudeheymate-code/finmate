@@ -45,7 +45,11 @@ def check_macro_reminders(messenger=None, today: Optional[dt.date] = None,
     sent = 0
     for phone, lines in per_phone.items():
         msg = "🗓️ *Datos que sigues*\n\n" + "\n".join(lines) + \
-              "\n\n_Escribime después de la publicación y te explico cómo salió._"
+              "\n\n_Escríbeme después de la publicación y te explico cómo salió._"
+        from finmate.services.workday import allow as _workday_allow
+
+        if not _workday_allow(phone, msg, "macro"):
+            continue
         try:
             if TEMPLATE_MARKET_NOTIFY:
                 from finmate.alerts.pending import queue_pending

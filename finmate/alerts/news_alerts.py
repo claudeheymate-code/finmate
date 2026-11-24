@@ -147,7 +147,7 @@ def _format_message(items: list) -> str:
         if it.get("url"):
             lines.append(it["url"])
         lines.append("")
-    lines.append("_Escribime \"¿por qué se movió " + items[0]["symbol"] + "?\" si quieres el análisis._")
+    lines.append("_Escríbeme \"¿por qué se movió " + items[0]["symbol"] + "?\" si quieres el análisis._")
     return "\n".join(lines).strip()
 
 
@@ -216,6 +216,11 @@ def check_news_alerts(
             user_items.sort(key=lambda x: -abs(x.get("sentiment") or 0))
             msg = _format_message(user_items[:MAX_ITEMS_PER_MESSAGE])
             phone = phones[user_id]
+            from finmate.services.workday import allow as _workday_allow
+
+            if not _workday_allow(phone, msg, "noticias"):   # fuera de la jornada: va al próximo resumen
+                daily[dkey] = daily.get(dkey, 0) + 1
+                continue
             try:
                 if TEMPLATE_MARKET_NOTIFY:
                     from finmate.alerts.pending import queue_pending

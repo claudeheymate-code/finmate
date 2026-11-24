@@ -108,7 +108,9 @@ class AlertEngine:
         Business), manda el template corto y encola el contenido completo
         para cuando el usuario responda (ver finmate/alerts/pending.py). Si
         no, cae a mensaje de texto libre directo, como hasta ahora."""
-        phones = list(phones or [])
+        from finmate.services.workday import filter_recipients
+
+        phones = filter_recipients(list(phones or []), msg, category_label)   # fuera de la jornada: al próximo resumen
         if not phones:
             return
         if TEMPLATE_MARKET_NOTIFY:
@@ -217,7 +219,9 @@ class AlertEngine:
             # cola si está configurado; si no, texto libre como hasta ahora)
             message = format_weekly_summary(data)
             # Panel web → Ajustes: quien apagó el resumen semanal no lo recibe.
-            recipients = self._recipients("weekly")
+            from finmate.services.workday import filter_recipients
+
+            recipients = filter_recipients(self._recipients("weekly"), message, "Resumen semanal")
             if TEMPLATE_WEEKLY_SUMMARY_NOTIFY:
                 for phone in recipients:
                     queue_pending(phone, message)
