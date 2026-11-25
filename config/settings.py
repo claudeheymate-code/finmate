@@ -117,6 +117,10 @@ WATCHLIST_ALERT_THRESHOLD_PCT = float(os.getenv("WATCHLIST_ALERT_THRESHOLD_PCT",
 META_TEMPLATE_WATCHLIST_ALERT = os.getenv("META_TEMPLATE_WATCHLIST_ALERT", "")
 META_TEMPLATE_MARKET_NOTIFY = os.getenv("META_TEMPLATE_MARKET_NOTIFY", "")
 META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY = os.getenv("META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY", "")
+# Aviso diario (lunes a viernes) al inicio de la jornada para quien no escribe hace más de 24 h:
+# "tu resumen de hoy ya está disponible (destacado)" con botones "Sí, mándamelo" / "Hoy no".
+# Al responder se abre la ventana de 24 h y todo lo demás llega normal. Vacía = no se manda.
+META_TEMPLATE_MORNING_BRIEF = os.getenv("META_TEMPLATE_MORNING_BRIEF", "")
 
 # Lo que usa el resto del código.
 TEMPLATE_WATCHLIST_ALERT = META_TEMPLATE_WATCHLIST_ALERT
