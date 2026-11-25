@@ -9,6 +9,7 @@ _DEFAULTS = dict(
     frecuencia_chistes=3,
     nivel_conversador=5,
     tono="profesional",
+    emojis=4,
 )
 
 
@@ -30,6 +31,7 @@ def get_personality(user_id: int) -> dict:
             frecuencia_chistes=p.frecuencia_chistes,
             nivel_conversador=p.nivel_conversador,
             tono=p.tono,
+            emojis=p.emojis if getattr(p, "emojis", None) is not None else _DEFAULTS["emojis"],
         )
     except Exception as e:
         logger.error(f"Error leyendo personalidad de user {user_id}: {e}")
@@ -40,7 +42,7 @@ def get_personality(user_id: int) -> dict:
 
 def set_personality(user_id: int, **kwargs) -> dict:
     """Actualiza uno o más parámetros de personalidad. Crea el registro si no existe.
-    Campos válidos: humor, sarcasmo, frecuencia_chistes, nivel_conversador, tono."""
+    Campos válidos: humor, sarcasmo, frecuencia_chistes, nivel_conversador, tono, emojis."""
     try:
         from finmate.db.models import PersonalitySettings, get_session
     except Exception:
@@ -59,12 +61,19 @@ def set_personality(user_id: int, **kwargs) -> dict:
                     setattr(p, key, val)
         session.commit()
         session.refresh(p)
+        try:
+            from finmate.utils.text import forget_emoji_level
+
+            forget_emoji_level()          # que el cambio de emojis rija de inmediato
+        except Exception:  # noqa: BLE001
+            pass
         return dict(
             humor=p.humor,
             sarcasmo=p.sarcasmo,
             frecuencia_chistes=p.frecuencia_chistes,
             nivel_conversador=p.nivel_conversador,
             tono=p.tono,
+            emojis=p.emojis if getattr(p, "emojis", None) is not None else _DEFAULTS["emojis"],
         )
     except Exception as e:
         logger.error(f"Error guardando personalidad de user {user_id}: {e}")

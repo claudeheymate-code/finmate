@@ -142,6 +142,7 @@ class PersonalitySettings(Base):
     frecuencia_chistes = Column(Integer, default=3)   # 1-10
     nivel_conversador = Column(Integer, default=5)    # 1-10: 1=muy conciso, 10=muy parlanchín
     tono = Column(String(50), default="profesional")  # profesional|casual|amigo
+    emojis = Column(Integer, nullable=True)           # 1-10: 1-2 = sin emojis (None = 4)
     created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False
@@ -438,6 +439,7 @@ _ADDED_COLUMNS = {
     "portfolio_holdings": {"asset_class": "VARCHAR(30)", "sector": "VARCHAR(60)"},
     "users": {"access_status": "VARCHAR(12)", "email": "VARCHAR(160)", "registered_at": "TIMESTAMP"},
     "feedback": {"status": "VARCHAR(12)", "admin_note": "TEXT"},
+    "personality_settings": {"emojis": "INTEGER"},
     "notification_settings": {
         "news_max_per_day": "INTEGER",
         "earnings_alerts": "VARCHAR(10)",
