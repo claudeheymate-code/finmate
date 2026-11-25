@@ -597,3 +597,88 @@ carpeta local; subir con el editor web de GitHub (no hay credenciales para push)
 - Logs más limpios: Finnhub 403 bloquea ese endpoint 24 h; gcal sin
   credenciales se loguea una vez; aviso de discrepancia de watchlist 1 vez/día.
 - 165 tests pasan.
+
+## 25 nov 2026 — Nuevo formato de los resúmenes de jornada (no subido aún)
+
+`services/daily_brief.py`: encabezado con fecha (`☀️ *Inicio de jornada* · miércoles 25 nov`), un
+párrafo conceptual de Claude Haiku (qué pasó y por qué, noticias de mayor impacto, máx. 2-3 cifras)
+y debajo viñetas armadas por código (nunca por Claude): 📊 índices vía ETF (SPY/QQQ/DIA/ECH), 🇨🇱
+dólar/UF/TPM (BCCH), ⭐ tus tickers ordenados por variación (💼 = en portafolio), 💼 portafolio, y
+solo al inicio 🗓️ datos de EE.UU. de hoy (FRED) y 📬 avisos guardados fuera de horario. Secciones
+sin datos no aparecen. Sin Claude, el párrafo usa los titulares. `send_brief` recibe `tz_name`.
+Sin futuros, IPSA ni cobre (no hay fuente gratis conectada). 168/168 tests.
+
+## 25 nov 2026 (tarde) — Perfil de noticias con notas 1-3 (no subido aún)
+
+- **Formato:** negrita solo en títulos de sección/aviso; viñetas y párrafo sin asteriscos
+  (`daily_brief._plain` limpia lo que devuelva Claude). Avisos de resultados/macro/noticias en
+  `formatter.py` sin "ALERTA —" ni cursivas.
+- **Perfil (`finmate/services/news_profile.py`):** cada noticia tiene claves `sym:X`, `tema:<tema>`
+  (clasificador por palabras clave, 15 temas) y `tipo:activo|mercado|resultados|macro`. Cada nota
+  1-3 se suma a sus claves (olvido 3% por nota). Estimado = promedio con supuesto inicial 3 que
+  pesa 4 notas → cambia de a poco. Nivel 3 ≥2,4; 2 ≥1,6; 1 debajo. El `tipo` se limita a 3 notas
+  de peso (empuja pero no baja un tema solo). Nivel 1 "gradual": se muestra en el resumen con
+  probabilidad que baja de 100% a 10%, y se descarta solo con evidencia ≥12 y estimado <1,4
+  (~9 notas si es de una empresa, ~24 si es un tema general). Tablas nuevas: `news_preferences`,
+  `news_ratings`, `news_display_settings`. Estado en kv: `newsref:`, `newslast:`, `digest:`,
+  `briefcodes:`.
+- **Entrega:** `news_profile.deliver()` lo usan `news_alerts` (ahora una noticia por mensaje) y
+  `engine._broadcast_or_queue(news=...)` (resultados, macro, noticias del mercado). Por chat va con
+  botones 1·Poco / 2·Algo / 3·Mucho (`meta_cloud.send_buttons`, `messenger.send_buttons`; si no se
+  puede, texto con "Responde 1, 2 o 3"). Nivel 2, nivel 1 mostrado y todo lo de fuera de horario
+  → `digest`, que sale en el resumen de jornada como "📰 Noticias para ti" con letras (a3 b1).
+- **Calificar:** botón → `webhook` → `orchestrator.handle_rating_button`. Texto "3" solo si lo
+  último que mandó el bot fue una noticia; "a3 b1" hasta 48 h después del resumen. Ambos sin Claude.
+- **Bot:** tools `get_news_profile`, `set_news_preference`; el prompt explica los niveles en la
+  bienvenida (paso 3) y que a pedido se muestran todas las noticias. `_clean_history` junta turnos
+  seguidos del mismo rol (avisos guardados en el historial).
+- **Panel:** Ajustes → "Tus noticias" (dónde va cada nivel + lo aprendido por tema, con fijar a mano
+  o automático). API `/api/noticias/perfil` (GET/PUT/DELETE) y `/api/noticias/display` (PUT).
+- **Bienvenida** (`admin.approval_message`) explica los 3 niveles. Podcasts y recordatorios de
+  calendario macro no se califican (no son noticias). 184/184 tests (`tests/test_perfil_noticias.py`).
+
+## 25 nov 2026 — Pestaña Anuncios en el panel admin (no subido aún)
+
+`/admin/anuncios`: redactar un mensaje (título opcional + texto), vista previa estilo WhatsApp,
+botón "Ayúdame a redactar" (Claude Haiku convierte notas en anuncio, `announcements.draft_with_ai`),
+"Usar ejemplo" (anuncio del perfil de noticias), enviar "Solo a mí (prueba)" a `WHATSAPP_RECIPIENTS`
+o a todos los usuarios aprobados (con segundo toque de confirmación). Código:
+`finmate/admin/announcements.py`; tablas `announcements` y `announcement_deliveries`.
+Ventana de 24 h: a quien escribió hace < 23,5 h le llega al tiro ("sent"); si hay
+`TEMPLATE_MARKET_NOTIFY`, plantilla + cola ("template"); si no, queda "pending" y
+`webhook._answer_meta` lo manda justo después de responder su próximo mensaje ("later").
+Historial con conteos y "Dejar de entregar" para los pendientes. El anuncio queda en el
+historial del bot. Tests: `tests/test_anuncios.py`. 190/190.
+
+## 25 nov 2026 — Resúmenes que no llegaban: ventana de 24 h (no subido aún)
+
+Diagnóstico (logs de Railway): a las 08:30 el bot "envió" los 3 resúmenes de inicio, pero Meta
+rechazó el del usuario 4 (…9451) con `131047 Re-engagement message`: no escribía hace ~33 h. Meta
+acepta el envío y lo rechaza después (webhook de estado), así que nuestro log decía "enviado" y lo
+guardado para ese resumen se perdía. Lo mismo pasaba con noticias y alertas de watchlist.
+Arreglo: `workday.window_open/can_message` (último mensaje del usuario < 23,5 h, o plantilla
+configurada). Sin ventana: `send_brief` no manda ni vacía nada y marca `brief:pending:{uid}`;
+cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` → un solo resumen
+"🗞️ Lo que te perdiste" armado con todo lo acumulado. `workday.allow` guarda los avisos y
+`news_profile.deliver` manda las noticias al resumen. Admin → Usuarios muestra "24 h" o
+"Ventana cerrada". La solución de fondo son las plantillas de Meta: al aprobarse y cargar
+`META_TEMPLATE_MARKET_NOTIFY`, todo vuelve a llegar a tiempo. Tests: `tests/test_ventana_24h.py`
+(el conftest deja la ventana abierta por defecto; fixture `window_closed`). 196/196.
+
+## 25 nov 2026 — Plantillas aprobadas + aviso diario por plantilla (no subido aún)
+
+- Las 3 plantillas del 23 nov están **aprobadas** ("Activa: calidad pendiente"). Joaco agregó el
+  medio de pago en WhatsApp Manager. Decisión de Joaco: **NO cargar** `META_TEMPLATE_WATCHLIST_ALERT`,
+  `META_TEMPLATE_MARKET_NOTIFY` ni `META_TEMPLATE_WEEKLY_SUMMARY_NOTIFY` (con ellas cargadas el código
+  usa la plantilla SIEMPRE, incluso con la ventana abierta). En su lugar, un aviso diario.
+- Plantilla nueva `finmate_buenos_dias` (Utilidad, es, **en revisión** desde el 25 nov 11:2x). Meta
+  rechazaba las versiones con "Buenos días…" como Utilidad (sugería Marketing). Texto enviado:
+  "Aviso de tu cuenta Finmate: {{1}}, tu resumen de inicio de jornada de hoy ya está disponible
+  ({{2}}). Recibes este aviso porque activaste el resumen diario. Responde a este mensaje para
+  recibir el detalle completo." Botones: "Sí, mándamelo" / "Hoy no". {{1}} nombre, {{2}} destacado.
+- Código: `META_TEMPLATE_MORNING_BRIEF` (config). En `send_brief("start")`, si la ventana de 24 h
+  está cerrada y es lunes a viernes, manda la plantilla con `morning_highlight()` (Claude Haiku, una
+  frase por día, cache kv `morning:highlight:<fecha>`) y deja el resumen pendiente
+  (`via=template`). `webhook` → `handle_morning_reply`: "Sí, mándamelo" manda el resumen normal;
+  "Hoy no" lo descarta. Cualquier otro mensaje: respuesta normal + resumen pendiente.
+- **Al aprobarse:** cargar en Railway `META_TEMPLATE_MORNING_BRIEF=finmate_buenos_dias`. 200/200 tests.
