@@ -188,3 +188,13 @@ def test_fuente_en_el_admin():
 
     ids = [s["id"] for s in sources.catalog()]
     assert "cmf_fondos" in ids
+
+
+def test_probar_en_admin_muestra_estado_sin_descargar(funds_db, monkeypatch):
+    from finmate.admin import sources
+    from finmate.data_sources import cmf_fondos
+
+    monkeypatch.setattr(cmf_fondos, "download_day", lambda d: (_ for _ in ()).throw(AssertionError("no debe bajar")))
+    monkeypatch.setattr(funds_db, "start_backfill_thread", lambda: False)
+    ok, detail = sources._t_cmf_fondos()
+    assert ok and "5 fechas guardadas" in detail and "última 24-11" in detail
