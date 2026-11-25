@@ -682,3 +682,7 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
   (`via=template`). `webhook` → `handle_morning_reply`: "Sí, mándamelo" manda el resumen normal;
   "Hoy no" lo descarta. Cualquier otro mensaje: respuesta normal + resumen pendiente.
 - **Al aprobarse:** cargar en Railway `META_TEMPLATE_MORNING_BRIEF=finmate_buenos_dias`. 200/200 tests.
+- **25 nov, 12:10 — notas en silencio (pedido de Joaco):** al calificar (botón, "3" o "a3 b1") el
+  bot ya no responde "Anotado" ni guarda la nota en el historial; `news_profile.RATED` marca que se
+  registró, `handle_message` devuelve "" y `webhook` no manda nada. WhatsApp igual muestra el botón
+  tocado como mensaje del usuario (no se puede ocultar). 201/201 tests.
