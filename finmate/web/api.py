@@ -518,6 +518,65 @@ def avisos_put():
 
 
 # ------------------------------------------------------------------
+# Perfil de noticias (notas 1-3 y dónde se ve cada nivel)
+# ------------------------------------------------------------------
+def _news_payload(uid: int) -> dict:
+    from finmate.services import news_profile as np_
+
+    return {"display": np_.get_display(uid), "options": {k: list(v) for k, v in np_.DISPLAY_OPTIONS.items()},
+            "profile": np_.profile(uid), "topics": np_.known_topics()}
+
+
+@api_bp.get("/noticias/perfil")
+@api_login_required
+def noticias_perfil_get():
+    return jsonify(_news_payload(g.user.id))
+
+
+@api_bp.put("/noticias/display")
+@api_login_required
+def noticias_display_put():
+    from finmate.services import news_profile as np_
+
+    b = _body()
+    vals = {k: b[k] for k in ("level3", "level2", "level1") if k in b}
+    try:
+        np_.set_display(g.user.id, **vals)
+    except ValueError as e:
+        return _err(str(e))
+    return jsonify(_news_payload(g.user.id))
+
+
+@api_bp.put("/noticias/perfil")
+@api_login_required
+def noticias_perfil_put():
+    from finmate.services import news_profile as np_
+
+    b = _body()
+    key = str(b.get("key") or "").strip()
+    level = b.get("level")
+    if level is not None and (isinstance(level, bool) or level not in (1, 2, 3)):
+        return _err("El nivel va de 1 a 3, o null para automático.")
+    try:
+        np_.set_manual(g.user.id, key, level)
+    except ValueError as e:
+        return _err(str(e))
+    return jsonify(_news_payload(g.user.id))
+
+
+@api_bp.delete("/noticias/perfil")
+@api_login_required
+def noticias_perfil_delete():
+    from finmate.services import news_profile as np_
+
+    key = str(_body().get("key") or "").strip()
+    if not key:
+        return _err("Falta el tema.")
+    np_.reset_key(g.user.id, key)
+    return jsonify(_news_payload(g.user.id))
+
+
+# ------------------------------------------------------------------
 # Chat con el mismo agente del bot
 # ------------------------------------------------------------------
 @api_bp.post("/feedback")

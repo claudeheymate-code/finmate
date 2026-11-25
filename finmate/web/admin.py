@@ -33,6 +33,7 @@ _PAGES = {
     "costos": "Costos",
     "usuarios": "Usuarios",
     "inbox": "Inbox",
+    "anuncios": "Anuncios",
     "fuentes": "Fuentes",
 }
 
@@ -199,6 +200,12 @@ def inbox():
 @admin_page
 def fuentes():
     return _render("fuentes")
+
+
+@admin_bp.get("/anuncios")
+@admin_page
+def anuncios():
+    return _render("anuncios")
 
 
 # ── API: resumen y costos ───────────────────────────────────────────────
@@ -392,6 +399,7 @@ def _user_rows(with_lists: bool = False):
                    "registered_at": u.registered_at.isoformat() if u.registered_at else None,
                    "created_at": u.created_at.isoformat() if u.created_at else None,
                    "last_message_at": last.isoformat() if last else None, "messages": int(n or 0),
+                   "window_open": bool(last) and (dt.datetime.utcnow() - last) < dt.timedelta(hours=23.5),
                    "status": u.access_status or "approved"}
             if with_lists:
                 row["watchlist"], row["portfolio"] = int(rec[3] or 0), int(rec[4] or 0)
@@ -475,20 +483,27 @@ def approval_message(name) -> str:
     nombre = f" {name.split()[0]}" if name else ""
     link = f"{settings.PANEL_BASE_URL.rstrip('/')}/panel/"
     return (
-        f"¡Hola{nombre}! Tu acceso a Finmate fue *aprobado* 🎉\n\n"
+        f"¡Hola{nombre}! Tu acceso a Finmate fue aprobado 🎉\n\n"
         "Desde ahora puedes escribirme por aquí cuando quieras: te cuento cómo se mueven tus acciones, "
         "te aviso de noticias y resultados importantes, y anoto tus gastos.\n\n"
-        f"📱 *Tu app Finmate:* {link}\n"
-        "Ahí ves todo ordenado en un solo lugar:\n"
-        "• *Resumen*: cómo va tu portafolio hoy\n"
-        "• *Inversiones*: tus posiciones, ganancias y watchlist\n"
-        "• *Gastos*: en qué se va tu plata cada mes\n"
-        "• *Ajustes*: tu horario, qué avisos recibes y cómo te hablo\n\n"
-        "La idea es que tengas tus inversiones y tus finanzas personales a mano, "
-        "sin tener que buscar en mil páginas. Para entrar, pon tu número y te mando un código por aquí.\n\n"
-        "📲 *Importante: agrega el link a la pantalla de inicio* para usarla como app:\n"
-        "• *iPhone*: ábrelo en Safari → botón Compartir (□↑) → \"Agregar a inicio\"\n"
-        "• *Android*: ábrelo en Chrome → menú ⋮ → \"Agregar a la pantalla principal\"\n\n"
+        "📰 *Tus noticias, a tu medida*\n"
+        "Cada noticia que te mande trae botones 1, 2 y 3 para que me digas qué tan relevante fue "
+        "(3 = muy relevante):\n"
+        "• Nivel 3: te llega por el chat durante el día\n"
+        "• Nivel 2: va en tus resúmenes de inicio y cierre de jornada\n"
+        "• Nivel 1: solo si me preguntas por el tema\n"
+        "No es blanco o negro: si algo te parece 1, no desaparece de inmediato. Te lo voy mostrando "
+        "cada vez menos, hasta que tus notas confirmen que no te interesa. Mientras más califiques, "
+        "mejor te conozco.\n\n"
+        f"📱 *Tu app Finmate*\n{link}\n"
+        "• Resumen: cómo va tu portafolio hoy\n"
+        "• Inversiones: tus posiciones, ganancias y watchlist\n"
+        "• Gastos: en qué se va tu plata cada mes\n"
+        "• Ajustes: tu horario, tus avisos, cómo ves tus noticias y cómo te hablo\n"
+        "Para entrar, pon tu número y te mando un código por aquí.\n\n"
+        "📲 *Agrega el link a tu pantalla de inicio* para usarla como app:\n"
+        "• iPhone: ábrelo en Safari → Compartir (□↑) → \"Agregar a inicio\"\n"
+        "• Android: ábrelo en Chrome → menú ⋮ → \"Agregar a la pantalla principal\"\n\n"
         "¿Partimos? Cuéntame qué acciones tienes o cuáles te gustaría seguir."
     )
 
@@ -531,6 +546,54 @@ def api_user_access(uid):
                 pass
     logger.info(f"Admin {g.admin}: usuario {uid} → {status}")
     return jsonify({"ok": True, "status": status, "notified": notified})
+
+
+# ── API: anuncios a todos los usuarios ──────────────────────────────────
+
+@admin_bp.get("/api/anuncios")
+@admin_api
+def api_announcements():
+    from finmate.admin import announcements as ann
+
+    return jsonify({"history": ann.history(), "reach": ann.preview_counts("all"),
+                    "test_reach": ann.preview_counts("test")})
+
+
+@admin_bp.post("/api/anuncios")
+@admin_api
+def api_announcement_send():
+    from finmate.admin import announcements as ann
+
+    b = _body()
+    try:
+        a = ann.send(b.get("title") or "", b.get("body") or "", audience=(b.get("audience") or "all"), admin=g.admin)
+    except ValueError as e:
+        return _err(str(e))
+    return jsonify({"announcement": a, "history": ann.history(), "reach": ann.preview_counts("all"),
+                    "test_reach": ann.preview_counts("test")})
+
+
+@admin_bp.post("/api/anuncios/redactar")
+@admin_api
+def api_announcement_draft():
+    from finmate.admin import announcements as ann
+
+    try:
+        return jsonify(ann.draft_with_ai(_body().get("notes") or ""))
+    except ValueError as e:
+        return _err(str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Admin: no pude redactar el anuncio: {e}")
+        return _err("No pude redactarlo ahora. Intenta de nuevo en un momento.", 502)
+
+
+@admin_bp.post("/api/anuncios/<int:aid>/cancelar")
+@admin_api
+def api_announcement_cancel(aid):
+    from finmate.admin import announcements as ann
+
+    a = ann.cancel_pending(aid)
+    return jsonify({"announcement": a, "history": ann.history()}) if a else _err("Anuncio no encontrado.", 404)
 
 
 # ── API: inbox (solicitudes + feedback) ─────────────────────────────────
