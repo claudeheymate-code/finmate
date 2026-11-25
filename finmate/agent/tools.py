@@ -439,6 +439,24 @@ TOOLS = [
             "required": ["action"],
         },
     },
+    # ── Perfil de noticias (notas 1-3) ─────────────────────────────────────
+    {
+        "name": "get_news_profile",
+        "description": "Muestra lo que Finmate aprendió de las notas 1-3 que el usuario le pone a las noticias: qué temas, empresas y tipos de noticia le llegan por chat (nivel 3), en el resumen (nivel 2) o solo si pregunta (nivel 1). Usar cuando pregunte qué noticias le mandas, por qué no le llegó algo o cómo está su perfil.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "set_news_preference",
+        "description": "Fija a mano el nivel de un tema, empresa o tipo de noticia cuando el usuario lo pide explícitamente ('no me mandes más noticias de cripto', 'todo lo de NVDA mándamelo al tiro', 'vuelve a aprender solo con tecnología'). level: 3 = por chat, 2 = en el resumen, 1 = solo si pregunta, 0 = volver a automático. topic: ticker (NVDA) o tema (tasas, inflación, empleo, resultados, analistas, fusiones, regulación, aranceles, geopolítica, IA y tecnología, petróleo, cripto, dividendos, productos, Chile). No usarla para notas sueltas 1-2-3 a una noticia: esas se anotan solas.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "topic": {"type": "string"},
+                "level": {"type": "integer", "minimum": 0, "maximum": 3},
+            },
+            "required": ["topic", "level"],
+        },
+    },
     # ── Personalidad (Plan Fase 1) ─────────────────────────────────────────
     {
         "name": "get_personality",
@@ -466,6 +484,12 @@ TOOLS = [
 # Vantage. 30s es prudente para no mostrar datos desactualizados.
 _MARKET_DATA_CACHE_TTL = 30
 
+def _news_profile():
+    from finmate.services import news_profile
+
+    return news_profile
+
+
 # Tools que operan sobre datos del usuario (necesitan user_id).
 _USER_SCOPED_TOOLS = {
     "get_portfolio": lambda user_id, _input: tool_get_portfolio(user_id),
@@ -474,6 +498,8 @@ _USER_SCOPED_TOOLS = {
     "get_watchlist": lambda user_id, _input: tool_get_watchlist(user_id),
     "add_to_watchlist": tool_add_to_watchlist,
     "remove_from_watchlist": tool_remove_from_watchlist,
+    "get_news_profile":          lambda user_id, _input: _news_profile().tool_get_news_profile(user_id),
+    "set_news_preference":       lambda user_id, _input: _news_profile().tool_set_news_preference(user_id, _input),
     "get_personality":           lambda user_id, _input: tool_get_personality(user_id),
     "set_personality":           tool_set_personality,
     # Finanzas personales

@@ -86,19 +86,34 @@ saltándote lo que ya tenga configurado:
      18:30, lunes a viernes). Explícale en una línea que al inicio y al cierre
      le mandas un resumen del mercado en un párrafo, que durante la jornada le
      avisas lo importante y que fuera de ella solo respondes si te escribe.
-  3. Frecuencia de avisos: pregunta si prefiere pocos mensajes, lo normal o
+  3. Cómo aprendes qué noticias le importan (díselo siempre, en dos o tres
+     líneas): cada noticia que le mandes trae botones 1, 2 y 3 (3 = muy
+     relevante). Las de nivel 3 le llegan por el chat durante el día, las de
+     nivel 2 van en sus resúmenes de inicio y cierre, y las de nivel 1 solo
+     si te pregunta por el tema. No es blanco o negro: si pone 1 a un tipo de
+     noticia no desaparece de inmediato, se la muestras cada vez menos hasta
+     que sus notas confirman que no le interesa. Mientras más califique, mejor
+     queda su perfil, y lo puede revisar y cambiar en Ajustes → Tus noticias.
+  4. Frecuencia de avisos: pregunta si prefiere pocos mensajes, lo normal o
      enterarse de todo, y guárdalo; menciona el resumen semanal del domingo
      y pregunta si también quiere resultados de empresas (solo de sus
      activos o de todas), datos macro y noticias generales del mercado.
-  4. Portafolio: si quiere cargar lo que tiene (símbolo, cantidad y precio de
+  5. Portafolio: si quiere cargar lo que tiene (símbolo, cantidad y precio de
      compra) o mandarte un pantallazo de su corredora, o dejarlo para después.
-  5. Extras opcionales en una línea: resumen diario del podcast Primer Click,
+  6. Extras opcionales en una línea: resumen diario del podcast Primer Click,
      indicadores económicos o registrar gastos.
 Si en cualquier momento dice que lo deja para después, respétalo. Al
 terminar (o si lo posterga), marca la bienvenida como terminada y cierra con
 un resumen corto de lo que quedó configurado, un ejemplo de algo que te
 puede preguntar y cuéntale que también tiene un panel web (si lo quiere,
 mándale su link de acceso).
+
+PERFIL DE NOTICIAS: las notas 1-3 que el usuario da a las noticias se anotan
+solas. Si te pregunta por un tema o empresa, muéstrale todas las noticias
+que encuentres aunque su perfil diga nivel 1: el nivel solo decide qué le
+mandas por iniciativa propia. Si pide cambiar algo de forma explícita ("no
+me mandes más de cripto"), usa set_news_preference; para ver el perfil,
+get_news_profile.
 
 Fuera de la bienvenida, si notas que le falta algo útil (p. ej. no tiene
 watchlist), puedes sugerirlo una vez, sin insistir.
@@ -286,6 +301,24 @@ def _content_blocks(user_message: str, attachments: list) -> list:
     return blocks
 
 
+def _clean_history(history: list) -> list:
+    """Historial listo para Claude: empieza con el usuario y no repite el mismo rol seguido
+    (los avisos y resúmenes que manda el bot quedan como turnos del asistente sin pregunta)."""
+    out = []
+    for role, content in history:
+        if not content or role not in ("user", "assistant"):
+            continue
+        if not out and role != "user":
+            continue
+        if out and out[-1]["role"] == role:
+            out[-1]["content"] += "\n\n" + content
+        else:
+            out.append({"role": role, "content": content})
+    if out and out[-1]["role"] == "user":       # el mensaje nuevo también es del usuario: no se repite el rol
+        out.pop()
+    return out
+
+
 def handle_message(phone: str, user_message: str, name: str = None, attachments: list = None) -> str:
     """Punto de entrada único desde el webhook de WhatsApp (y el chat del panel).
     `attachments`: fotos o documentos ya descargados (ver webhook._process_media)."""
@@ -318,12 +351,26 @@ def handle_message(phone: str, user_message: str, name: str = None, attachments:
     if status != "approved":
         return _handle_without_access(user, phone, history_text, name, status, first=not history)
 
+    # Nota 1-3 a una noticia ("3", "a3 b1"): se anota sin pasar por Claude.
+    if not attachments:
+        try:
+            from finmate.services.news_profile import try_handle_rating
+
+            last_bot = next((c for r, c in reversed(history) if r == "assistant"), "")
+            rated = try_handle_rating(user.id, user_message, last_assistant=last_bot)
+            if rated:
+                save_turn(user.id, "user", user_message)
+                save_turn(user.id, "assistant", rated)
+                return rated
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"No pude revisar si {phone} calificó una noticia: {e}")
+
     # El registro de números nuevos no usa Claude; desde aquí sí hace falta la clave.
     if _client is None:
         logger.error("ANTHROPIC_API_KEY no configurada.")
         return _NO_KEY_MSG
 
-    messages = [{"role": role, "content": content} for role, content in history]
+    messages = _clean_history(history)
     messages.append({"role": "user", "content": _content_blocks(user_message, attachments) if attachments else user_message})
 
     # Con fotos o documentos se usa el modelo de análisis (lee mejor cartolas y tablas).
@@ -364,6 +411,25 @@ def handle_message(phone: str, user_message: str, name: str = None, attachments:
         logger.error(f"No se pudo guardar el turno de conversación de {phone}: {e}", exc_info=True)
 
     return final_text
+
+
+def handle_rating_button(phone: str, button_id: str, title: str = "") -> str:
+    """Botones 1-2-3 que van con cada noticia. Devuelve la respuesta o "" si no aplica."""
+    try:
+        from finmate.db.repository import find_user_by_phone
+        from finmate.services.news_profile import rate_from_button
+
+        user = find_user_by_phone(phone)
+        if user is None or (getattr(user, "access_status", None) or "approved") != "approved":
+            return ""
+        reply = rate_from_button(user.id, button_id) or ""
+        if reply:
+            save_turn(user.id, "user", title or button_id)
+            save_turn(user.id, "assistant", reply)
+        return reply
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"No pude registrar el botón {button_id!r} de {phone}: {e}")
+        return ""
 
 
 _ASK_DATA = ("¡Hola{nombre}! Soy Finmate, un asistente financiero por WhatsApp. "
