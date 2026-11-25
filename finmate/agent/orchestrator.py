@@ -357,11 +357,8 @@ def handle_message(phone: str, user_message: str, name: str = None, attachments:
             from finmate.services.news_profile import try_handle_rating
 
             last_bot = next((c for r, c in reversed(history) if r == "assistant"), "")
-            rated = try_handle_rating(user.id, user_message, last_assistant=last_bot)
-            if rated:
-                save_turn(user.id, "user", user_message)
-                save_turn(user.id, "assistant", rated)
-                return rated
+            if try_handle_rating(user.id, user_message, last_assistant=last_bot):
+                return ""          # nota guardada en silencio: sin respuesta y fuera del historial
         except Exception as e:  # noqa: BLE001
             logger.warning(f"No pude revisar si {phone} calificó una noticia: {e}")
 
@@ -413,23 +410,20 @@ def handle_message(phone: str, user_message: str, name: str = None, attachments:
     return final_text
 
 
-def handle_rating_button(phone: str, button_id: str, title: str = "") -> str:
-    """Botones 1-2-3 que van con cada noticia. Devuelve la respuesta o "" si no aplica."""
+def handle_rating_button(phone: str, button_id: str, title: str = "") -> bool:
+    """Botones 1-2-3 que van con cada noticia: guarda la nota en silencio (sin responder ni
+    dejarla en el historial). Devuelve True si el botón era una nota."""
     try:
         from finmate.db.repository import find_user_by_phone
         from finmate.services.news_profile import rate_from_button
 
         user = find_user_by_phone(phone)
         if user is None or (getattr(user, "access_status", None) or "approved") != "approved":
-            return ""
-        reply = rate_from_button(user.id, button_id) or ""
-        if reply:
-            save_turn(user.id, "user", title or button_id)
-            save_turn(user.id, "assistant", reply)
-        return reply
+            return False
+        return bool(rate_from_button(user.id, button_id))
     except Exception as e:  # noqa: BLE001
         logger.warning(f"No pude registrar el botón {button_id!r} de {phone}: {e}")
-        return ""
+        return False
 
 
 _ASK_DATA = ("¡Hola{nombre}! Soy Finmate, un asistente financiero por WhatsApp. "
