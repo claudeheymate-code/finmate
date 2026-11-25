@@ -17,7 +17,9 @@ import datetime as dt
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
+    Index,
     Float,
     ForeignKey,
     Integer,
@@ -397,6 +399,47 @@ class AlertLog(Base):
     alert_type = Column(String(50), nullable=False)    # watchlist|earnings|macro|news|weekly
     ref_id = Column(String(200), nullable=False)        # ej: "AAPL_2026-10-29"
     sent_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False, index=True)
+
+
+class FundQuote(Base):
+    """Valor cuota diario de cada serie de fondo mutuo chileno (fuente: CMF).
+
+    Una fila por día + fondo (RUN) + serie. Se guardan los últimos ~45 días
+    completos y, para fechas más antiguas, solo el último día de cada mes
+    (alcanza para calcular rentabilidad 1 mes, año y 12 meses sin llenar la base).
+    """
+
+    __tablename__ = "fund_quotes"
+    __table_args__ = (
+        UniqueConstraint("date", "run", "serie", name="uq_fund_quote"),
+        Index("ix_fund_quotes_run_serie", "run", "serie"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    date = Column(Date, nullable=False, index=True)
+    run = Column(String(12), nullable=False)
+    serie = Column(String(20), nullable=False)
+    name = Column(String(120), nullable=False)
+    admin = Column(String(40), nullable=False)
+    tipo = Column(Integer, nullable=True)
+    moneda = Column(String(10), nullable=True)
+    valor_cuota = Column(Float, nullable=False)
+    patrimonio = Column(Float, nullable=True)      # millones de la moneda del fondo
+    participes = Column(Integer, nullable=True)
+
+
+class FollowedFund(Base):
+    """Fondo mutuo que sigue un usuario (opcionalmente con cuántas cuotas tiene)."""
+
+    __tablename__ = "followed_funds"
+    __table_args__ = (UniqueConstraint("user_id", "run", "serie", name="uq_followed_fund"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    run = Column(String(12), nullable=False)
+    serie = Column(String(20), nullable=False)
+    cuotas = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
 
 
 # ============================================================
