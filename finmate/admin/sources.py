@@ -94,14 +94,28 @@ def _t_podcast():
 
 
 def _t_cmf_fondos():
-    """Baja el último día publicado por la CMF, lo guarda y (si falta) arranca la carga de 13 meses."""
+    """Estado de los fondos guardados; si no hay datos recientes, baja el último día publicado."""
     import datetime as dt
-    import threading
 
     from finmate.data_sources import cmf_fondos
     from finmate.services import funds
 
     today = funds._today()
+
+    def history_text(st):
+        if st.get("backfill"):
+            return "historia de 13 meses lista"
+        pr = st.get("progress") or {}
+        started = funds.start_backfill_thread()
+        if pr.get("total"):
+            return f"cargando historia: {pr.get('done', 0)}/{pr['total']} meses"
+        return "cargando historia de 13 meses en segundo plano" if started or st.get("busy") else "historia pendiente"
+
+    st = funds.status()
+    if st["latest"] and dt.date.fromisoformat(st["latest"]) >= today - dt.timedelta(days=5):
+        latest = dt.date.fromisoformat(st["latest"])
+        return True, (f"{st['dates']} fechas guardadas (última {latest.strftime('%d-%m')})"
+                      f"{' · actualizando ahora' if st['busy'] else ''} · {history_text(st)}")
     for back in range(1, 6):
         day = today - dt.timedelta(days=back)
         content = cmf_fondos.download_day(day)
@@ -109,15 +123,10 @@ def _t_cmf_fondos():
             continue
         rows = cmf_fondos.parse_xls(content)
         funds.store_day(day, rows)
-        if not funds.load_json(funds.BACKFILL_KEY, None):
-            threading.Thread(target=funds.backfill, name="cmf-backfill", daemon=True).start()
-            extra = " · cargando historia de 13 meses en segundo plano"
-        else:
-            extra = f" · {funds.status()['dates']} fechas guardadas"
         n_admin = len({r["admin"] for r in rows})
-        return True, f"{len(rows):,} series de {n_admin} administradoras ({day.strftime('%d-%m')}){extra}".replace(",", ".")
+        return True, (f"{len(rows):,} series de {n_admin} administradoras ({day.strftime('%d-%m')})".replace(",", ".")
+                      + " · " + history_text(funds.status()))
     return False, "la CMF respondió, pero sin datos en los últimos 5 días"
-
 
 def _t_claude():
     from config.settings import ANTHROPIC_MODEL_DEFAULT
