@@ -45,7 +45,11 @@ class WhatsAppMessenger:
         return parts
 
     def send_message(self, to: str, body: str) -> bool:
-        """Envía un mensaje a un número específico."""
+        """Envía un mensaje a un número específico (con formato de WhatsApp y los emojis
+        que eligió el usuario, ver finmate/utils/text.py)."""
+        from finmate.utils.text import prepare_for
+
+        body = prepare_for(to, body)
         parts = self._split_message(body)
         ok = True
         for i, part in enumerate(parts):
@@ -56,6 +60,9 @@ class WhatsAppMessenger:
 
     def send_buttons(self, to: str, body: str, buttons: list, fallback: Optional[str] = None) -> bool:
         """Mensaje con botones (máx. 3). Si es muy largo o Meta lo rechaza, manda `fallback` como texto."""
+        from finmate.utils.text import prepare_for
+
+        body = prepare_for(to, body)
         if len(body) <= 1024:
             try:
                 if meta_cloud.send_buttons(to, body, buttons):
