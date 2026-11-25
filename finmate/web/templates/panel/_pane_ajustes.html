@@ -47,6 +47,26 @@
       </ul>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px"><button class="btn" type="submit">Guardar jornada</button><span id="w-msg"></span></div>
     </form></section>
+<section class="card glass" id="noticias"><h2>Tus noticias</h2><p class="faint small" style="margin-top:4px">Cada noticia trae botones 1, 2 y 3 en WhatsApp. Con tus notas aprendo qué te importa, de a poco: si algo te parece 1, te lo muestro cada vez menos hasta confirmar que no te interesa.</p>
+  <form id="n-form">
+    <ul class="list">
+      <li><div class="grow"><p class="strong">Nivel 3 · muy relevante</p><p class="faint small">Lo más importante para ti: llega apenas pasa</p></div>
+        <div class="field" class="n-sel" style="flex:0 0 200px"><label for="n-l3" class="sr-only">Nivel 3</label><select id="n-l3"><option value="chat">Por el chat</option><option value="resumen">En el resumen</option></select></div></li>
+      <li><div class="grow"><p class="strong">Nivel 2 · algo relevante</p><p class="faint small">Vale la pena saberlo, sin apuro: va en tus resúmenes de inicio y cierre</p></div>
+        <div class="field" class="n-sel" style="flex:0 0 200px"><label for="n-l2" class="sr-only">Nivel 2</label><select id="n-l2"><option value="resumen">En el resumen</option><option value="chat">Por el chat</option><option value="pedido">Solo si pregunto</option></select></div></li>
+      <li><div class="grow"><p class="strong">Nivel 1 · poco relevante</p><p class="faint small">Te lo muestro cada vez menos y dejo de hacerlo cuando tus notas lo confirman. Si preguntas por el tema, siempre te lo cuento.</p></div>
+        <div class="field" class="n-sel" style="flex:0 0 200px"><label for="n-l1" class="sr-only">Nivel 1</label><select id="n-l1"><option value="gradual">Cada vez menos</option><option value="resumen">Siempre en el resumen</option><option value="pedido">Solo si pregunto</option></select></div></li>
+    </ul>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px"><button class="btn" type="submit">Guardar</button><span id="n-msg"></span></div>
+  </form>
+  <p class="label-sm" style="margin-top:22px">Lo que he aprendido de ti</p>
+  <p class="faint small" style="margin-top:4px">Puedes fijar un nivel a mano; en "Automático" sigo aprendiendo de tus notas.</p>
+  <ul class="list" id="n-prof" style="margin-top:8px"></ul>
+  <form class="inline" id="n-add">
+    <div class="field"><label for="n-topic">Fijar un tema</label><select id="n-topic"></select></div>
+    <div class="field" style="flex:0 0 150px"><label for="n-lvl">Nivel</label><select id="n-lvl"><option value="3">3 · mucho</option><option value="2">2 · algo</option><option value="1">1 · poco</option></select></div>
+    <button class="btn ghost" type="submit">Fijar</button>
+  </form><div id="n-add-msg" style="margin-top:10px"></div></section>
   <section class="card glass" id="avisos"><h2>Avisos</h2><p class="faint small" style="margin-top:4px">Cuándo te escribe Finmate</p>
     <form id="a-form">
       <ul class="list">
