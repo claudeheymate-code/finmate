@@ -307,6 +307,84 @@ class KVState(Base):
     updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False)
 
 
+class NewsPreference(Base):
+    """Perfil de noticias: qué tan relevante es cada tipo de noticia para el usuario.
+
+    Una fila por usuario y "clave" (sym:NVDA, tema:tasas, tipo:mercado). Se
+    alimenta con las notas 1-3 que da el usuario y cambia de a poco (ver
+    finmate/services/news_profile.py). `manual_level` lo fija el usuario en el
+    panel y manda sobre lo aprendido.
+    """
+
+    __tablename__ = "news_preferences"
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_news_pref"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    key = Column(String(80), nullable=False)
+    label = Column(String(120), nullable=False)
+    score_sum = Column(Float, nullable=False, default=0.0)     # suma ponderada (con olvido) de las notas
+    weight_n = Column(Float, nullable=False, default=0.0)      # cuántas notas pesa (con olvido)
+    ratings = Column(Integer, nullable=False, default=0)       # notas recibidas en total
+    manual_level = Column(Integer, nullable=True)              # 1-3 fijado en el panel; None = automático
+    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False)
+
+
+class NewsRating(Base):
+    """Cada nota 1-3 que el usuario le pone a una noticia (historial del perfil)."""
+
+    __tablename__ = "news_ratings"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    news_id = Column(String(20), nullable=False)
+    rating = Column(Integer, nullable=False)
+    keys = Column(Text, nullable=False)          # JSON con las claves de la noticia
+    headline = Column(String(300), nullable=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+
+class NewsDisplaySettings(Base):
+    """Dónde ve el usuario las noticias de cada nivel (lo elige en el panel)."""
+
+    __tablename__ = "news_display_settings"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    level3 = Column(String(12), nullable=True)   # "chat" | "resumen"            (None = chat)
+    level2 = Column(String(12), nullable=True)   # "resumen" | "chat" | "pedido" (None = resumen)
+    level1 = Column(String(12), nullable=True)   # "gradual" | "resumen" | "pedido" (None = gradual)
+    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False)
+
+
+class Announcement(Base):
+    """Anuncio que el admin manda a todos los usuarios (pestaña Anuncios del panel admin)."""
+
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(120), nullable=True)
+    body = Column(Text, nullable=False)
+    audience = Column(String(12), nullable=False, default="all")    # "all" | "test"
+    created_by = Column(String(160), nullable=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False)
+
+
+class AnnouncementDelivery(Base):
+    """A quién le llegó cada anuncio y cómo."""
+
+    __tablename__ = "announcement_deliveries"
+    __table_args__ = (UniqueConstraint("announcement_id", "user_id", name="uq_announcement_user"),)
+
+    id = Column(Integer, primary_key=True)
+    announcement_id = Column(Integer, ForeignKey("announcements.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # "sent" (llegó al tiro) | "template" (aviso por plantilla, el texto llega al responder)
+    # | "pending" (llega cuando vuelva a escribir) | "later" (llegó después) | "failed"
+    status = Column(String(12), nullable=False)
+    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow, nullable=False)
+
+
 class AlertLog(Base):
     """Log de alertas enviadas — reemplaza JSON state files gradualmente (Plan Fase 6)."""
 
