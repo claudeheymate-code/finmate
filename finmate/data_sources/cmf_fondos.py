@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 URL = "https://www.cmfchile.cl/institucional/estadisticas/fm.fm_bpr_dia.php"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; Finmate/1.0; +https://web-production-3626a.up.railway.app)"}
 TIMEOUT = 60
+XLS_MAGIC = b"\xd0\xcf\x11\xe0"  # inicio de un .xls binario (OLE2)
 
 # Tipo de fondo según la CMF (columna "Tipo de fondo (2)" del Excel)
 TIPOS = {
@@ -105,10 +106,15 @@ def download_day(day: dt.date) -> bytes | None:
     }
     r = httpx.get(URL, params=params, headers=HEADERS, timeout=TIMEOUT, follow_redirects=True)
     r.raise_for_status()
-    content = r.content
-    if not content or content[:1] == b"<" or content.lstrip()[:1] == b"<":
-        return None  # página HTML: "No se encuentran datos"
-    return content
+    content = r.content or b""
+    if content[:4] == XLS_MAGIC:
+        return content
+    text = content[:3000].decode("latin-1", "ignore")
+    if "No se encuentran datos" in text:
+        return None  # ese día la CMF no publicó datos
+    snippet = re.sub(r"<[^>]+>", " ", text)
+    snippet = re.sub(r"\s+", " ", snippet).strip()[:160]
+    raise RuntimeError(f"la CMF devolvió una página inesperada (HTTP {r.status_code}): {snippet or 'vacía'}")
 
 
 def _num(v):
