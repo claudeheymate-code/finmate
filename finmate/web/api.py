@@ -28,7 +28,7 @@ api_bp = Blueprint("api", __name__)
 
 _SYMBOL_RE = re.compile(r"^[A-Z0-9.\-]{1,10}$")
 _TONOS = {"profesional", "casual", "amigo"}
-_PERSONALITY_INT = ("humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador")
+_PERSONALITY_INT = ("humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador", "emojis")
 _NEWS_TIPOS = ("ticker", "sector", "pais", "keyword")
 
 
