@@ -111,6 +111,33 @@ def send_buttons(to: str, body: str, buttons: list) -> bool:
     })
 
 
+def upload_media(content: bytes, mime_type: str = "image/png", filename: str = "finmate.png") -> Optional[str]:
+    """Sube un archivo a WhatsApp (gratis) y devuelve su id para mandarlo, o None si falla."""
+    if not is_configured():
+        return None
+    try:
+        r = httpx.post(f"{GRAPH_BASE}/{META_GRAPH_VERSION}/{META_PHONE_NUMBER_ID}/media", timeout=30,
+                       headers={"Authorization": f"Bearer {META_WHATSAPP_TOKEN}"},
+                       data={"messaging_product": "whatsapp", "type": mime_type},
+                       files={"file": (filename, content, mime_type)})
+        if r.status_code >= 400:
+            logger.error(f"Meta: no pude subir el archivo ({r.status_code}): {r.text[:300]}")
+            return None
+        return r.json().get("id")
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Meta: error subiendo archivo: {type(e).__name__}")
+        return None
+
+
+def send_image(to: str, media_id: str, caption: str = "") -> bool:
+    """Imagen ya subida (upload_media). Igual que el texto: solo dentro de la ventana de 24 h."""
+    image = {"id": media_id}
+    if caption:
+        image["caption"] = caption[:1024]
+    return _post({"messaging_product": "whatsapp", "recipient_type": "individual", "to": to_meta(to),
+                  "type": "image", "image": image})
+
+
 def send_template(to: str, name: str, variables: Optional[dict] = None,
                   lang: Optional[str] = None) -> bool:
     """Plantilla aprobada en WhatsApp Manager. `variables` usa las mismas

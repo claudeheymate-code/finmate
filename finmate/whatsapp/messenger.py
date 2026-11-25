@@ -71,6 +71,15 @@ class WhatsAppMessenger:
                 logger.warning(f"No pude mandar botones a {to}: {e}")
         return self.send_message(to, fallback or body)
 
+    def send_image(self, to: str, png: bytes, caption: str = "") -> bool:
+        """Sube la imagen a WhatsApp y la manda con su pie de foto."""
+        from finmate.utils.text import prepare_for
+
+        media_id = meta_cloud.upload_media(png, "image/png", "finmate.png")
+        if not media_id:
+            return False
+        return meta_cloud.send_image(to, media_id, prepare_for(to, caption) if caption else "")
+
     def broadcast(self, body: str, recipients: Optional[list[str]] = None) -> dict:
         """Envía un mensaje a todos los destinatarios. Retorna el resultado por número."""
         targets = recipients or WHATSAPP_RECIPIENTS
