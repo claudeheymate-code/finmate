@@ -26,3 +26,27 @@
     <form class="inline" id="watch-form"><div class="field"><label for="f-wsym">Seguir un activo nuevo</label><input id="f-wsym" maxlength="10" required placeholder="Ej: AMZN"></div><button class="btn ghost" type="submit">Seguir</button></form>
     <div id="explain" style="margin-top:14px"></div></section>
 </div>
+<section class="card glass" id="fondos">
+  <div class="card-head"><div><h2>Fondos mutuos</h2><p id="fm-sub">Valor cuota oficial de la CMF, de todos los bancos y administradoras de Chile</p></div></div>
+  <h3 class="small strong muted" style="margin:6px 0 8px">Mis fondos</h3>
+  <ul class="list" id="fm-mine"></ul>
+  <h3 class="small strong muted" style="margin:18px 0 8px">Buscar y comparar fondos</h3>
+  <form class="inline fm-search" id="fm-form">
+    <div class="field"><label for="fm-q">Nombre del fondo</label><input id="fm-q" maxlength="60" placeholder="Ej: Enfoque, money market, acciones"></div>
+    <div class="field"><label for="fm-admin">Banco o administradora</label><select id="fm-admin"><option value="">Todas</option></select></div>
+    <div class="field"><label for="fm-tipo">Tipo de fondo</label><select id="fm-tipo">
+      <option value="">Todos</option><option value="1">Deuda corto plazo ≤ 90 días</option><option value="2">Deuda corto plazo ≤ 365 días</option>
+      <option value="3">Deuda mediano y largo plazo</option><option value="4">Mixto</option><option value="5">Accionario</option>
+      <option value="6">Libre inversión</option><option value="7">Estructurado</option></select></div>
+    <button class="btn" type="submit">Buscar</button>
+  </form>
+  <div id="fm-results" style="margin-top:12px"></div>
+  <h3 class="small strong muted" style="margin:18px 0 8px">Los que más han rentado</h3>
+  <div class="chips" id="fm-periods">
+    <button type="button" class="chip solid" data-period="1m">1 mes</button>
+    <button type="button" class="chip solid" data-period="ytd">En el año</button>
+    <button type="button" class="chip solid" data-period="12m" aria-pressed="true">12 meses</button>
+  </div>
+  <ol class="list tight" id="fm-rank" style="margin-top:10px"></ol>
+  <p class="faint small" style="margin-top:12px">Datos públicos de la CMF con 1 día de retraso. Rentabilidad nominal según el valor cuota; no es una recomendación de inversión. También puedes preguntarle al bot: “¿cómo va el Enfoque de LarrainVial?” o “compara los money market de BCI y Santander”.</p>
+</section>
