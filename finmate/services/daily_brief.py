@@ -392,6 +392,14 @@ def send_brief(user_id: int, phone: str, edge: str, name: str = "", tz_name: Opt
 
 def _build_and_send(user_id: int, phone: str, edge: str, name: str = "", tz_name: Optional[str] = None,
                     header: Optional[str] = None, note: str = "", messenger=None, free_text: bool = False) -> bool:
+    from finmate.services.usage import for_user
+
+    with for_user(phone):                      # el párrafo de Claude se anota a este usuario
+        return _build_and_send_inner(user_id, phone, edge, name, tz_name, header, note, messenger, free_text)
+
+
+def _build_and_send_inner(user_id: int, phone: str, edge: str, name: str = "", tz_name: Optional[str] = None,
+                          header: Optional[str] = None, note: str = "", messenger=None, free_text: bool = False) -> bool:
     from config.settings import TEMPLATE_MARKET_NOTIFY
     from finmate.services.workday import pop_held
 
