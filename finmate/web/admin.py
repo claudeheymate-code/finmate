@@ -228,6 +228,14 @@ def _prices() -> dict:
     return out
 
 
+def _claude_cost(d: dict, pr) -> float:
+    """USD de un bloque de consumo de Claude con el precio por millón de tokens del modelo."""
+    if not pr or pr.get("in") is None or pr.get("out") is None:
+        return None
+    return ((d.get("input_tokens", 0) + 1.25 * d.get("cache_write_tokens", 0) + 0.1 * d.get("cache_read_tokens", 0))
+            * pr["in"] + d.get("output_tokens", 0) * pr["out"]) / 1_000_000
+
+
 def _usage_with_costs(month: str = None) -> dict:
     from finmate.services.usage import get_usage
 
@@ -237,10 +245,8 @@ def _usage_with_costs(month: str = None) -> dict:
     known = True
     for model, d in sorted(u["claude"].items()):
         pr = prices["claude"].get(model)
-        cost = None
-        if pr and pr.get("in") is not None and pr.get("out") is not None:
-            cost = ((d.get("input_tokens", 0) + 1.25 * d.get("cache_write_tokens", 0) + 0.1 * d.get("cache_read_tokens", 0)) * pr["in"]
-                    + d.get("output_tokens", 0) * pr["out"]) / 1_000_000
+        cost = _claude_cost(d, pr)
+        if cost is not None:
             total += cost
         else:
             known = False
@@ -378,11 +384,14 @@ def _user_rows(with_lists: bool = False):
 
     s = get_session()
     try:
+        month_start = dt.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         turns = (s.query(ConversationTurn.user_id.label("uid"),
                          func.sum(case((ConversationTurn.role == "user", 1), else_=0)).label("n"),
-                         func.max(case((ConversationTurn.role == "user", ConversationTurn.timestamp), else_=None)).label("last"))
+                         func.max(case((ConversationTurn.role == "user", ConversationTurn.timestamp), else_=None)).label("last"),
+                         func.sum(case(((ConversationTurn.role == "user") & (ConversationTurn.timestamp >= month_start), 1),
+                                       else_=0)).label("nm"))
                  .group_by(ConversationTurn.user_id).subquery())
-        cols = [User, func.coalesce(turns.c.n, 0), turns.c.last]
+        cols = [User, func.coalesce(turns.c.n, 0), turns.c.last, func.coalesce(turns.c.nm, 0)]
         q = s.query(*cols).outerjoin(turns, turns.c.uid == User.id)
         if with_lists:
             wl = (s.query(WatchlistItem.user_id.label("uid"), func.count(WatchlistItem.id).label("n"))
@@ -399,10 +408,11 @@ def _user_rows(with_lists: bool = False):
                    "registered_at": u.registered_at.isoformat() if u.registered_at else None,
                    "created_at": u.created_at.isoformat() if u.created_at else None,
                    "last_message_at": last.isoformat() if last else None, "messages": int(n or 0),
+                   "month_messages": int(rec[3] or 0),
                    "window_open": bool(last) and (dt.datetime.utcnow() - last) < dt.timedelta(hours=23.5),
                    "status": u.access_status or "approved"}
             if with_lists:
-                row["watchlist"], row["portfolio"] = int(rec[3] or 0), int(rec[4] or 0)
+                row["watchlist"], row["portfolio"] = int(rec[4] or 0), int(rec[5] or 0)
             rows.append(row)
         return rows
     finally:
@@ -427,11 +437,68 @@ def _user_counts(rows=None) -> dict:
     }
 
 
+TIERS = (("bajo", "Uso bajo", 0, 29), ("medio", "Uso medio", 30, 150), ("alto", "Uso alto", 151, None))
+PROJECTION_MSGS = {"bajo": 20, "medio": 80, "alto": 300}   # mensajes al mes de un usuario típico de cada nivel
+
+
+def _add_costs(rows: list) -> dict:
+    """Agrega a cada usuario su costo del mes (Claude + plantillas de WhatsApp, medido por
+    usuario) y arma el resumen por nivel de uso. Devuelve el resumen."""
+    from finmate.services.usage import get_user_usage, phone_key, tracking_since
+
+    prices = _prices()
+    tpl = prices["whatsapp_template_usd"]
+    per_user = get_user_usage()
+    missing_price = False
+    for r in rows:
+        u = per_user.get(phone_key(r["phone"])) or {}
+        claude = 0.0
+        for model, d in (u.get("claude") or {}).items():
+            c = _claude_cost(d, prices["claude"].get(model))
+            if c is None:
+                missing_price = True
+            else:
+                claude += c
+        wa = u.get("wa") or {}
+        templates = int(wa.get("template", 0) or 0)
+        wa_cost = templates * float(tpl) if tpl is not None else 0.0
+        if templates and tpl is None:
+            missing_price = True
+        total = claude + wa_cost
+        r.update({"cost_claude_usd": round(claude, 4), "cost_whatsapp_usd": round(wa_cost, 4),
+                  "cost_usd": round(total, 4), "bot_messages": int(sum(v for k, v in wa.items() if k != "failed")),
+                  "templates": templates,
+                  "cost_per_message_usd": round(total / r["month_messages"], 5) if r["month_messages"] else None})
+
+    # Promedio del mes con TODO el consumo (incluye lo que se midió antes del detalle por usuario)
+    g = _usage_with_costs()
+    month_total = (g["claude_cost_usd"] or 0) + (g["whatsapp"]["cost_usd"] or 0)
+    month_msgs = sum(r["month_messages"] for r in rows)
+    avg_msg = (month_total / month_msgs) if month_msgs else None
+    approved = [r for r in rows if r["status"] == "approved"]
+    tiers = []
+    for key, label, lo, hi in TIERS:
+        group = [r for r in approved if r["month_messages"] >= lo and (hi is None or r["month_messages"] <= hi)]
+        n = len(group)
+        tiers.append({
+            "key": key, "label": label, "range": f"{lo}–{hi}" if hi is not None else f"{lo}+",
+            "users": n,
+            "avg_messages": round(sum(r["month_messages"] for r in group) / n, 1) if n else None,
+            "avg_cost_usd": round(sum(r["cost_usd"] for r in group) / n, 4) if n else None,
+            "typical_messages": PROJECTION_MSGS[key],
+            "projected_usd": round(avg_msg * PROJECTION_MSGS[key], 4) if avg_msg is not None else None,
+        })
+    return {"month": g["month"], "month_total_usd": round(month_total, 4), "month_messages": month_msgs,
+            "avg_cost_per_message_usd": round(avg_msg, 5) if avg_msg is not None else None,
+            "tracking_since": tracking_since(), "missing_price": missing_price, "tiers": tiers}
+
+
 @admin_bp.get("/api/usuarios")
 @admin_api
 def api_users():
     rows = _user_rows(with_lists=True)
-    return jsonify({"users": rows, "counts": _user_counts(rows)})
+    costs = _add_costs(rows)
+    return jsonify({"users": rows, "counts": _user_counts(rows), "costs": costs})
 
 
 @admin_bp.get("/api/badge")
@@ -468,11 +535,14 @@ def api_users_csv():
     labels = {"approved": "Con acceso", "pending": "Pendiente", "denied": "Rechazado"}
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["Nombre", "Correo", "WhatsApp", "Registro", "Inicio", "Último mensaje", "Mensajes", "Acceso"])
-    for r in _user_rows():
+    w.writerow(["Nombre", "Correo", "WhatsApp", "Registro", "Inicio", "Último mensaje", "Mensajes",
+                "Mensajes del mes", "Costo del mes (USD)", "Acceso"])
+    rows = _user_rows()
+    _add_costs(rows)
+    for r in rows:
         w.writerow([r["name"], r["email"], r["phone"], (r["registered_at"] or "")[:16].replace("T", " "),
                     (r["created_at"] or "")[:16].replace("T", " "), (r["last_message_at"] or "")[:16].replace("T", " "),
-                    r["messages"], labels.get(r["status"], r["status"])])
+                    r["messages"], r["month_messages"], f"{r['cost_usd']:.4f}", labels.get(r["status"], r["status"])])
     fname = f"finmate-usuarios-{dt.date.today().isoformat()}.csv"
     return Response("\ufeff" + buf.getvalue(), mimetype="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f"attachment; filename={fname}"})
