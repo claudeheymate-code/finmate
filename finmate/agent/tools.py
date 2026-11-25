@@ -439,6 +439,16 @@ TOOLS = [
             "required": ["action"],
         },
     },
+    # ── Imágenes del portafolio ────────────────────────────────────────────
+    {
+        "name": "send_portfolio_chart",
+        "description": "Dibuja una imagen del portafolio REAL del usuario y se la manda por WhatsApp. kind: 'torta' (distribución por activo), 'torta_clase' (renta variable/fija…), 'torta_sector', 'barras' (ganancia o pérdida % de cada posición) o 'tabla' (posiciones con precio, variación del día, valor y resultado). Usar cuando pida ver su portafolio en gráfico, torta, tabla o imagen. Si pide 'muéstrame mi portafolio' sin decir cómo, responde en texto y ofrece estas vistas en una línea. Después de mandarla, responde corto sin repetir las cifras.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"kind": {"type": "string", "enum": ["torta", "torta_clase", "torta_sector", "barras", "tabla"]}},
+            "required": ["kind"],
+        },
+    },
     # ── Perfil de noticias (notas 1-3) ─────────────────────────────────────
     {
         "name": "get_news_profile",
@@ -485,6 +495,12 @@ TOOLS = [
 # Vantage. 30s es prudente para no mostrar datos desactualizados.
 _MARKET_DATA_CACHE_TTL = 30
 
+def _charts():
+    from finmate.services import charts
+
+    return charts
+
+
 def _news_profile():
     from finmate.services import news_profile
 
@@ -499,6 +515,7 @@ _USER_SCOPED_TOOLS = {
     "get_watchlist": lambda user_id, _input: tool_get_watchlist(user_id),
     "add_to_watchlist": tool_add_to_watchlist,
     "remove_from_watchlist": tool_remove_from_watchlist,
+    "send_portfolio_chart":      lambda user_id, _input: _charts().tool_send_portfolio_chart(user_id, _input),
     "get_news_profile":          lambda user_id, _input: _news_profile().tool_get_news_profile(user_id),
     "set_news_preference":       lambda user_id, _input: _news_profile().tool_set_news_preference(user_id, _input),
     "get_personality":           lambda user_id, _input: tool_get_personality(user_id),
