@@ -117,3 +117,16 @@ li.sec-done { opacity: .62; }
 .nav-progress { position: fixed; z-index: 100; top: 0; left: 0; height: 3px; width: 0; background: var(--emerald);
   box-shadow: 0 0 8px rgba(0,155,119,.5); transition: width 2.5s cubic-bezier(.1,.7,.2,1); pointer-events: none; }
 .nav-progress.go { width: 85%; }
+
+/* ---------- Anuncios ---------- */
+.ann-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
+.ann-grid > .card { margin: 0; }
+.ann-count { text-align: right; margin-top: 6px; }
+.ann-aud { border: 0; padding: 0; margin: 18px 0 0; }
+.ann-aud legend { padding: 0; margin-bottom: 10px; }
+.wa-screen { margin-top: 14px; padding: 18px 14px; border-radius: 16px; background: #EFE7DD; min-height: 220px; }
+.wa-bubble { max-width: 92%; padding: 10px 12px 12px; border-radius: 4px 12px 12px 12px; background: #FFFFFF; box-shadow: 0 1px 1px rgba(0,0,0,.08); font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; color: #111B21; }
+.ann-item .ann-text { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(8,36,72,0.04); white-space: pre-wrap; font-size: 14px; }
+.ann-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ann-stats .st { font-size: 12px; }
+@media (max-width: 900px) { .ann-grid { grid-template-columns: 1fr; } }

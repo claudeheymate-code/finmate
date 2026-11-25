@@ -413,6 +413,46 @@
           ? "Jornada guardada: de " + body.workday_start + " a " + body.workday_end + "." : "Jornada desactivada.") + "</span>";
       } catch (err) { $("#w-msg").innerHTML = box("error-box", err.message); }
     });
+    // Tus noticias: dónde se ve cada nivel y lo aprendido por tema
+    if ($("#n-form")) {
+      const STATUS = { aprendiendo: "Aprendiendo", estable: "Aprendido", fijado: "Fijado por ti", descartado: "Ya no te lo muestro" };
+      const GROUP = { sym: "Empresa", tema: "Tema", tipo: "Tipo" };
+      function renderNews(d) {
+        $("#n-l3").value = d.display.level3; $("#n-l2").value = d.display.level2; $("#n-l1").value = d.display.level1;
+        $("#n-prof").innerHTML = d.profile.map((r) => {
+          const bar = Math.max(0, Math.min(100, ((r.score - 1) / 2) * 100));
+          const sel = '<select data-nkey="' + esc(r.key) + '" aria-label="Nivel de ' + esc(r.label) + '">' +
+            '<option value="auto"' + (r.manual ? "" : " selected") + ">Automático</option>" +
+            [3, 2, 1].map((n) => '<option value="' + n + '"' + (r.manual === n ? " selected" : "") + ">Fijar en " + n + "</option>").join("") + "</select>";
+          return '<li><span class="lvl lvl-' + r.level + '" aria-label="Nivel ' + r.level + '">' + r.level + "</span>" +
+            '<div class="grow"><p class="strong">' + esc(r.label) + '</p><p class="faint small">' + esc(GROUP[r.group] || "") + " · " +
+            esc(STATUS[r.status] || r.status) + " · " + r.ratings + (r.ratings === 1 ? " nota" : " notas") + "</p></div>" +
+            '<span class="n-bar" aria-hidden="true"><span style="width:' + bar.toFixed(0) + '%"></span></span>' +
+            '<div class="field" style="flex:0 0 150px">' + sel + "</div></li>";
+        }).join("") || '<li><p class="faint small">Todavía no calificas noticias. Por ahora te llegan como siempre.</p></li>';
+        $("#n-topic").innerHTML = d.topics.map((t) => '<option value="' + esc(t.key) + '">' + esc(t.label) + "</option>").join("");
+        document.querySelectorAll("[data-nkey]").forEach((el) => el.addEventListener("change", async () => {
+          const level = el.value === "auto" ? null : Number(el.value);
+          try { renderNews(await api("PUT", "/noticias/perfil", { key: el.dataset.nkey, level: level })); $("#n-add-msg").innerHTML = ""; }
+          catch (err) { $("#n-add-msg").innerHTML = box("error-box", err.message); }
+        }));
+      }
+      try { renderNews(await api("GET", "/noticias/perfil")); } catch (e) { $("#n-msg").innerHTML = box("error-box", e.message); }
+      $("#n-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          renderNews(await api("PUT", "/noticias/display", { level3: $("#n-l3").value, level2: $("#n-l2").value, level1: $("#n-l1").value }));
+          $("#n-msg").innerHTML = '<span class="up small">Guardado.</span>';
+        } catch (err) { $("#n-msg").innerHTML = box("error-box", err.message); }
+      });
+      $("#n-add").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          renderNews(await api("PUT", "/noticias/perfil", { key: $("#n-topic").value, level: Number($("#n-lvl").value) }));
+          $("#n-add-msg").innerHTML = '<span class="up small">Listo, quedó fijado.</span>';
+        } catch (err) { $("#n-add-msg").innerHTML = box("error-box", err.message); }
+      });
+    }
     $("#a-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const body = { watchlist_threshold_pct: $("#a-thr").value, weekly_summary_enabled: $("#a-weekly").checked };

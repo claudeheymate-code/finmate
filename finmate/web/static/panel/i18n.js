@@ -15,6 +15,28 @@
   document.documentElement.lang = lang;
 
   var DICT = {
+    "Tus noticias": "Your news",
+    "Nivel 3 · muy relevante": "Level 3 · very relevant",
+    "Nivel 2 · algo relevante": "Level 2 · somewhat relevant",
+    "Nivel 1 · poco relevante": "Level 1 · not very relevant",
+    "Lo más importante para ti": "What matters most to you",
+    "Vale la pena saberlo, sin apuro": "Worth knowing, no rush",
+    "Lo que no te suele interesar": "What you usually don't care about",
+    "Por el chat": "In the chat",
+    "En el resumen": "In the summary",
+    "Solo si pregunto": "Only if I ask",
+    "Cada vez menos": "Less and less",
+    "Siempre en el resumen": "Always in the summary",
+    "Lo que he aprendido de ti": "What I've learned about you",
+    "Fijar un tema": "Pin a topic",
+    "Fijar": "Pin",
+    "Automático": "Automatic",
+    "Aprendiendo": "Learning",
+    "Aprendido": "Learned",
+    "Fijado por ti": "Pinned by you",
+    "Ya no te lo muestro": "No longer shown",
+    "Listo, quedó fijado.": "Done, it's pinned.",
+    "Todavía no calificas noticias. Por ahora te llegan como siempre.": "You haven't rated any news yet. For now they arrive as usual.",
     // Navegación y barra superior
     "Resumen": "Overview", "Inversiones": "Investments", "Gastos": "Expenses", "Ajustes": "Settings", "Feedback": "Feedback",
     "Mis inversiones": "My investments", "Mis gastos": "My expenses", "Ajustes y personalidad": "Settings and personality",

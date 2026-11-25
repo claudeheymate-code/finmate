@@ -46,7 +46,7 @@
     } catch (e) { if (shown === null && onError) onError(e); }
   }
   // Con la página ya lista, trae en segundo plano los datos de las otras pestañas
-  const PRELOAD = ["/badge", "/resumen", "/usuarios", "/inbox", "/seguridad", "/fuentes"];
+  const PRELOAD = ["/badge", "/resumen", "/usuarios", "/inbox", "/seguridad", "/anuncios", "/fuentes"];
   function preloadOthers() {
     const later = window.requestIdleCallback || ((f) => setTimeout(f, 300));
     setTimeout(() => later(async () => {
@@ -216,7 +216,9 @@
       <td><p class="cell-title">${esc(u.name || "Sin nombre")}</p>${u.email ? `<p class="cell-sub"><a href="mailto:${esc(u.email)}">${esc(u.email)}</a></p>` : '<p class="cell-sub faint">Sin correo</p>'}</td>
       <td class="nowrap" data-label="WhatsApp">+${esc(u.phone.replace(/^\+/, ""))}</td>
       <td class="nowrap hide-sm" data-label="Inicio">${fmtDate(u.created_at)}</td>
-      <td class="nowrap" data-label="Último mensaje" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}</td>
+      <td class="nowrap" data-label="Último mensaje" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}${u.status === "approved" ? (u.window_open
+        ? ' <span class="st ok" title="Escribió en las últimas 24 h: el bot puede mandarle avisos y resúmenes">24 h</span>'
+        : ' <span class="st wait" title="No escribe hace más de 24 h: WhatsApp no deja mandarle nada hasta que escriba. Sus resúmenes y avisos se guardan y le llegan cuando vuelva a escribir.">Ventana cerrada</span>') : ""}</td>
       <td class="r" data-label="Mensajes">${num(u.messages)}</td><td class="r hide-sm">${num(u.watchlist)}</td><td class="r hide-sm">${num(u.portfolio)}</td>
       <td data-label="Acceso">${stPill(u.status)}</td>
       <td><div class="row-actions">${actionButtons(u)}</div></td></tr>`).join("")
@@ -411,6 +413,125 @@
     });
   }
 
+  // ---------- Anuncios ----------
+  const AN_EXAMPLE = {
+    title: "Ahora tus noticias se adaptan a ti",
+    body: "Desde hoy, cada noticia que te mande trae botones 1, 2 y 3 para que me digas qué tan relevante fue (3 = muy relevante).\n\n" +
+      "*Qué pasa con cada nivel*\n" +
+      "• 3: te llega por el chat durante el día\n" +
+      "• 2: va en tus resúmenes de inicio y cierre de jornada\n" +
+      "• 1: solo si me preguntas por el tema\n\n" +
+      "No es blanco o negro: si algo te parece 1, no desaparece de inmediato. Te lo voy mostrando cada vez menos, hasta que tus notas confirmen que no te interesa.\n\n" +
+      "Puedes ver y cambiar lo que aprendí en tu app, en Ajustes → Tus noticias.",
+  };
+  // Formato de WhatsApp: *negrita*, _cursiva_, ~tachado~
+  function waFormat(text) {
+    return esc(text)
+      .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?:;]|$)/g, "$1<strong>$2</strong>")
+      .replace(/(^|[\s(])_([^_\n]+)_(?=[\s).,!?:;]|$)/g, "$1<em>$2</em>")
+      .replace(/(^|[\s(])~([^~\n]+)~(?=[\s).,!?:;]|$)/g, "$1<s>$2</s>");
+  }
+  const AN_ST = { sent: ["ok", "Llegó"], later: ["ok", "Llegó después"], template: ["wait", "Aviso por plantilla"],
+                  pending: ["wait", "Espera que escriba"], failed: ["no", "No llegó"] };
+  function pageAnuncios() {
+    const DKEY = "fm-admin-anuncio-borrador";
+    let aud = "test", confirmAll = false, reach = { total: 0, now: 0, later: 0 }, testReach = { total: 0 };
+    const title = $("#an-title"), body = $("#an-body");
+    function message() {
+      const t = title.value.trim().replace(/\*/g, ""), b = body.value.trim();
+      return b ? (t ? "📣 *" + t + "*\n\n" + b : "📣 " + b) : "";
+    }
+    function paint() {
+      const m = message();
+      $("#an-preview").innerHTML = m ? waFormat(m) : '<span class="faint">Tu anuncio aparecerá aquí.</span>';
+      $("#an-count").textContent = body.value.length + " / 3000";
+      try { localStorage.setItem(DKEY, JSON.stringify({ t: title.value, b: body.value })); } catch (e) {}
+    }
+    function paintReach() {
+      $$("#an-aud .chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.aud === aud)));
+      $("#an-reach").textContent = aud === "test"
+        ? `Te llega a ti (${testReach.total} ${testReach.total === 1 ? "número de admin" : "números de admin"}), para revisar cómo se ve.`
+        : `${reach.total} usuarios con acceso: ${reach.now} lo reciben ahora y ${reach.later} cuando vuelvan a escribir (WhatsApp no deja escribirles antes).`;
+      resetConfirm();
+    }
+    function resetConfirm() {
+      confirmAll = false;
+      $("#an-send").textContent = aud === "test" ? "Enviar prueba" : `Enviar a ${reach.total} usuarios`;
+      $("#an-send").disabled = aud === "all" && !reach.total;
+      $("#an-cancel").hidden = true;
+    }
+    function renderHistory(list) {
+      $("#an-list").innerHTML = list.map((a) => {
+        const c = a.counts, stats = Object.keys(AN_ST).filter((k) => c[k]).map((k) =>
+          `<span class="st ${AN_ST[k][0]}">${AN_ST[k][1]}: ${c[k]}</span>`).join("");
+        return `<li class="ann-item" style="display:block"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-start">
+          <div><p class="strong">${esc(a.title || a.body.slice(0, 60) + (a.body.length > 60 ? "…" : ""))}</p>
+            <p class="faint small">${fmtDate(a.created_at, true)} · ${a.audience === "test" ? "Prueba" : "Todos los usuarios"} · ${a.delivered} de ${a.total} ya lo tienen</p></div>
+          <div class="row-actions"><button class="btn ghost sm" type="button" data-an-toggle>Ver texto</button>
+            ${c.pending ? `<button class="btn ghost sm" type="button" data-an-stop="${a.id}">Dejar de entregar</button>` : ""}</div></div>
+          <div class="ann-stats">${stats}</div><div class="ann-text" hidden>${waFormat(a.text)}</div></li>`;
+      }).join("") || '<li class="empty">Todavía no mandas anuncios.</li>';
+      $$("[data-an-toggle]").forEach((b) => b.addEventListener("click", () => {
+        const t = $(".ann-text", b.closest("li")); t.hidden = !t.hidden; b.textContent = t.hidden ? "Ver texto" : "Ocultar";
+      }));
+      $$("[data-an-stop]").forEach((b) => b.addEventListener("click", async () => {
+        try { const r = await api("POST", `/anuncios/${b.dataset.anStop}/cancelar`); renderHistory(r.history); }
+        catch (e) { $("#an-msg").innerHTML = box("error-box", e.message); }
+      }));
+    }
+    function apply(d) {
+      reach = d.reach || reach; testReach = d.test_reach || testReach;
+      renderHistory(d.history || []); paintReach();
+    }
+    try { const dr = JSON.parse(localStorage.getItem(DKEY) || "null"); if (dr) { title.value = dr.t || ""; body.value = dr.b || ""; } } catch (e) {}
+    paint();
+    [title, body].forEach((el) => el.addEventListener("input", () => { paint(); resetConfirm(); }));
+    $("#an-example").addEventListener("click", () => {
+      if (body.value.trim() && body.value.trim() !== AN_EXAMPLE.body && !confirmReplace()) return;
+      title.value = AN_EXAMPLE.title; body.value = AN_EXAMPLE.body; paint();
+    });
+    let replaceArmed = false;
+    function confirmReplace() {
+      if (replaceArmed) { replaceArmed = false; return true; }
+      replaceArmed = true; $("#an-msg").innerHTML = '<span class="faint small">Ya tienes un texto. Toca "Usar ejemplo" otra vez para reemplazarlo.</span>';
+      setTimeout(() => { replaceArmed = false; }, 5000); return false;
+    }
+    $$("#an-aud .chip").forEach((c) => c.addEventListener("click", () => { aud = c.dataset.aud; paintReach(); }));
+    $("#an-ai").addEventListener("click", async () => {
+      const b = $("#an-ai"); b.disabled = true; const old = b.textContent; b.textContent = "Redactando…";
+      try {
+        const notes = (title.value.trim() ? title.value.trim() + "\n" : "") + body.value;
+        const r = await api("POST", "/anuncios/redactar", { notes: notes });
+        if (r.title) title.value = r.title; body.value = r.body; paint(); resetConfirm();
+        $("#an-msg").innerHTML = okMsg("Listo. Revísalo y ajústalo antes de enviar.");
+      } catch (e) { $("#an-msg").innerHTML = box("error-box", e.message); }
+      b.disabled = false; b.textContent = old;
+    });
+    $("#an-cancel").addEventListener("click", resetConfirm);
+    $("#an-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (body.value.trim().length < 5) { $("#an-msg").innerHTML = box("error-box", "Escribe el mensaje del anuncio."); return; }
+      if (aud === "all" && !confirmAll) {      // segundo toque para confirmar: no se puede deshacer
+        confirmAll = true; $("#an-send").textContent = `Sí, enviar a ${reach.total} usuarios`; $("#an-cancel").hidden = false;
+        $("#an-msg").innerHTML = '<span class="faint small">Un anuncio enviado no se puede borrar de WhatsApp. ¿Confirmas?</span>'; return;
+      }
+      const btn = $("#an-send"); btn.disabled = true;
+      try {
+        const r = await api("POST", "/anuncios", { title: title.value, body: body.value, audience: aud });
+        apply(r);
+        const c = r.announcement.counts;
+        if (aud === "all") {
+          title.value = ""; body.value = ""; paint();
+          $("#an-msg").innerHTML = okMsg(`Enviado: ${c.sent} lo recibieron ahora, ${c.pending + c.template} cuando vuelvan a escribir${c.failed ? `, ${c.failed} fallaron` : ""}.`);
+        } else {
+          $("#an-msg").innerHTML = c.failed ? box("error-box", "La prueba no llegó. Revisa la configuración de WhatsApp.") : okMsg("Prueba enviada. Revisa tu WhatsApp.");
+        }
+      } catch (err) { $("#an-msg").innerHTML = box("error-box", err.message); }
+      btn.disabled = false; resetConfirm();
+    });
+    live("/anuncios", apply, (e) => { $("#an-list").innerHTML = `<li>${box("error-box", e.message)}</li>`; });
+  }
+
   // Barra fina arriba mientras abre la otra pestaña (así se nota que está cargando)
   function showProgress() {
     let bar = $(".nav-progress");
@@ -498,5 +619,6 @@
     if (page === "admin-usuarios") pageUsuarios();
     if (page === "admin-inbox") pageInbox();
     if (page === "admin-fuentes") pageFuentes();
+    if (page === "admin-anuncios") pageAnuncios();
   }
 })();

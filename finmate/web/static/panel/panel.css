@@ -234,3 +234,12 @@ table.cmp { min-width: 0; }
   .cmp-cat .cat-name { overflow: hidden; text-overflow: ellipsis; }
   .cmp .dot { width: 8px !important; height: 8px !important; flex: 0 0 8px; }
 }
+
+/* Tus noticias: nivel aprendido por tema */
+.lvl { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.lvl-3 { background: #EAF7F2; color: var(--up); }
+.lvl-2 { background: #EEF3FA; color: #1F4E8C; }
+.lvl-1 { background: #FFF1EA; color: var(--down); }
+.n-bar { flex: 0 0 90px; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.n-bar > span { display: block; height: 100%; background: var(--emerald); }
+@media (max-width: 640px) { #noticias .n-sel { flex: 1 1 100% !important; } }
