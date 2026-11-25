@@ -712,3 +712,14 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
   escritorio (celdas inline); ahora `td/th.hide-sm` son `table-cell`.
 - La carpeta local NO tiene estos cambios (se hicieron sobre el clon de GitHub): hacer pull/copiar.
 - 209/209 tests (`tests/test_costos_usuarios.py`).
+
+## 25 nov 2026 — Imágenes del portafolio por WhatsApp
+
+- Tool `send_portfolio_chart` (`kind`: `torta`, `torta_clase`, `torta_sector`, `barras`, `tabla`):
+  el bot genera un PNG con matplotlib en el servidor (`finmate/services/charts.py`, colores de la
+  marca, máx. 7 porciones / 14 filas) y lo manda como imagen (`meta_cloud.upload_media` +
+  `send_image`; `messenger.send_image`). Cuando el usuario pide su portafolio, el bot ofrece
+  torta, barras o tabla (sección IMÁGENES DEL PORTAFOLIO del prompt).
+- Costos: generar la imagen US$0 (CPU propia, <1 s); subir media a Meta gratis; la imagen cuenta
+  como mensaje de servicio (gratis hasta 1.000/mes por número desde oct 2026, después se cobra).
+- Dependencia nueva `matplotlib==3.11.2`. Tests: `tests/test_imagenes_portafolio.py`. 218/218.
