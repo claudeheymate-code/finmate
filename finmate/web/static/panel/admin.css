@@ -67,12 +67,13 @@
 .badge { position: absolute; top: 4px; right: 4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
   background: var(--down); color: #FFFFFF; font: 700 11px/18px Inter, sans-serif; text-align: center; }
 .hide-sm { display: inline; }
+td.hide-sm, th.hide-sm { display: table-cell; }   /* en tablas, inline desarma las columnas */
 
 @media (max-width: 760px) {
   .admin .rail a[aria-current="page"] { background: transparent; color: #FFFFFF; }
   .admin-main { touch-action: pan-x pan-y; }
   .admin .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .hide-sm { display: none; }
+  .hide-sm, td.hide-sm, th.hide-sm { display: none; }
   .admin-stats { grid-template-columns: 1fr 1fr; }
   .badge { top: 2px; right: 18%; }
 }
@@ -130,3 +131,9 @@ li.sec-done { opacity: .62; }
 .ann-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .ann-stats .st { font-size: 12px; }
 @media (max-width: 900px) { .ann-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Costo por usuario ---------- */
+.tier-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.tier { padding: 14px 16px; border-radius: 14px; background: rgba(8,36,72,0.04); }
+.tier .value { font-size: 26px; margin-top: 6px; }
+@media (max-width: 760px) { .tier-grid { grid-template-columns: 1fr; } }

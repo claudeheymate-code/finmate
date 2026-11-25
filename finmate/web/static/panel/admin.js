@@ -219,10 +219,12 @@
       <td class="nowrap" data-label="Último mensaje" title="${esc(fmtDate(u.last_message_at, true))}">${ago(u.last_message_at)}${u.status === "approved" ? (u.window_open
         ? ' <span class="st ok" title="Escribió en las últimas 24 h: el bot puede mandarle avisos y resúmenes">24 h</span>'
         : ' <span class="st wait" title="No escribe hace más de 24 h: WhatsApp no deja mandarle nada hasta que escriba. Sus resúmenes y avisos se guardan y le llegan cuando vuelva a escribir.">Ventana cerrada</span>') : ""}</td>
-      <td class="r" data-label="Mensajes">${num(u.messages)}</td><td class="r hide-sm">${num(u.watchlist)}</td><td class="r hide-sm">${num(u.portfolio)}</td>
+      <td class="r" data-label="Mensajes" title="Este mes: ${num(u.month_messages)}">${num(u.messages)}<p class="cell-sub">${num(u.month_messages)} este mes</p></td>
+      <td class="r nowrap" data-label="Costo del mes" title="Claude ${esc(money(u.cost_claude_usd, "USD"))} · WhatsApp ${esc(money(u.cost_whatsapp_usd, "USD"))} (${num(u.templates)} plantillas) · ${num(u.bot_messages)} mensajes del bot">${money(u.cost_usd, "USD")}${u.cost_per_message_usd != null ? `<p class="cell-sub">${money(u.cost_per_message_usd, "USD")} por mensaje</p>` : ""}</td>
+      <td class="r hide-sm">${num(u.watchlist)}</td><td class="r hide-sm">${num(u.portfolio)}</td>
       <td data-label="Acceso">${stPill(u.status)}</td>
       <td><div class="row-actions">${actionButtons(u)}</div></td></tr>`).join("")
-      : '<tr><td colspan="9" class="empty">No hay usuarios con ese filtro.</td></tr>';
+      : '<tr><td colspan="10" class="empty">No hay usuarios con ese filtro.</td></tr>';
     bindAccess(tb, loadUsers, "#us-msg");
   }
   function actionButtons(u) {
@@ -248,7 +250,22 @@
     const c = d.counts || {};
     $("#us-approved").textContent = num(c.approved); $("#us-active").textContent = num(c.active_7d);
     $("#us-pending").textContent = num(c.pending); $("#us-msgs").textContent = num(c.messages);
+    renderCosts(d.costs);
     renderUsers();
+  }
+  function renderCosts(k) {
+    if (!k || !$("#us-tiers")) return;
+    $("#us-tiers").innerHTML = k.tiers.map((t) => `<div class="tier">
+      <p class="label">${esc(t.label)} <span class="faint">· ${esc(t.range)} mensajes al mes</span></p>
+      <p class="value num">${t.projected_usd != null ? money(t.projected_usd, "USD") : "—"}<span class="faint small"> /mes</span></p>
+      <p class="faint small">Estimado para ~${num(t.typical_messages)} mensajes al mes</p>
+      <p class="small" style="margin-top:8px">${t.users ? `${num(t.users)} ${t.users === 1 ? "usuario" : "usuarios"} hoy · promedio real ${money(t.avg_cost_usd, "USD")} con ${num(t.avg_messages)} mensajes` : '<span class="faint">Nadie en este nivel todavía</span>'}</p>
+    </div>`).join("");
+    const since = k.tracking_since ? fmtDate(k.tracking_since, true) : "hoy";
+    $("#us-costs-note").textContent = `Mes ${k.month}: ${money(k.month_total_usd, "USD")} en total por ${num(k.month_messages)} mensajes de usuarios`
+      + (k.avg_cost_per_message_usd != null ? ` (≈ ${money(k.avg_cost_per_message_usd, "USD")} por mensaje, incluye resúmenes y avisos).` : ".")
+      + ` El costo de cada usuario se mide desde ${since}; lo anterior solo entra en el total y en el estimado.`
+      + (k.missing_price ? " Falta el precio de algún modelo o de las plantillas en Costos: esos montos no están sumados." : "");
   }
   function pageUsuarios() {
     $("#us-q").addEventListener("input", renderUsers);
@@ -256,7 +273,7 @@
       $$("#us-filter .chip").forEach((x) => x.setAttribute("aria-pressed", "false")); ch.setAttribute("aria-pressed", "true");
       UFILTER = ch.dataset.f; renderUsers();
     }));
-    live("/usuarios", showUsers, (e) => { $("#us-rows").innerHTML = `<tr><td colspan="9">${box("error-box", e.message)}</td></tr>`; });
+    live("/usuarios", showUsers, (e) => { $("#us-rows").innerHTML = `<tr><td colspan="10">${box("error-box", e.message)}</td></tr>`; });
   }
 
   // ---------- Inbox ----------
