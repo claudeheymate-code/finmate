@@ -686,3 +686,11 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
   bot ya no responde "Anotado" ni guarda la nota en el historial; `news_profile.RATED` marca que se
   registró, `handle_message` devuelve "" y `webhook` no manda nada. WhatsApp igual muestra el botón
   tocado como mensaje del usuario (no se puede ocultar). 201/201 tests.
+- **25 nov, 12:30 — asteriscos y emojis:** Claude escribía `**negrita**` (Markdown) y en WhatsApp
+  quedaban los asteriscos a la vista. `finmate/utils/text.py`: `whatsapp_markup` (** → *, ## → *título*,
+  [t](url) → "t: url", __ → _, ~~ → ~) se aplica a TODO mensaje en `WhatsAppMessenger.send_message`
+  y `send_buttons`; el prompt pide un solo asterisco. Ajuste nuevo de personalidad **Emojis 1-10**
+  (`personality_settings.emojis`, default 4): va en el prompt (1-2 ninguno, listas con •; 5-7
+  emojis en listas; 8-10 muchos) y con 1-2 `prepare_for` quita los emojis de todo lo que sale
+  (resúmenes, avisos, noticias), dejando ▲▼•. Panel → Ajustes → Personalidad: slider "Emojis".
+  Tool `set_personality` acepta `emojis`. 206/206 tests (`tests/test_formato_whatsapp.py`).
