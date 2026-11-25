@@ -30,10 +30,10 @@ from finmate.db.state_store import load_json, save_json
 logger = logging.getLogger(__name__)
 
 KEEP_DAILY_DAYS = 45
-EMPTY_KEY = "cmf:empty_days"        # días que la CMF respondió sin datos (no volver a bajarlos)
-BACKFILL_KEY = "cmf:backfill_done"
+EMPTY_KEY = "cmf:empty_days_v2"        # días que la CMF respondió sin datos (no volver a bajarlos)
+BACKFILL_KEY = "cmf:backfill_done_v2"
 LAST_RUN_KEY = "cmf:last_refresh"
-PROGRESS_KEY = "cmf:backfill_progress"
+PROGRESS_KEY = "cmf:backfill_progress_v2"
 MIN_PATRIMONIO_RANKING = 1000       # millones: deja fuera series muy chicas del ranking
 MIN_PARTICIPES_RANKING = 30
 
@@ -201,8 +201,10 @@ def backfill(months: int = 13, force: bool = False) -> dict:
                     n = _fetch_and_store(day)
                 except Exception as e:  # noqa: BLE001
                     logger.warning(f"CMF backfill: error en {day}: {e}")
-                    return {"added": added, "error": str(e)[:200]}
-                time.sleep(1.5)
+                    save_json(PROGRESS_KEY, {"done": i - 1, "total": len(targets), "error": str(e)[:200],
+                                             "at": dt.datetime.utcnow().isoformat(timespec="seconds")})
+                    return {"added": added, "error": str(e)[:200]}  # sin marcar lista: se reintenta
+                time.sleep(3)
                 if n:
                     added.append(day.isoformat())
                     logger.info(f"CMF backfill: guardé {day} ({n} series)")
