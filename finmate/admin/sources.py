@@ -107,6 +107,8 @@ def _t_cmf_fondos():
             return "historia de 13 meses lista"
         pr = st.get("progress") or {}
         started = funds.start_backfill_thread()
+        if pr.get("error") and not st.get("busy"):
+            return f"historia: error al bajar ({pr['error'][:120]}); se reintenta"
         if pr.get("total"):
             return f"cargando historia: {pr.get('done', 0)}/{pr['total']} meses"
         return "cargando historia de 13 meses en segundo plano" if started or st.get("busy") else "historia pendiente"
