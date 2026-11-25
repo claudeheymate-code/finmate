@@ -13,6 +13,7 @@ from flask import Blueprint, g, jsonify, request
 
 from config import settings
 from finmate.db import finance_repo, news_repo, personality_repo, repository, settings_repo
+from finmate.services import funds as funds_service
 from finmate.services import portfolio as portfolio_service
 from finmate.services import quotes
 from finmate.web.auth import (
@@ -259,6 +260,95 @@ def watchlist_add():
 def watchlist_delete(symbol):
     ok = repository.remove_from_watchlist(g.user.id, _symbol(symbol))
     return jsonify({"ok": True}) if ok else _err("Ese activo no estaba en tu watchlist.", 404)
+
+
+
+# ---------------------------------------------------------------------------
+# Fondos mutuos chilenos (CMF): buscar en todos los bancos y "mis fondos"
+# ---------------------------------------------------------------------------
+_RUN_RE = re.compile(r"^\d{3,6}-[\dK]$")
+_SERIE_RE = re.compile(r"^[A-Z0-9\-_. ]{1,20}$")
+
+
+def _run(raw) -> str:
+    r = (raw or "").strip().upper()
+    return r if _RUN_RE.match(r) else ""
+
+
+def _serie(raw) -> str:
+    r = (raw or "").strip().upper()
+    return r if _SERIE_RE.match(r) else ""
+
+
+def _int_arg(name):
+    try:
+        return int(request.args.get(name)) if request.args.get(name) else None
+    except ValueError:
+        return None
+
+
+@api_bp.get("/fondos/estado")
+@api_login_required
+def fondos_estado():
+    st = funds_service.status()
+    return jsonify({"latest": st["latest"], "has_data": bool(st["latest"]), "admins": funds_service.admins()})
+
+
+@api_bp.get("/fondos/buscar")
+@api_login_required
+def fondos_buscar():
+    q = (request.args.get("q") or "")[:60]
+    admin = (request.args.get("admin") or "")[:40] or None
+    items = funds_service.search(q, admin=admin, tipo=_int_arg("tipo"), limit=20)
+    return jsonify({"items": items, "latest": funds_service.status()["latest"]})
+
+
+@api_bp.get("/fondos/fondo/<run>")
+@api_login_required
+def fondos_fondo(run):
+    run = _run(run)
+    rows = funds_service.fund_series(run) if run else []
+    return jsonify({"items": rows}) if rows else _err("No encontré ese fondo.", 404)
+
+
+@api_bp.get("/fondos/ranking")
+@api_login_required
+def fondos_ranking():
+    period = request.args.get("periodo") or "12m"
+    if period not in ("1m", "ytd", "12m"):
+        period = "12m"
+    rows = funds_service.ranking(period, tipo=_int_arg("tipo"), admin=(request.args.get("admin") or None), limit=10)
+    return jsonify({"items": rows, "periodo": period})
+
+
+@api_bp.get("/fondos/mios")
+@api_login_required
+def fondos_mios():
+    return jsonify({"items": funds_service.my_funds(g.user.id)})
+
+
+@api_bp.post("/fondos/mios")
+@api_login_required
+def fondos_seguir():
+    b = _body()
+    run, serie = _run(b.get("run")), _serie(b.get("serie"))
+    if not run or not serie:
+        return _err("Elige un fondo y una serie.")
+    cuotas = _num(b.get("cuotas"))
+    if cuotas is not None and (cuotas < 0 or cuotas > 1e12):
+        return _err("Cantidad de cuotas inválida.")
+    try:
+        funds_service.follow(g.user.id, run, serie, cuotas)
+    except ValueError as e:
+        return _err(str(e), 404)
+    return jsonify({"ok": True}), 201
+
+
+@api_bp.delete("/fondos/mios/<run>/<serie>")
+@api_login_required
+def fondos_dejar(run, serie):
+    n = funds_service.unfollow(g.user.id, _run(run), _serie(serie) or None)
+    return jsonify({"ok": True}) if n else _err("No seguías ese fondo.", 404)
 
 
 @api_bp.get("/mercado/explicar/<symbol>")
