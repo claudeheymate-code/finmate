@@ -33,10 +33,12 @@ KEEP_DAILY_DAYS = 45
 EMPTY_KEY = "cmf:empty_days"        # días que la CMF respondió sin datos (no volver a bajarlos)
 BACKFILL_KEY = "cmf:backfill_done"
 LAST_RUN_KEY = "cmf:last_refresh"
+PROGRESS_KEY = "cmf:backfill_progress"
 MIN_PATRIMONIO_RANKING = 1000       # millones: deja fuera series muy chicas del ranking
 MIN_PARTICIPES_RANKING = 30
 
 _lock = threading.Lock()
+_backfill_thread: threading.Thread | None = None
 _snap_cache: dict = {}              # date -> {(run, serie): row}
 _dates_cache: dict = {"at": 0.0, "dates": []}
 
@@ -158,6 +160,7 @@ def refresh(days_back: int = 7) -> dict:
                 break
             if n:
                 added.append(day.isoformat())
+                logger.info(f"CMF fondos: guardé {day} ({n} series)")
             time.sleep(1)
         pruned = prune()
         save_json(LAST_RUN_KEY, {"at": dt.datetime.utcnow().isoformat(timespec="seconds"),
@@ -186,7 +189,10 @@ def backfill(months: int = 13, force: bool = False) -> dict:
     with _lock:
         have = set(stored_dates(fresh=True))
         added = []
-        for target in _month_end_targets(months):
+        targets = _month_end_targets(months)
+        for i, target in enumerate(targets, 1):
+            save_json(PROGRESS_KEY, {"done": i - 1, "total": len(targets),
+                                     "at": dt.datetime.utcnow().isoformat(timespec="seconds")})
             for back in range(0, 5):  # si el último día no tiene datos, prueba días anteriores
                 day = target - dt.timedelta(days=back)
                 if day in have:
@@ -199,9 +205,23 @@ def backfill(months: int = 13, force: bool = False) -> dict:
                 time.sleep(1.5)
                 if n:
                     added.append(day.isoformat())
+                    logger.info(f"CMF backfill: guardé {day} ({n} series)")
                     break
         save_json(BACKFILL_KEY, {"at": dt.datetime.utcnow().isoformat(timespec="seconds"), "added": added})
+        save_json(PROGRESS_KEY, {"done": len(targets), "total": len(targets),
+                                 "at": dt.datetime.utcnow().isoformat(timespec="seconds")})
+        logger.info(f"CMF backfill listo: {len(added)} cierres de mes guardados")
         return {"added": added}
+
+
+def start_backfill_thread() -> bool:
+    """Arranca la carga de historia en segundo plano (si no está corriendo ni hecha)."""
+    global _backfill_thread
+    if load_json(BACKFILL_KEY, None) or (_backfill_thread and _backfill_thread.is_alive()):
+        return False
+    _backfill_thread = threading.Thread(target=backfill, name="cmf-backfill", daemon=True)
+    _backfill_thread.start()
+    return True
 
 
 def status() -> dict:
@@ -212,6 +232,8 @@ def status() -> dict:
         "oldest": dates[-1].isoformat() if dates else None,
         "last_refresh": load_json(LAST_RUN_KEY, None),
         "backfill": load_json(BACKFILL_KEY, None),
+        "progress": load_json(PROGRESS_KEY, None),
+        "busy": _lock.locked(),
     }
 
 
