@@ -333,7 +333,7 @@
 
   // ---------- Ajustes ----------
   async function pageAjustes() {
-    const KEYS = ["humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador"];
+    const KEYS = ["humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador", "emojis"];
     const st = {};
     function preview() {
       const en = window.FinmateI18n && window.FinmateI18n.get() === "en";
@@ -345,6 +345,10 @@
       else if (st.sarcasmo >= 7) extra = en ? " Not bad for someone who checks the app every five minutes." : " Nada mal para alguien que revisa la app cada cinco minutos.";
       if (st.nivel_conversador >= 7) extra += en ? " Want me to tell you what moved the most today?" : " ¿Quieres que te cuente qué movió más hoy?";
       if (st.nivel_conversador <= 2) base = base.split(/[,:]/)[0] + ".";
+      const em = st.emojis == null ? 4 : st.emojis;       // 1-2 sin emojis · 5-7 algunos · 8-10 muchos
+      if (em >= 8) base = "📈 " + base + " 🙌";
+      else if (em >= 5) base = "📈 " + base;
+      if (em <= 2) extra = extra.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "");
       $("#p-preview").textContent = base + extra;
     }
     document.addEventListener("finmate:lang", () => { if (st.tono) preview(); });
@@ -352,7 +356,7 @@
     try {
       const p = await api("GET", "/personalidad");
       Object.assign(st, p);
-      KEYS.forEach((k) => { const el = $("#p-" + k); el.value = p[k]; $("#v-" + k).textContent = p[k] + "/10"; el.addEventListener("input", () => { st[k] = Number(el.value); $("#v-" + k).textContent = el.value + "/10"; preview(); }); });
+      KEYS.forEach((k) => { const el = $("#p-" + k); if (p[k] == null) p[k] = k === "emojis" ? 4 : 5; st[k] = p[k]; el.value = p[k]; $("#v-" + k).textContent = p[k] + "/10"; el.addEventListener("input", () => { st[k] = Number(el.value); $("#v-" + k).textContent = el.value + "/10"; preview(); }); });
       paintTono(); preview();
     } catch (e) { $("#p-msg").innerHTML = box("error-box", e.message); }
     document.querySelectorAll("[data-tono]").forEach((b) => b.addEventListener("click", () => { st.tono = b.dataset.tono; paintTono(); preview(); }));

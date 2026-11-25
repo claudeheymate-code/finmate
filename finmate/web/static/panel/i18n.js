@@ -16,6 +16,8 @@
 
   var DICT = {
     "Tus noticias": "Your news",
+    "Emojis": "Emojis",
+    "Cuántos emojis usa en mensajes y listas (1-2 = ninguno)": "How many emojis it uses in messages and lists (1-2 = none)",
     "Nivel 3 · muy relevante": "Level 3 · very relevant",
     "Nivel 2 · algo relevante": "Level 2 · somewhat relevant",
     "Nivel 1 · poco relevante": "Level 1 · not very relevant",
