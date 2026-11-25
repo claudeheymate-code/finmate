@@ -48,6 +48,44 @@ def _user_info(phone: str):
         return None, None
 
 
+# ── Ventana de 24 h de WhatsApp ─────────────────────────────────────────
+# Meta solo entrega texto libre a quien le escribió al bot en las últimas 24 h.
+# Fuera de esa ventana el envío "sale" pero Meta lo rechaza después (error
+# 131047) y el mensaje se pierde. Mientras no haya plantillas aprobadas, lo que
+# el bot quiera mandar por su cuenta se guarda y llega cuando el usuario escriba.
+WINDOW_HOURS = 23.5          # un poco menos de 24 h, por si el envío se atrasa
+
+
+def last_user_message_at(user_id: int) -> Optional[dt.datetime]:
+    from sqlalchemy import func
+
+    from finmate.db.models import ConversationTurn, get_session
+
+    s = get_session()
+    try:
+        return (s.query(func.max(ConversationTurn.timestamp))
+                .filter(ConversationTurn.user_id == user_id, ConversationTurn.role == "user").scalar())
+    finally:
+        s.close()
+
+
+def window_open(user_id: int, now: Optional[dt.datetime] = None) -> bool:
+    """¿El usuario le escribió al bot en las últimas ~24 h? (si no se puede saber, se asume que sí)."""
+    try:
+        last = last_user_message_at(user_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Jornada: no pude revisar la ventana de 24 h del usuario {user_id}: {e}")
+        return True
+    return bool(last) and (now or dt.datetime.utcnow()) - last < dt.timedelta(hours=WINDOW_HOURS)
+
+
+def can_message(user_id: int) -> bool:
+    """¿Se le puede escribir por iniciativa propia ahora? Sí si la ventana está abierta o hay plantilla."""
+    from config.settings import TEMPLATE_MARKET_NOTIFY
+
+    return bool(TEMPLATE_MARKET_NOTIFY) or window_open(user_id)
+
+
 def in_workday(user_id: int, tz_name: str = DEFAULT_TZ, now: Optional[dt.datetime] = None) -> bool:
     from finmate.db.settings_repo import get_notification_settings
 
@@ -84,6 +122,18 @@ def pop_held(user_id: int) -> list:
     return items
 
 
+def in_workday_for_phone(phone: str) -> bool:
+    """¿Se le puede mandar un aviso ahora a este número? Dentro de su jornada y con la
+    ventana de 24 h de WhatsApp abierta (o plantilla). True si no es usuario o si falla."""
+    uid, tz_name = _user_info(phone)
+    if uid is None:
+        return True
+    try:
+        return in_workday(uid, tz_name) and can_message(uid)
+    except Exception:  # noqa: BLE001
+        return True
+
+
 def allow(phone: str, text: str, kind: str) -> bool:
     """¿Se puede mandar este aviso ahora? Si el usuario está fuera de su jornada,
     se guarda para el resumen del inicio siguiente y devuelve False."""
@@ -92,7 +142,12 @@ def allow(phone: str, text: str, kind: str) -> bool:
         return True
     try:
         if in_workday(uid, tz_name):
-            return True
+            if can_message(uid):
+                return True
+            hold(uid, text, kind)
+            logger.info(f"Jornada: aviso '{kind}' para el usuario {uid} guardado (no escribe hace más de 24 h: "
+                        "WhatsApp no deja mandárselo ahora).")
+            return False
         hold(uid, text, kind)
         logger.info(f"Jornada: aviso '{kind}' para el usuario {uid} guardado para el próximo inicio de jornada.")
         return False
@@ -156,7 +211,7 @@ def run_workday_tick(now: Optional[dt.datetime] = None) -> int:
                     continue
                 sent[key] = day                         # se marca antes: nunca se manda dos veces
                 save_json(SENT_KEY, sent)
-                if send_brief(uid, phone, edge, name=name):
+                if send_brief(uid, phone, edge, name=name, tz_name=tz_name):
                     n += 1
         except Exception as e:  # noqa: BLE001
             logger.error(f"Jornada: error con el usuario {uid}: {e}", exc_info=True)
