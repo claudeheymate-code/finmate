@@ -50,7 +50,7 @@ def test_sesion_de_usuario_no_abre_admin(client):
 
 
 def test_paginas_cargan(admin):
-    for p in ("/admin/", "/admin/usuarios", "/admin/inbox", "/admin/fuentes"):
+    for p in ("/admin/", "/admin/usuarios", "/admin/inbox", "/admin/anuncios", "/admin/fuentes"):
         r = admin.get(p)
         assert r.status_code == 200, p
         assert b"admin.js" in r.data

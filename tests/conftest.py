@@ -36,6 +36,22 @@ def fake_market(monkeypatch):
     monkeypatch.setattr(quotes, "get_profile", lambda s: PROFILES.get(s.upper(), {}))
 
 
+@pytest.fixture(autouse=True)
+def whatsapp_window_open(monkeypatch):
+    """Por defecto los usuarios de prueba escribieron hace poco (ventana de 24 h de WhatsApp
+    abierta). Los tests de la ventana cerrada lo cambian con `window_closed`."""
+    from finmate.services import workday
+
+    monkeypatch.setattr(workday, "window_open", lambda *a, **k: True)
+
+
+@pytest.fixture
+def window_closed(monkeypatch):
+    from finmate.services import workday
+
+    monkeypatch.setattr(workday, "window_open", lambda *a, **k: False)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def app():
     # Importar main corre init_db() (crea las tablas en la SQLite de tests).

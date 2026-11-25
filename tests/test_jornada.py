@@ -79,7 +79,7 @@ def test_resumenes_de_inicio_y_cierre_se_mandan_una_vez(monkeypatch):
 
     u = _user("whatsapp:+56944440006", workday_start="09:00", workday_end="18:00")
     sent = []
-    monkeypatch.setattr(daily_brief, "send_brief", lambda uid, phone, edge, name="": sent.append((uid, edge)) or True)
+    monkeypatch.setattr(daily_brief, "send_brief", lambda uid, phone, edge, name="", tz_name=None: sent.append((uid, edge)) or True)
     monkeypatch.setattr(workday, "_approved_users", lambda: [(u.id, u.phone, "America/Santiago", "Ana")])
     assert workday.run_workday_tick(_at(2026, 11, 24, 8, 55)) == 0
     assert workday.run_workday_tick(_at(2026, 11, 24, 9, 5)) == 1
@@ -97,7 +97,7 @@ def test_resumen_incluye_avisos_guardados_y_queda_en_el_historial(monkeypatch):
     u = _user("whatsapp:+56944440007")
     workday.hold(u.id, "Resultados de DLTR hoy", "Resultados corporativos")
     captured = {}
-    monkeypatch.setattr(daily_brief, "gather", lambda uid, edge, held=None: captured.setdefault("held", held) and {})
+    monkeypatch.setattr(daily_brief, "gather", lambda uid, edge, held=None, digest=None: captured.setdefault("held", held) and {})
     monkeypatch.setattr(daily_brief, "compose", lambda facts, edge, name="": "El S&P cerró +0,4% y DLTR presentó resultados.")
     out = []
     monkeypatch.setattr(messenger.WhatsAppMessenger, "send_message", lambda self, to, body: out.append(body) or True)
@@ -112,9 +112,62 @@ def test_resumen_simple_si_claude_no_esta(monkeypatch):
     from finmate.services.daily_brief import compose
 
     monkeypatch.setattr(orchestrator, "_client", None)
-    txt = compose({"indices": ["S&P 500: 600.00 (+0.40% vs. cierre anterior)"], "mis_activos": [],
-                   "avisos_fuera_de_horario": ["[watchlist] NVDA +8%"]}, "start")
-    assert "S&P 500" in txt and "fuera de horario" in txt
+    txt = compose({"indices": [{"symbol": "SPY", "label": "S&P 500", "price": 600.0, "change_pct": 0.4, "is_closed": False}],
+                   "mis_activos": [], "noticias_del_mercado": ["La Fed mantiene la tasa (Reuters)"],
+                   "avisos_fuera_de_horario": [{"kind": "watchlist", "text": "NVDA +8%"}]}, "start")
+    assert "La Fed mantiene la tasa" in txt            # párrafo con los titulares
+    assert "• S&P 500" in txt and "*S&P 500*" not in txt and "▲ 0,4%" in txt       # viñeta con la cifra
+    assert "Mientras no estabas" in txt and "NVDA +8%" in txt
+
+
+def test_formato_parrafo_y_vinetas(monkeypatch):
+    """El párrafo lo escribe Claude; las cifras las pone el código, ordenadas y con formato chileno."""
+    from finmate.agent import orchestrator
+    from finmate.services import daily_brief
+
+    seen = {}
+
+    class _Resp:
+        content = [type("B", (), {"type": "text", "text": "Día marcado por la Fed y la caída de los chips."})()]
+
+    class _Client:
+        class messages:
+            @staticmethod
+            def create(**kw):
+                seen.update(kw)
+                return _Resp()
+
+    monkeypatch.setattr(orchestrator, "_client", _Client())
+    monkeypatch.setattr(orchestrator, "_record_usage", lambda *a, **k: None)
+    facts = {
+        "indices": [{"symbol": "QQQ", "label": "Nasdaq 100", "price": 512.3, "change_pct": -0.84, "is_closed": False}],
+        "mis_activos": [{"symbol": "AAPL", "label": "AAPL", "price": 229.8, "change_pct": 0.4, "is_closed": False},
+                        {"symbol": "NVDA", "label": "NVDA", "price": 1142.3, "change_pct": -3.1, "is_closed": False}],
+        "en_portafolio": ["NVDA"],
+        "chile": [{"code": "USD_CLP", "label": "Dólar observado", "value": 938.12, "fmt": "clp"}],
+        "portafolio": {"value": 12500.0, "day_change": -120.0, "day_pct": -0.95},
+        "noticias_del_mercado": ["Powell enfría recortes (Reuters)"],
+    }
+    txt = daily_brief.compose(facts, "end")
+    para, rest = txt.split("\n\n", 1)
+    assert para == "Día marcado por la Fed y la caída de los chips."
+    assert "Powell enfría recortes" in seen["messages"][0]["content"]
+    assert "• Nasdaq 100  $512,30  🔴 ▼ 0,8%" in rest
+    assert "• Dólar  $938,12" in rest
+    assert rest.index("AAPL") < rest.index("NVDA")      # tickers de mayor a menor variación
+    assert "• NVDA 💼  $1.142,30" in rest                # marca los que están en el portafolio
+    assert "US$12.500" in rest and "−US$120" in rest
+    assert "Hoy se publica" not in rest and "Mientras no estabas" not in rest   # solo al inicio
+    # Negrita solo en los títulos de sección, nunca en las viñetas
+    assert all("*" not in line for line in rest.splitlines() if line.startswith("•"))
+
+
+def test_secciones_vacias_no_aparecen(monkeypatch):
+    from finmate.agent import orchestrator
+    from finmate.services.daily_brief import bullets
+
+    monkeypatch.setattr(orchestrator, "_client", None)
+    assert bullets({"indices": [], "mis_activos": [], "chile": [], "portafolio": {}}, "start") == ""
 
 
 def test_alerta_de_watchlist_fuera_de_horario_no_se_manda(monkeypatch):

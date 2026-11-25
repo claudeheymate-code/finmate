@@ -161,7 +161,7 @@ def news_state(tmp_path, monkeypatch):
     from finmate.alerts import news_alerts
 
     monkeypatch.setattr(news_alerts, "STATE_FILE", str(tmp_path / "news.json"))
-    monkeypatch.setattr(news_alerts, "TEMPLATE_MARKET_NOTIFY", "")
+    monkeypatch.setattr("config.settings.TEMPLATE_MARKET_NOTIFY", "")
     return news_alerts
 
 
@@ -184,10 +184,11 @@ def test_noticias_calentamiento_luego_avisa_y_deduplica(news_state):
     fresh = [_item("AAPL", "Apple unveils new chip", 5), _item("NVDA", "Nvidia beats", 200)]
     dup = [{**_item("AAPL", "Apple unveils new chip!", 4, "mx"), "sentiment": 0.5}]
     n = na.check_news_alerts(m, tracked, lambda s, n: fresh, lambda s, **k: dup, now=NOW)
-    assert n == 2  # usuarios 1 y 2, un mensaje cada uno
+    assert n == 2  # usuarios 1 y 2, un mensaje cada uno (cada noticia va sola, para calificarla)
     bodies = {to: body for to, body in m.sent}
     assert "Apple unveils new chip" in bodies["whatsapp:+1"]
     assert bodies["whatsapp:+2"].count("AAPL") >= 1 and "Nvidia" not in bodies["whatsapp:+2"]
+    assert "Responde 1, 2 o 3" in bodies["whatsapp:+1"]
 
     # 3) Misma noticia otra vez: nada.
     assert na.check_news_alerts(m, tracked, lambda s, n: fresh, lambda s, **k: dup, now=NOW) == 0
@@ -207,7 +208,7 @@ def test_noticias_con_template_encola(news_state, monkeypatch, tmp_path):
     na = news_state
     from finmate.alerts import pending
 
-    monkeypatch.setattr(na, "TEMPLATE_MARKET_NOTIFY", "HXtest")
+    monkeypatch.setattr("config.settings.TEMPLATE_MARKET_NOTIFY", "HXtest")
     if hasattr(pending, "STATE_FILE"):
         monkeypatch.setattr(pending, "STATE_FILE", str(tmp_path / "pending.json"))
     tracked = [(1, "whatsapp:+1", "AAPL")]
