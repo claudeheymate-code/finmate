@@ -65,6 +65,7 @@ def test_dia_sin_datos_devuelve_none(monkeypatch):
     from finmate.data_sources import cmf_fondos
 
     class R:
+        status_code = 200
         content = b"<html>No se encuentran datos</html>"
 
         def raise_for_status(self):
@@ -198,3 +199,28 @@ def test_probar_en_admin_muestra_estado_sin_descargar(funds_db, monkeypatch):
     monkeypatch.setattr(funds_db, "start_backfill_thread", lambda: False)
     ok, detail = sources._t_cmf_fondos()
     assert ok and "5 fechas guardadas" in detail and "última 24-11" in detail
+
+
+def test_pagina_inesperada_es_error_y_no_dia_vacio(monkeypatch):
+    from finmate.data_sources import cmf_fondos
+
+    class R:
+        status_code = 200
+        content = b"<html><body>Acceso temporalmente bloqueado</body></html>"
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(cmf_fondos.httpx, "get", lambda *a, **k: R())
+    with pytest.raises(RuntimeError, match="bloqueado"):
+        cmf_fondos.download_day(dt.date(2026, 11, 20))
+
+
+def test_historia_con_error_no_queda_marcada_lista(funds_db, monkeypatch):
+    from finmate.data_sources import cmf_fondos
+    from finmate.db.state_store import load_json
+
+    monkeypatch.setattr(cmf_fondos, "fetch_day", lambda d: (_ for _ in ()).throw(RuntimeError("bloqueado")))
+    out = funds_db.backfill()
+    assert "error" in out and not load_json(funds_db.BACKFILL_KEY, None)
+    assert load_json(funds_db.PROGRESS_KEY, {}).get("error") == "bloqueado"
