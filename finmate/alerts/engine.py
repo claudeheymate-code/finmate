@@ -22,6 +22,7 @@ from config.settings import (
     TEMPLATE_WEEKLY_SUMMARY_NOTIFY,
 )
 from finmate.alerts.pending import queue_pending
+from finmate.services import news_profile
 from finmate.data_sources.aggregator import FinancialDataAggregator
 from finmate.whatsapp.messenger import WhatsAppMessenger
 from finmate.whatsapp.formatter import (
@@ -102,13 +103,30 @@ class AlertEngine:
 
         return recipients_for(kind, symbol)
 
-    def _broadcast_or_queue(self, msg: str, category_label: str, phones: list = None) -> None:
-        """Envía `msg` a todos los destinatarios. Si hay un template de aviso
-        de mercado configurado (requerido para producción real de WhatsApp
-        Business), manda el template corto y encola el contenido completo
-        para cuando el usuario responda (ver finmate/alerts/pending.py). Si
-        no, cae a mensaje de texto libre directo, como hasta ahora."""
+    def _broadcast_or_queue(self, msg: str, category_label: str, phones: list = None, news: dict = None) -> None:
+        """Envía `msg` a todos los destinatarios.
+
+        Si `news` viene (una noticia de news_profile.make_item), cada usuario la
+        recibe según su perfil de noticias: por el chat con botones 1-2-3, en el
+        resumen de jornada o solo si la pide. Si no, se manda como antes: template
+        de aviso + cola si está configurado, o texto libre."""
         from finmate.services.workday import filter_recipients
+
+        if news is not None:
+            from finmate.db.repository import find_user_by_phone
+            from finmate.services import news_profile
+            from finmate.services.workday import in_workday_for_phone
+
+            for phone in list(phones or []):
+                try:
+                    user = find_user_by_phone(phone)
+                    if user is None:
+                        continue
+                    news_profile.deliver(user.id, phone, news, self.messenger,
+                                         in_workday=in_workday_for_phone(phone))
+                except Exception as e:
+                    logger.error(f"Error entregando '{category_label}' a {phone}: {e}")
+            return
 
         phones = filter_recipients(list(phones or []), msg, category_label)   # fuera de la jornada: al próximo resumen
         if not phones:
@@ -156,8 +174,11 @@ class AlertEngine:
                         and earning_id not in self.state["sent_earnings"]
                     ):
                         msg = format_earnings_alert(e)
+                        item = news_profile.make_item(
+                            "resultados", f"{e.get('symbol')} publicó sus resultados trimestrales (earnings)",
+                            symbol=e.get("symbol") or "", text=msg)
                         self._broadcast_or_queue(msg, "Resultados corporativos",
-                                                 self._recipients("earnings", e.get("symbol")))
+                                                 self._recipients("earnings", e.get("symbol")), news=item)
                         self.state["sent_earnings"].append(earning_id)
                         alerts_sent += 1
                         logger.info(f"Alerta earnings enviada: {e.get('symbol')}")
@@ -172,7 +193,10 @@ class AlertEngine:
                         and event_id not in self.state["sent_economic"]
                     ):
                         msg = format_economic_alert(ev)
-                        self._broadcast_or_queue(msg, "Dato macroeconómico", self._recipients("macro"))
+                        item = news_profile.make_item(
+                            "macro", f"{ev.get('event')} ({ev.get('country')}): dato publicado",
+                            summary=str(ev.get("event") or ""), text=msg)
+                        self._broadcast_or_queue(msg, "Dato macroeconómico", self._recipients("macro"), news=item)
                         self.state["sent_economic"].append(event_id)
                         alerts_sent += 1
                         logger.info(f"Alerta macro enviada: {ev.get('event')}")
@@ -190,7 +214,10 @@ class AlertEngine:
                         and news_alerts < 3
                     ):
                         msg = format_breaking_news_alert(item)
-                        self._broadcast_or_queue(msg, "Noticia de mercado", news_phones)
+                        nitem = news_profile.make_item(
+                            "mercado", item.get("title", ""), item.get("summary", ""),
+                            url=item.get("url", ""), source=item.get("source", ""), text=msg)
+                        self._broadcast_or_queue(msg, "Noticia de mercado", news_phones, news=nitem)
                         self.state["sent_news"].append(news_id)
                         alerts_sent += 1
                         news_alerts += 1

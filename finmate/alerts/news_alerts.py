@@ -30,7 +30,6 @@ import httpx
 from config.settings import (
     FINNHUB_API_KEY,
     NEWS_ALERTS_MAX_PER_USER_PER_DAY,
-    TEMPLATE_MARKET_NOTIFY,
 )
 from finmate.data_sources import marketaux
 
@@ -136,6 +135,20 @@ def fetch_finnhub_news(symbols, now: dt.datetime) -> list:
     return out
 
 
+def _format_item(it: dict) -> str:
+    """Una noticia, con negrita solo en el título del aviso."""
+    s = it.get("sentiment")
+    mood = ""
+    if isinstance(s, (int, float)):
+        mood = " 🟢" if s >= 0.3 else (" 🔴" if s <= -0.3 else "")
+    lines = [f"📰 *Noticia de {it['symbol']}*{mood}", "", it["headline"].strip()]
+    if it.get("source"):
+        lines.append(f"Fuente: {it['source']}")
+    if it.get("url"):
+        lines.append(it["url"])
+    return "\n".join(lines)
+
+
 def _format_message(items: list) -> str:
     lines = ["📰 *Noticias de tus activos*", ""]
     for it in items:
@@ -208,33 +221,29 @@ def check_news_alerts(
             limits = get_news_limits_by_user()
         except Exception:
             limits = {}
+        from finmate.services import news_profile
+        from finmate.services.workday import in_workday_for_phone
+
         for user_id, user_items in per_user.items():
             dkey = f"{user_id}_{today}"
-            if daily.get(dkey, 0) >= limits.get(user_id, NEWS_ALERTS_MAX_PER_USER_PER_DAY):
-                continue
-            # Primero las de sentimiento más marcado (si lo hay).
-            user_items.sort(key=lambda x: -abs(x.get("sentiment") or 0))
-            msg = _format_message(user_items[:MAX_ITEMS_PER_MESSAGE])
+            limit = limits.get(user_id, NEWS_ALERTS_MAX_PER_USER_PER_DAY)
             phone = phones[user_id]
-            from finmate.services.workday import allow as _workday_allow
-
-            if not _workday_allow(phone, msg, "noticias"):   # fuera de la jornada: va al próximo resumen
-                daily[dkey] = daily.get(dkey, 0) + 1
-                continue
-            try:
-                if TEMPLATE_MARKET_NOTIFY:
-                    from finmate.alerts.pending import queue_pending
-                    queue_pending(phone, msg)
-                    ok = messenger.send_template(phone, TEMPLATE_MARKET_NOTIFY,
-                                                 {"1": "Noticias de tus activos"})
-                else:
-                    ok = messenger.send_message(phone, msg)
-            except Exception as e:
-                logger.error(f"Error enviando noticias a {phone}: {e}")
-                ok = False
-            if ok:
-                daily[dkey] = daily.get(dkey, 0) + 1
-                sent += 1
+            working = in_workday_for_phone(phone)
+            # Primero las de sentimiento más marcado (si lo hay). Cada noticia va sola,
+            # para que el usuario pueda calificarla (1-3) y su perfil aprenda.
+            user_items.sort(key=lambda x: -abs(x.get("sentiment") or 0))
+            for it in user_items[:MAX_ITEMS_PER_MESSAGE]:
+                item = news_profile.make_item("activo", it["headline"], it.get("summary", ""), it["symbol"],
+                                              it.get("url", ""), it.get("source", ""), text=_format_item(it))
+                try:
+                    where = news_profile.deliver(user_id, phone, item, messenger, in_workday=working,
+                                                 chat_allowed=daily.get(dkey, 0) < limit)
+                except Exception as e:
+                    logger.error(f"Error entregando noticia a {phone}: {e}")
+                    continue
+                if where == "chat":
+                    daily[dkey] = daily.get(dkey, 0) + 1
+                    sent += 1
 
     _save_state(state, today)
     (logger.info if sent else logger.debug)(f"Chequeo de noticias: {len(items)} revisadas, {sent} mensajes enviados"
