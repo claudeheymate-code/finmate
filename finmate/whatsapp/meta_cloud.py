@@ -55,7 +55,7 @@ def _post(payload: dict) -> bool:
         from finmate.services.usage import record_whatsapp
 
         kind = "read" if payload.get("status") == "read" else payload.get("type", "text")
-        record_whatsapp(kind, ok)
+        record_whatsapp(kind, ok, to=payload.get("to"))
     except Exception:
         pass
     return ok
