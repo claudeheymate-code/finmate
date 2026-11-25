@@ -352,10 +352,8 @@ def _answer_meta(msg: dict) -> None:
         if (msg.get("button_id") or "").startswith("rate:"):      # botones 1-2-3 de una noticia
             from finmate.agent.orchestrator import handle_rating_button
 
-            reply = handle_rating_button(phone, msg["button_id"], msg.get("text") or "")
-            if reply:
-                _send(phone, reply, msg["from"])
-                return
+            if handle_rating_button(phone, msg["button_id"], msg.get("text") or ""):
+                return                                         # nota guardada en silencio
         if not msg.get("text"):
             return
         if mtype in ("button", "interactive"):                  # botones del aviso diario de la mañana
@@ -367,7 +365,8 @@ def _answer_meta(msg: dict) -> None:
                     _send(phone, morning, msg["from"])
                 return
         reply = handle_message(phone, msg["text"], name=msg.get("name") or None)
-        _send(phone, reply, msg["from"])
+        if reply:                      # vacío = nota a una noticia, guardada sin responder
+            _send(phone, reply, msg["from"])
         # Lo que no alcanzó a llegar por la ventana de 24 h cerrada (resumen de jornada y
         # anuncios del admin): ahora que escribió, sí se puede.
         from finmate.admin.announcements import deliver_pending
