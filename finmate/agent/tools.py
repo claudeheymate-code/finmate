@@ -22,6 +22,13 @@ import logging
 from typing import Optional
 
 from finmate.agent.document_tools import tool_add_expenses_batch, tool_import_portfolio
+from finmate.agent.fund_tools import (
+    tool_follow_fund,
+    tool_get_fund,
+    tool_get_my_funds,
+    tool_rank_funds,
+    tool_search_funds,
+)
 from finmate.agent.finance_tools import (
     tool_add_expense,
     tool_get_monthly_summary,
@@ -439,6 +446,62 @@ TOOLS = [
             "required": ["action"],
         },
     },
+    # ── Fondos mutuos chilenos (CMF) ───────────────────────────────────────
+    {
+        "name": "search_funds",
+        "description": "Busca fondos mutuos chilenos de CUALQUIER administradora (Banchile, BCI, Santander, BancoEstado, Itaú, Scotia, Security, BICE, LarrainVial, Fintual, SURA, Principal, BTG, etc.) con datos oficiales de la CMF. query: palabras del nombre del fondo (ej: 'enfoque', 'money market', 'acciones chilenas'); administradora: banco o AGF para filtrar; tipo: 1-2 deuda corto plazo, 3 deuda mediano/largo, 4 mixto, 5 accionario, 6 libre inversión, 7 estructurado. Usar cuando pregunten por un fondo mutuo, qué fondos tiene un banco o quieran compararlos. Si encuentra uno solo, ya devuelve su detalle.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "administradora": {"type": "string"},
+                "tipo": {"type": "integer", "minimum": 1, "maximum": 8},
+            },
+        },
+    },
+    {
+        "name": "get_fund",
+        "description": "Valor cuota y rentabilidad (1 día, 1 mes, en el año y 12 meses) de las series de un fondo mutuo chileno, por su RUN (ej: '8723-8'). serie es opcional (A, B, APV…). Para comparar fondos de distintos bancos, llámala una vez por fondo.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"run": {"type": "string"}, "serie": {"type": "string"}},
+            "required": ["run"],
+        },
+    },
+    {
+        "name": "rank_funds",
+        "description": "Ranking de fondos mutuos chilenos por rentabilidad (deja fuera series muy chicas y las de inversionistas calificados). periodo: '1m', 'ytd' (en el año), '12m'; tipo: 1-7 como en search_funds (5 = accionario); administradora para limitar a un banco; moneda 'Pesos' o 'Dolar'; peores=true para los que más perdieron. Usar con preguntas como 'qué fondos han rentado más', 'mejores fondos conservadores'. Es información, no recomendación.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "periodo": {"type": "string", "enum": ["1m", "ytd", "12m"]},
+                "tipo": {"type": "integer", "minimum": 1, "maximum": 7},
+                "administradora": {"type": "string"},
+                "moneda": {"type": "string"},
+                "peores": {"type": "boolean"},
+                "cantidad": {"type": "integer", "minimum": 3, "maximum": 15},
+            },
+        },
+    },
+    {
+        "name": "follow_fund",
+        "description": "Agrega (o quita, con quitar=true) un fondo mutuo a 'mis fondos' del usuario: run + serie, y opcionalmente cuántas cuotas tiene para calcular su saldo. Usar cuando diga 'tengo el fondo X serie A', 'sigue mi fondo…', 'tengo 1.250 cuotas del Enfoque'. Si no sabe la serie, pregúntale (sale en su cartola o en la app de su banco).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "run": {"type": "string"},
+                "serie": {"type": "string"},
+                "cuotas": {"type": "number"},
+                "quitar": {"type": "boolean"},
+            },
+            "required": ["run"],
+        },
+    },
+    {
+        "name": "get_my_funds",
+        "description": "Los fondos mutuos que sigue el usuario con su valor cuota, rentabilidad y saldo aproximado (si informó cuotas). Usar cuando pregunte '¿cómo van mis fondos?' o por un fondo que ya sigue.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
     # ── Imágenes del portafolio ────────────────────────────────────────────
     {
         "name": "send_portfolio_chart",
@@ -539,6 +602,9 @@ _USER_SCOPED_TOOLS = {
     "set_notification_settings": tool_set_notification_settings,
     "onboarding":                tool_onboarding,
     "get_panel_link":            tool_get_panel_link,
+    # Fondos mutuos (CMF)
+    "follow_fund":               tool_follow_fund,
+    "get_my_funds":              lambda user_id, _input: tool_get_my_funds(user_id),
     # Podcasts (Etapa C)
     "follow_podcast":            tool_follow_podcast,
     "unfollow_podcast":          tool_unfollow_podcast,
@@ -571,6 +637,15 @@ def run_tool(
 
     if name == "get_company_filings":
         return tool_get_company_filings(tool_input)
+
+    if name == "search_funds":
+        return tool_search_funds(tool_input)
+
+    if name == "get_fund":
+        return tool_get_fund(tool_input)
+
+    if name == "rank_funds":
+        return tool_rank_funds(tool_input)
 
     if name == "get_podcast_summary":
         return tool_get_podcast_summary(tool_input)
