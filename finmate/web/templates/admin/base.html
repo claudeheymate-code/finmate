@@ -26,6 +26,7 @@
       <a href="{{ url_for('admin.costos') }}" aria-label="Costos" title="Costos" {% if page == 'costos' %}aria-current="page"{% endif %}>{{ icon('coin') }}<span class="tab-label">Costos</span></a>
       <a href="{{ url_for('admin.usuarios') }}" aria-label="Usuarios" title="Usuarios" {% if page == 'usuarios' %}aria-current="page"{% endif %}>{{ icon('users') }}<span class="tab-label">Usuarios</span></a>
       <a href="{{ url_for('admin.inbox') }}" aria-label="Inbox" title="Inbox" {% if page == 'inbox' %}aria-current="page"{% endif %}>{{ icon('inbox') }}<span class="tab-label">Inbox</span><span class="badge" id="inbox-badge" hidden></span></a>
+      <a href="{{ url_for('admin.anuncios') }}" aria-label="Anuncios" title="Anuncios" {% if page == 'anuncios' %}aria-current="page"{% endif %}>{{ icon('megaphone') }}<span class="tab-label">Anuncios</span></a>
       <a href="{{ url_for('admin.fuentes') }}" aria-label="Fuentes" title="Fuentes" {% if page == 'fuentes' %}aria-current="page"{% endif %}>{{ icon('layers') }}<span class="tab-label">Fuentes</span></a>
     </nav>
     <main id="main" class="admin-main">
