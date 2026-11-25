@@ -142,9 +142,12 @@ def test_noticia_por_chat_con_botones_y_nota_por_boton():
     to, body, buttons = m.buttons[-1]
     assert to == u.phone and "Fed signals rate cut" in body
     assert [b[1] for b in buttons] == ["1 · Poco", "2 · Algo", "3 · Mucho"]
-    reply = handle_rating_button(u.phone, buttons[0][0], "1 · Poco")
-    assert reply.startswith("Anotado: 1")
+    assert handle_rating_button(u.phone, buttons[0][0], "1 · Poco") is True
     assert np_.profile(u.id)[0]["ratings"] == 1
+    # En silencio: no queda ni la nota ni una respuesta en la conversación
+    from finmate.db.repository import get_recent_history
+
+    assert not any("Poco" in t or "Anotado" in t for _r, t in get_recent_history(u.id))
 
 
 def test_nota_por_texto_solo_si_lo_ultimo_fue_una_noticia():
@@ -155,8 +158,8 @@ def test_nota_por_texto_solo_si_lo_ultimo_fue_una_noticia():
     np_.remember(u.id, it, "chat")
     # Si lo último que dijo el bot no fue una noticia, "2" es una respuesta normal.
     assert np_.try_handle_rating(u.id, "2", last_assistant="¿Prefieres 1) pocos, 2) normal o 3) todo?") is None
-    reply = np_.try_handle_rating(u.id, "3", last_assistant=np_.chat_text(it))
-    assert reply and reply.startswith("Anotado: 3")
+    assert np_.try_handle_rating(u.id, "3", last_assistant=np_.chat_text(it)) == np_.RATED
+    assert np_.profile(u.id)[0]["ratings"] == 1
 
 
 def test_codigos_del_resumen():
@@ -168,8 +171,8 @@ def test_codigos_del_resumen():
     np_.push_digest(u.id, b, 1)
     items = np_.assign_brief_codes(u.id, np_.pop_digest(u.id))
     assert [i["code"] for i in items] == ["a", "b"] and items[0]["headline"] == "Fed holds rates"
-    reply = np_.try_handle_rating(u.id, "a3 b1")
-    assert reply and "a3" in reply and "b1" in reply
+    assert np_.try_handle_rating(u.id, "a3 b1") == np_.RATED
+    assert sum(p["ratings"] for p in np_.profile(u.id) if p["group"] == "tipo") == 2
     assert np_.try_handle_rating(u.id, "hola, ¿cómo estás?") is None
 
 
@@ -231,3 +234,20 @@ def test_tool_del_bot():
     assert "Todavía no tengo notas" in run_tool("get_news_profile", {}, user_id=u.id)
     assert "nivel 1" in run_tool("set_news_preference", {"topic": "cripto", "level": 1}, user_id=u.id)
     assert "Cripto: nivel 1 (fijado por ti)" in run_tool("get_news_profile", {}, user_id=u.id)
+
+
+def test_nota_por_texto_no_responde_ni_queda_en_historial(monkeypatch):
+    """Escribir "3" después de una noticia guarda la nota y el bot no contesta nada."""
+    from finmate.agent import orchestrator
+    from finmate.db.repository import get_recent_history, save_turn, set_access_status
+    from finmate.services import news_profile as np_
+
+    u = _user()
+    set_access_status(u.id, "approved")
+    it = _news("Oil jumps on OPEC cut")
+    np_.remember(u.id, it, "chat")
+    save_turn(u.id, "assistant", np_.chat_text(it))
+    before = len(get_recent_history(u.id))
+    assert orchestrator.handle_message(u.phone, "3") == ""
+    assert len(get_recent_history(u.id)) == before
+    assert np_.profile(u.id)[0]["ratings"] == 1
