@@ -619,4 +619,4 @@ def chat():
     if len(msg) > 1000:
         return _err("La pregunta es demasiado larga (máximo 1000 caracteres).")
     reply = handle_message(g.user.phone, msg)
-    return jsonify({"reply": reply})
+    return jsonify({"reply": reply or "Listo, lo guardé en tu perfil de noticias."})
