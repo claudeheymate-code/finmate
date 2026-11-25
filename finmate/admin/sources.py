@@ -93,6 +93,32 @@ def _t_podcast():
     return r.status_code == 200 and "<item>" in r.text, "feed ok" if r.status_code == 200 else f"HTTP {r.status_code}"
 
 
+def _t_cmf_fondos():
+    """Baja el último día publicado por la CMF, lo guarda y (si falta) arranca la carga de 13 meses."""
+    import datetime as dt
+    import threading
+
+    from finmate.data_sources import cmf_fondos
+    from finmate.services import funds
+
+    today = funds._today()
+    for back in range(1, 6):
+        day = today - dt.timedelta(days=back)
+        content = cmf_fondos.download_day(day)
+        if content is None:
+            continue
+        rows = cmf_fondos.parse_xls(content)
+        funds.store_day(day, rows)
+        if not funds.load_json(funds.BACKFILL_KEY, None):
+            threading.Thread(target=funds.backfill, name="cmf-backfill", daemon=True).start()
+            extra = " · cargando historia de 13 meses en segundo plano"
+        else:
+            extra = f" · {funds.status()['dates']} fechas guardadas"
+        n_admin = len({r["admin"] for r in rows})
+        return True, f"{len(rows):,} series de {n_admin} administradoras ({day.strftime('%d-%m')}){extra}".replace(",", ".")
+    return False, "la CMF respondió, pero sin datos en los últimos 5 días"
+
+
 def _t_claude():
     from config.settings import ANTHROPIC_MODEL_DEFAULT
 
@@ -128,6 +154,11 @@ SOURCES = [
     {"id": "bcch", "name": "Banco Central de Chile", "kind": "Macro Chile", "env": "BCCH_API_TOKEN", "test": _t_bcch,
      "gives": "Dólar observado, UF, TPM e IPC.", "used_for": "Indicadores chilenos.", "plan": "Gratis con registro.",
      "url": "https://si3.bcentral.cl/estadisticas/Principal1/Web_Services/index_EN.htm"},
+    {"id": "cmf_fondos", "name": "CMF — Fondos mutuos", "kind": "Fondos Chile", "env": None, "test": _t_cmf_fondos,
+     "gives": "Valor cuota, patrimonio y partícipes de todas las series de todos los fondos mutuos de Chile (~2.900 series, ~22 administradoras).",
+     "used_for": "Buscar y comparar fondos de cualquier banco, rentabilidad 1 día / 1 mes / año / 12 meses, ranking y «mis fondos».",
+     "plan": "Público, sin clave. Publica con 1 día de retraso; el bot baja 1 archivo al día (~700 KB).",
+     "url": "https://www.cmfchile.cl/institucional/estadisticas/fm.bpr_menu.php"},
     {"id": "alpha", "name": "Alpha Vantage", "kind": "Precios y calendario", "env": "ALPHA_VANTAGE_API_KEY", "test": _t_alpha,
      "gives": "Cotizaciones, calendario de resultados, noticias con sentimiento.", "used_for": "Respaldo del motor de alertas generales.",
      "plan": "Gratis: 25 llamadas/día.", "url": "https://www.alphavantage.co/documentation/"},
