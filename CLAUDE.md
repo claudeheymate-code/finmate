@@ -694,3 +694,21 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
   emojis en listas; 8-10 muchos) y con 1-2 `prepare_for` quita los emojis de todo lo que sale
   (resúmenes, avisos, noticias), dejando ▲▼•. Panel → Ajustes → Personalidad: slider "Emojis".
   Tool `set_personality` acepta `emojis`. 206/206 tests (`tests/test_formato_whatsapp.py`).
+
+## 25 nov 2026 (tarde) — Costo por usuario en el admin (subido a GitHub)
+
+- `services/usage.py`: además del total mensual, anota el consumo por número en
+  `usage:users:<AAAA-MM>` → `{"569…": {"claude": {modelo: tokens}, "wa": {"text", "template", …}}}`.
+  WhatsApp se atribuye por destinatario (`meta_cloud._post` pasa `to`); Claude por contexto
+  (`usage.for_user(phone)`, que envuelve `orchestrator.handle_message` y `daily_brief._build_and_send`).
+  Lo global (destacado del día, redactar anuncios) queda solo en el total. Empezó a medirse al
+  desplegar (`usage:users:since`); lo anterior no tiene detalle por usuario.
+- Admin → Usuarios: tarjeta "Costo por usuario" con 3 niveles (bajo 0–29, medio 30–150, alto 151+
+  mensajes del mes): estimado mensual = costo promedio por mensaje del mes × 20/80/300 mensajes,
+  más el promedio real de los usuarios de cada nivel. Tabla: mensajes del mes, costo del mes y costo
+  por mensaje (detalle Claude/WhatsApp al pasar el mouse). CSV con costo del mes. Usa los precios de
+  Costos (modelos de Claude y plantilla de WhatsApp).
+- Arreglo: `.hide-sm { display: inline }` desarmaba las columnas de las tablas del admin en
+  escritorio (celdas inline); ahora `td/th.hide-sm` son `table-cell`.
+- La carpeta local NO tiene estos cambios (se hicieron sobre el clon de GitHub): hacer pull/copiar.
+- 209/209 tests (`tests/test_costos_usuarios.py`).
