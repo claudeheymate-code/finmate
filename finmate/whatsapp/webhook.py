@@ -349,10 +349,32 @@ def _answer_meta(msg: dict) -> None:
         if mtype in _SHORT_REPLIES:
             _send(phone, _SHORT_REPLIES[mtype], msg["from"])
             return
+        if (msg.get("button_id") or "").startswith("rate:"):      # botones 1-2-3 de una noticia
+            from finmate.agent.orchestrator import handle_rating_button
+
+            reply = handle_rating_button(phone, msg["button_id"], msg.get("text") or "")
+            if reply:
+                _send(phone, reply, msg["from"])
+                return
         if not msg.get("text"):
             return
+        if mtype in ("button", "interactive"):                  # botones del aviso diario de la mañana
+            from finmate.services.daily_brief import handle_morning_reply
+
+            morning = handle_morning_reply(phone, msg["text"])
+            if morning is not None:
+                if morning:
+                    _send(phone, morning, msg["from"])
+                return
         reply = handle_message(phone, msg["text"], name=msg.get("name") or None)
         _send(phone, reply, msg["from"])
+        # Lo que no alcanzó a llegar por la ventana de 24 h cerrada (resumen de jornada y
+        # anuncios del admin): ahora que escribió, sí se puede.
+        from finmate.admin.announcements import deliver_pending
+        from finmate.services.daily_brief import deliver_pending_brief
+
+        deliver_pending_brief(phone)
+        deliver_pending(phone)
     except Exception as e:
         logger.error(f"Error respondiendo a {msg.get('from')} por Meta: {e}", exc_info=True)
     finally:

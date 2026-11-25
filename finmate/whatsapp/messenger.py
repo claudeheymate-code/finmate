@@ -54,6 +54,16 @@ class WhatsAppMessenger:
             ok = meta_cloud.send_text(to, part) and ok
         return ok
 
+    def send_buttons(self, to: str, body: str, buttons: list, fallback: Optional[str] = None) -> bool:
+        """Mensaje con botones (máx. 3). Si es muy largo o Meta lo rechaza, manda `fallback` como texto."""
+        if len(body) <= 1024:
+            try:
+                if meta_cloud.send_buttons(to, body, buttons):
+                    return True
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"No pude mandar botones a {to}: {e}")
+        return self.send_message(to, fallback or body)
+
     def broadcast(self, body: str, recipients: Optional[list[str]] = None) -> dict:
         """Envía un mensaje a todos los destinatarios. Retorna el resultado por número."""
         targets = recipients or WHATSAPP_RECIPIENTS

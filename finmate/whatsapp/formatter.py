@@ -189,9 +189,9 @@ def format_earnings_alert(earning: dict) -> str:
     revenue_actual = earning.get("revenue_actual")
 
     lines = [
-        "🏢 *ALERTA — RESULTADO CORPORATIVO*",
+        f"🏢 *Resultados de {symbol}*",
         "",
-        f"*{symbol}* acaba de reportar resultados:",
+        f"{symbol} acaba de reportar resultados:",
         "",
     ]
 
@@ -199,19 +199,17 @@ def format_earnings_alert(earning: dict) -> str:
         try:
             diff = float(eps_actual) - float(eps_estimate)
             if diff > 0:
-                lines.append(f"✅ *EPS: ${eps_actual}* (superó estimación de ${eps_estimate})")
-                lines.append("📊 _Esto indica que la empresa tuvo mejor desempeño al esperado, lo que suele ser positivo para la acción._")
+                lines.append(f"✅ EPS: ${eps_actual} (superó la estimación de ${eps_estimate})")
+                lines.append("Le fue mejor de lo esperado, algo que el mercado suele leer como positivo.")
             else:
-                lines.append(f"❌ *EPS: ${eps_actual}* (no alcanzó estimación de ${eps_estimate})")
-                lines.append("📊 _Resultados por debajo de expectativas, lo que podría generar presión bajista en la acción._")
+                lines.append(f"❌ EPS: ${eps_actual} (no alcanzó la estimación de ${eps_estimate})")
+                lines.append("Quedó bajo lo esperado, lo que podría presionar a la acción.")
         except (ValueError, TypeError):
             lines.append(f"EPS: {eps_actual} (est: {eps_estimate})")
 
     if revenue_actual is not None:
         lines.append(f"💰 Ingresos: {_format_number(revenue_actual, prefix='$')}")
 
-    lines.append("")
-    lines.append("_Finmate — Información, no recomendación._")
     return "\n".join(lines)
 
 
@@ -225,30 +223,28 @@ def format_economic_alert(event: dict) -> str:
     previous = event.get("previous")
 
     lines = [
-        "🌍 *ALERTA — DATO MACROECONÓMICO*",
+        f"🌍 *Dato macro: {event_name}*",
         "",
-        f"{flag} *{event_name}* ({country})",
+        f"{flag} {country}",
         "",
     ]
 
     if actual is not None:
-        lines.append(f"📊 *Dato publicado:* {actual}")
+        lines.append(f"📊 Dato publicado: {actual}")
         if forecast is not None:
             try:
                 diff = float(actual) - float(forecast)
                 if diff > 0:
-                    lines.append(f"⬆️ _Superior al esperado ({forecast}). Esto puede indicar mayor fortaleza económica._")
+                    lines.append(f"⬆️ Sobre lo esperado ({forecast}): puede indicar más fortaleza económica.")
                 elif diff < 0:
-                    lines.append(f"⬇️ _Inferior al esperado ({forecast}). Esto puede indicar debilidad económica._")
+                    lines.append(f"⬇️ Bajo lo esperado ({forecast}): puede indicar debilidad económica.")
                 else:
-                    lines.append(f"➡️ _En línea con lo esperado ({forecast})._")
+                    lines.append(f"➡️ En línea con lo esperado ({forecast}).")
             except (ValueError, TypeError):
                 lines.append(f"Esperado: {forecast}")
         if previous is not None:
             lines.append(f"📋 Dato anterior: {previous}")
 
-    lines.append("")
-    lines.append("_Finmate — Información, no recomendación._")
     return "\n".join(lines)
 
 
@@ -262,18 +258,16 @@ def format_breaking_news_alert(news_item: dict) -> str:
         summary = summary[:300] + "..."
 
     lines = [
-        "🚨 *ALERTA — NOTICIA DE MERCADO*",
+        "🚨 *Noticia de mercado*",
         "",
-        f"*{title}*",
+        title,
         "",
     ]
 
     if summary:
-        lines.append(f"_{summary}_")
+        lines.append(summary)
         lines.append("")
     if source:
         lines.append(f"📎 Fuente: {source}")
 
-    lines.append("")
-    lines.append("_Finmate — Información, no recomendación._")
     return "\n".join(lines)

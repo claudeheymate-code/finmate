@@ -93,6 +93,24 @@ def send_text(to: str, body: str) -> bool:
     })
 
 
+def send_buttons(to: str, body: str, buttons: list) -> bool:
+    """Mensaje con hasta 3 botones de respuesta rápida: buttons = [(id, título)].
+    Solo funciona dentro de la ventana de 24 h (igual que el texto libre).
+    El cuerpo admite hasta 1024 caracteres y los títulos hasta 20."""
+    return _post({
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to_meta(to),
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {"text": body[:1024]},
+            "action": {"buttons": [{"type": "reply", "reply": {"id": bid[:256], "title": title[:20]}}
+                                   for bid, title in buttons[:3]]},
+        },
+    })
+
+
 def send_template(to: str, name: str, variables: Optional[dict] = None,
                   lang: Optional[str] = None) -> bool:
     """Plantilla aprobada en WhatsApp Manager. `variables` usa las mismas
@@ -145,13 +163,17 @@ def parse_incoming(payload: dict) -> list[dict]:
             for m in value.get("messages") or []:
                 mtype = m.get("type", "")
                 text = ""
+                button_id = ""
                 if mtype == "text":
                     text = (m.get("text") or {}).get("body", "")
                 elif mtype == "button":  # respuesta a un botón de plantilla
                     text = (m.get("button") or {}).get("text", "")
+                    button_id = (m.get("button") or {}).get("payload", "") or ""
                 elif mtype == "interactive":
                     it = m.get("interactive") or {}
-                    text = ((it.get("button_reply") or it.get("list_reply") or {}).get("title", ""))
+                    reply = it.get("button_reply") or it.get("list_reply") or {}
+                    text = reply.get("title", "")
+                    button_id = reply.get("id", "") or ""
                 media = None
                 if mtype in ("image", "document", "audio", "video", "sticker"):
                     md = m.get(mtype) or {}
@@ -159,7 +181,8 @@ def parse_incoming(payload: dict) -> list[dict]:
                              "filename": md.get("filename", ""), "caption": (md.get("caption") or "").strip()}
                     text = media["caption"]
                 out.append({"id": m.get("id", ""), "from": m.get("from", ""), "type": mtype,
-                            "text": text.strip(), "name": names.get(m.get("from"), ""), "media": media})
+                            "text": text.strip(), "name": names.get(m.get("from"), ""), "media": media,
+                            "button_id": button_id})
     return out
 
 
