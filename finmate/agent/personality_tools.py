@@ -22,7 +22,7 @@ except ImportError:
 
 
 _TONO_VALIDOS = {"profesional", "casual", "amigo"}
-_INT_PARAMS = {"humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador"}
+_INT_PARAMS = {"humor", "sarcasmo", "frecuencia_chistes", "nivel_conversador", "emojis"}
 
 _DB_ERROR_MSG = (
     "❌ No pude acceder a tu configuración de personalidad en este momento "
@@ -46,6 +46,7 @@ def tool_get_personality(user_id: int) -> str:
     sarcasmo = p.get("sarcasmo", 3)
     frecuencia = p.get("frecuencia_chistes", 3)
     nivel = p.get("nivel_conversador", 5)
+    emojis = p.get("emojis", 4)
 
     return (
         "*Tu configuración de Finmate*\n\n"
@@ -53,7 +54,8 @@ def tool_get_personality(user_id: int) -> str:
         f"😏 Sarcasmo: {sarcasmo}/10\n"
         f"😄 Frecuencia de chistes: {frecuencia}/10\n"
         f"💬 Nivel conversador: {nivel}/10\n"
-        f"🗣 Tono: {tono}\n\n"
+        f"🗣 Tono: {tono}\n"
+        f"✨ Emojis: {emojis}/10 (1-2 = sin emojis)\n\n"
         "Dime qué quieres cambiar: ej. \"poneme el tono en amigo\" o \"más humor, más chistes\"."
     )
 

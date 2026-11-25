@@ -465,7 +465,7 @@ TOOLS = [
     },
     {
         "name": "set_personality",
-        "description": "Cambia uno o más parámetros de personalidad de Finmate para este usuario. Usar cuando diga 'poneme más humor', 'quiero que seas más gracioso', 'cambié el tono a casual', etc. Parámetros: humor (1-10), sarcasmo (1-10), frecuencia_chistes (1-10), nivel_conversador (1-10), tono (profesional|casual|amigo).",
+        "description": "Cambia uno o más parámetros de personalidad de Finmate para este usuario. Usar cuando diga 'poneme más humor', 'quiero que seas más gracioso', 'cambié el tono a casual', etc. Parámetros: humor (1-10), sarcasmo (1-10), frecuencia_chistes (1-10), nivel_conversador (1-10), tono (profesional|casual|amigo), emojis (1-10: cuántos emojis usa en mensajes y listas; 1-2 = ninguno). Usar emojis cuando pida 'sin emojis', 'más emojis', 'listas sin emojis', etc.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -473,6 +473,7 @@ TOOLS = [
                 "sarcasmo": {"type": "integer", "minimum": 1, "maximum": 10},
                 "frecuencia_chistes": {"type": "integer", "minimum": 1, "maximum": 10},
                 "nivel_conversador": {"type": "integer", "minimum": 1, "maximum": 10},
+                "emojis": {"type": "integer", "minimum": 1, "maximum": 10},
                 "tono": {"type": "string", "enum": ["profesional", "casual", "amigo"]},
             },
         },
