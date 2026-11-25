@@ -326,7 +326,15 @@ def _clean_history(history: list) -> list:
 
 def handle_message(phone: str, user_message: str, name: str = None, attachments: list = None) -> str:
     """Punto de entrada único desde el webhook de WhatsApp (y el chat del panel).
-    `attachments`: fotos o documentos ya descargados (ver webhook._process_media)."""
+    `attachments`: fotos o documentos ya descargados (ver webhook._process_media).
+    El consumo de Claude de esta respuesta queda anotado a este usuario (admin → Usuarios)."""
+    from finmate.services.usage import for_user
+
+    with for_user(phone):
+        return _handle_message(phone, user_message, name, attachments)
+
+
+def _handle_message(phone: str, user_message: str, name: str = None, attachments: list = None) -> str:
     attachments = attachments or []
     history_text = (f"{_attachment_note(attachments)} {user_message}".strip() if attachments else user_message)
     try:
