@@ -243,3 +243,31 @@ table.cmp { min-width: 0; }
 .n-bar { flex: 0 0 90px; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .n-bar > span { display: block; height: 100%; background: var(--emerald); }
 @media (max-width: 640px) { #noticias .n-sel { flex: 1 1 100% !important; } }
+
+/* Fondos mutuos (CMF) */
+.fm-search { flex-wrap: wrap; }
+.fm-search .field { min-width: 180px; flex: 1; }
+.fm-fund { border: 1px solid var(--line, #E3E8EF); border-radius: 16px; padding: 12px 14px; margin-top: 10px; }
+.fm-fund > button.fm-head { all: unset; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; width: 100%; align-items: center; }
+.fm-fund > button.fm-head:focus-visible { outline: 2px solid var(--up); border-radius: 8px; }
+.fm-fund .fm-series { margin-top: 10px; }
+.fm-fund table td, .fm-fund table th { padding: 8px 10px; }
+.fm-cuotas { width: 110px; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(8,36,72,0.12); background: rgba(8,36,72,0.04); }
+.fm-rank-n { width: 22px; }
+#fondos h3:first-of-type { margin-top: 14px !important; }
+@media (max-width: 640px) {
+  .fm-series table, .fm-series tbody, .fm-series tr, .fm-series td { display: block; width: auto; min-width: 0; }
+  .fm-series thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .fm-series tr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 8px; padding: 10px 0; border-bottom: 1px solid var(--line, #E3E8EF); }
+  .fm-series td { padding: 0 !important; border: 0 !important; text-align: left !important; }
+  .fm-series td.fm-s { grid-column: 1 / 4; grid-row: 1; align-self: center; overflow-wrap: anywhere; }
+  .fm-series td.fm-v { grid-column: 1 / 5; grid-row: 2; font-size: 13px; color: var(--muted, #475569); }
+  .fm-series td[data-label] { font-size: 13px; }
+  .fm-series td.fm-b { grid-column: 4 / 5; grid-row: 1; text-align: right !important; }
+  .fm-series td.fm-b .btn { min-height: 36px; padding: 0 12px; font-size: 13px; }
+  .fm-series td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; color: var(--faint, #6B7A90); }
+  .fm-series .table-wrap, .fm-fund .table-wrap { overflow: visible; }
+  #fm-mine li { flex-wrap: wrap; }
+  #fm-mine li .grow { flex-basis: calc(100% - 60px); }
+}
+@media (max-width: 640px) { #fm-rank .grow { flex-basis: 50%; } #fm-rank .fm-rank-n { width: 16px; } }

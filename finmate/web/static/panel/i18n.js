@@ -76,6 +76,15 @@
     "Precio promedio (USD)": "Average price (USD)", "(opcional)": "(optional)", "Agregar": "Add", "Ej: VOO": "e.g. VOO", "Ej: 5": "e.g. 5", "Ej: 410.50": "e.g. 410.50", "Ej: AMZN": "e.g. AMZN",
     "También puedes escribirle al bot: “agrega 5 VOO a 410,50”.": "You can also message the bot: “add 5 VOO at 410.50”.",
     "Watchlist": "Watchlist", "Activos que sigues sin tenerlos": "Assets you follow without owning them", "Seguir un activo nuevo": "Follow a new asset",
+    "Fondos mutuos": "Mutual funds", "Mis fondos": "My funds", "Buscar y comparar fondos": "Search and compare funds",
+    "Nombre del fondo": "Fund name", "Banco o administradora": "Bank or fund manager", "Tipo de fondo": "Fund type",
+    "Todas": "All", "Todos": "All", "Buscar": "Search", "Los que más han rentado": "Top performers", "1 mes": "1 month",
+    "En el año": "Year to date", "12 meses": "12 months", "Serie": "Series", "Valor cuota": "Unit value", "1 día": "1 day",
+    "Año": "YTD", "Cuotas": "Units", "Siguiendo ✓": "Following ✓", "Buscando…": "Searching…", "Cargando series…": "Loading series…",
+    "Valor cuota oficial de la CMF, de todos los bancos y administradoras de Chile": "Official CMF unit values for every bank and fund manager in Chile",
+    "Todavía no sigues fondos. Búscalos abajo y aprieta «Seguir» en tu serie.": "You don't follow any funds yet. Search below and tap “Follow” on your series.",
+    "No encontré fondos con esa búsqueda. Prueba con otra palabra o solo con el banco.": "No funds found. Try another word or just the bank.",
+    "Todavía no hay historia suficiente para este plazo.": "Not enough history for this period yet.",
     "Seguir": "Follow", "¿Por qué se movió?": "Why did it move?", "Buscando noticias…": "Looking for news…",
     "No encontré noticias recientes que hablen de este activo.": "I couldn't find recent news about this asset.",
     "No sigues ningún activo todavía.": "You're not following any assets yet.", "Listo, posición guardada.": "Done, position saved.",
@@ -161,6 +170,7 @@
   function t(s) { var r = tr(s); return r == null ? s : r; }
   var FREQ = { "mensual": "monthly", "trimestral": "quarterly", "diario": "daily", "~8 veces/año": "~8 times/year", "alta": "high", "media": "medium", "baja": "low" };
   var RULES = [
+    [/^Valor cuota oficial de la CMF, de todos los bancos y administradoras · al (.+)$/, "Official CMF unit values for every bank and fund manager · as of $1"],
     [/^Finmate — (.+)$/, function (m, a) { return "Finmate — " + t(a); }],
     [/^(.+) · Finmate \(prueba\)$/, function (m, a) { return t(a) + " · Finmate (demo)"; }],
     [/^(.+) hoy \((.+)\)$/, "$1 today ($2)"],

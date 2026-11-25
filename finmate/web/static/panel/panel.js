@@ -210,7 +210,83 @@
       e.preventDefault();
       try { await api("POST", "/watchlist", { symbol: $("#f-wsym").value }); e.target.reset(); loadWatch(); } catch (err) { $("#explain").innerHTML = box("error-box", err.message); }
     });
-    load(); loadWatch();
+
+    // ---- Fondos mutuos (CMF) ----
+    const clp = (n, dec) => (n == null ? "—" : (n < 0 ? "−" : "") + "$" + sep(n, dec == null ? 2 : dec));
+    const pctc = (n) => (n == null ? '<span class="faint">—</span>' : delta(pct(n), n >= 0));
+    const badge = (a) => { const caps = (a || "").replace(/[^A-ZÁÉÍÓÚ]/g, ""); return caps.length >= 2 && caps.length <= 4 ? caps : (a || "FM").slice(0, 4); };
+    const fecha = (iso) => { if (!iso) return ""; const [y, m, d] = iso.split("-"); return Number(d) + "-" + Number(m) + "-" + y; };
+    async function loadMyFunds() {
+      try {
+        const r = await api("GET", "/fondos/mios");
+        $("#fm-mine").innerHTML = r.items.map((f) =>
+          '<li><span class="ticker">' + esc(badge(f.admin)) + '</span><div class="grow"><p class="strong">' + esc(f.name || f.run) + " · serie " + esc(f.serie) + '</p><p class="faint small">' + esc(f.admin || "") + " · cuota " + esc(clp(f.valor_cuota, 4)) +
+          (f.valor ? " · saldo ≈ " + esc(clp(f.valor, 0)) : "") + '</p><p class="small">1 día ' + pctc(f.r_1d) + " · 1 mes " + pctc(f.r_1m) + " · año " + pctc(f.r_ytd) + " · 12m " + pctc(f.r_12m) + "</p></div>" +
+          '<label class="faint small" style="display:flex;flex-direction:column;gap:4px">Cuotas<input class="fm-cuotas" type="number" step="any" min="0" value="' + (f.cuotas != null ? esc(f.cuotas) : "") + '" data-cuotas="' + esc(f.run) + "|" + esc(f.serie) + '" aria-label="Cuotas que tienes de ' + esc(f.name || f.run) + '"></label>' +
+          '<button class="icon-btn" type="button" data-fmdel="' + esc(f.run) + "|" + esc(f.serie) + '" aria-label="Dejar de seguir ' + esc(f.name || f.run) + '">✕</button></li>'
+        ).join("") || '<li class="empty">Todavía no sigues fondos. Búscalos abajo y aprieta «Seguir» en tu serie.</li>';
+        document.querySelectorAll("[data-fmdel]").forEach((b) => b.addEventListener("click", async () => {
+          const [run, serie] = b.dataset.fmdel.split("|");
+          try { await api("DELETE", "/fondos/mios/" + encodeURIComponent(run) + "/" + encodeURIComponent(serie)); loadMyFunds(); } catch (e) { $("#fm-results").innerHTML = box("error-box", e.message); }
+        }));
+        document.querySelectorAll("[data-cuotas]").forEach((inp) => inp.addEventListener("change", async () => {
+          const [run, serie] = inp.dataset.cuotas.split("|");
+          try { await api("POST", "/fondos/mios", { run, serie, cuotas: inp.value || 0 }); loadMyFunds(); } catch (e) { $("#fm-results").innerHTML = box("error-box", e.message); }
+        }));
+      } catch (e) { $("#fm-mine").innerHTML = '<li class="empty">' + esc(e.message) + "</li>"; }
+    }
+    function seriesTable(rows) {
+      return '<div class="table-wrap fm-series"><table><thead><tr><th>Serie</th><th class="r">Valor cuota</th><th class="r">1 día</th><th class="r">1 mes</th><th class="r">Año</th><th class="r">12 meses</th><th><span class="sr-only">Seguir</span></th></tr></thead><tbody>' +
+        rows.map((r) => '<tr><td class="fm-s"><strong>' + esc(r.serie) + '</strong></td><td class="r fm-v">' + esc(clp(r.valor_cuota, 4)) + '</td><td class="r" data-label="1 día">' + pctc(r.r_1d) + '</td><td class="r" data-label="1 mes">' + pctc(r.r_1m) + '</td><td class="r" data-label="Año">' + pctc(r.r_ytd) + '</td><td class="r" data-label="12 meses">' + pctc(r.r_12m) +
+          '</td><td class="r fm-b"><button class="btn ghost" type="button" data-fmfollow="' + esc(r.run) + "|" + esc(r.serie) + '">Seguir</button></td></tr>').join("") + "</tbody></table></div>";
+    }
+    function bindFollow(scope) {
+      scope.querySelectorAll("[data-fmfollow]").forEach((b) => b.addEventListener("click", async () => {
+        const [run, serie] = b.dataset.fmfollow.split("|");
+        try { await api("POST", "/fondos/mios", { run, serie }); b.textContent = b.classList.contains("icon-btn") ? "✓" : "Siguiendo ✓"; b.disabled = true; loadMyFunds(); } catch (e) { $("#fm-results").innerHTML = box("error-box", e.message); }
+      }));
+    }
+    async function searchFunds() {
+      const el = $("#fm-results"); el.innerHTML = '<p class="faint">Buscando…</p>';
+      const qs = new URLSearchParams({ q: $("#fm-q").value.trim(), admin: $("#fm-admin").value, tipo: $("#fm-tipo").value });
+      try {
+        const r = await api("GET", "/fondos/buscar?" + qs.toString());
+        if (!r.latest) { el.innerHTML = box("error-box", "Todavía no se cargan los datos de la CMF. Vuelve a intentar en un rato."); return; }
+        el.innerHTML = r.items.map((f) =>
+          '<div class="fm-fund"><button type="button" class="fm-head" data-fmrun="' + esc(f.run) + '" aria-expanded="false"><div><p class="strong">' + esc(f.name) + '</p><p class="faint small">' + esc(f.admin) + " · " + esc(f.tipo_nombre) + " · " + esc(f.series.length) + (f.series.length === 1 ? " serie" : " series") + " · RUN " + esc(f.run) +
+          '</p></div><span class="faint" aria-hidden="true">▾</span></button><div class="fm-body"></div></div>'
+        ).join("") || '<p class="empty">No encontré fondos con esa búsqueda. Prueba con otra palabra o solo con el banco.</p>';
+        el.querySelectorAll("[data-fmrun]").forEach((b) => b.addEventListener("click", async () => {
+          const body = b.nextElementSibling;
+          if (b.getAttribute("aria-expanded") === "true") { b.setAttribute("aria-expanded", "false"); body.innerHTML = ""; return; }
+          b.setAttribute("aria-expanded", "true"); body.innerHTML = '<p class="faint small">Cargando series…</p>';
+          try { const d = await api("GET", "/fondos/fondo/" + encodeURIComponent(b.dataset.fmrun)); body.innerHTML = seriesTable(d.items); bindFollow(body); } catch (e) { body.innerHTML = box("error-box", e.message); }
+        }));
+        if (r.items.length === 1) el.querySelector("[data-fmrun]").click();
+      } catch (e) { el.innerHTML = box("error-box", e.message); }
+    }
+    async function loadRank(period) {
+      document.querySelectorAll("[data-period]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.period === period)));
+      try {
+        const r = await api("GET", "/fondos/ranking?periodo=" + period + ($("#fm-tipo").value ? "&tipo=" + $("#fm-tipo").value : ""));
+        $("#fm-rank").innerHTML = r.items.map((f, i) => '<li><span class="faint num fm-rank-n">' + (i + 1) + '</span><div class="grow"><p class="strong">' + esc(f.name) + " · " + esc(f.serie) + '</p><p class="faint small">' + esc(f.admin) + " · " + esc(f.tipo_nombre) + "</p></div>" + pctc(f["r_" + period]) +
+          '<button class="icon-btn" type="button" data-fmfollow="' + esc(f.run) + "|" + esc(f.serie) + '" aria-label="Seguir ' + esc(f.name) + " serie " + esc(f.serie) + '" title="Seguir">＋</button></li>').join("") || '<li class="empty">Todavía no hay historia suficiente para este plazo.</li>';
+        bindFollow($("#fm-rank"));
+      } catch (e) { $("#fm-rank").innerHTML = '<li class="empty">' + esc(e.message) + "</li>"; }
+    }
+    async function initFunds() {
+      if (!$("#fondos")) return;
+      try {
+        const st = await api("GET", "/fondos/estado");
+        $("#fm-admin").innerHTML = '<option value="">Todas</option>' + st.admins.map((a) => '<option value="' + esc(a.name) + '">' + esc(a.name) + " (" + a.funds + ")</option>").join("");
+        if (st.latest) $("#fm-sub").textContent = "Valor cuota oficial de la CMF, de todos los bancos y administradoras · al " + fecha(st.latest);
+      } catch (e) { /* sin datos todavía */ }
+      $("#fm-form").addEventListener("submit", (e) => { e.preventDefault(); searchFunds(); });
+      document.querySelectorAll("[data-period]").forEach((b) => b.addEventListener("click", () => loadRank(b.dataset.period)));
+      $("#fm-tipo").addEventListener("change", () => { const on = document.querySelector('[data-period][aria-pressed="true"]'); loadRank(on ? on.dataset.period : "12m"); });
+      loadMyFunds(); loadRank("12m");
+    }
+    load(); loadWatch(); initFunds();
   }
 
   // ---------- Gastos ----------
