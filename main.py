@@ -220,6 +220,17 @@ def run_macro_reminders():
         logger.error(f"Error en recordatorios macro (no afecta el resto del bot): {e}")
 
 
+def run_fund_refresh():
+    """Job: baja los valores cuota publicados por la CMF (fondos mutuos de Chile)."""
+    try:
+        from finmate.services import funds
+
+        funds.refresh()
+        funds.backfill()  # solo la primera vez (queda marcado en kv_state)
+    except Exception as e:
+        logger.error(f"Error al actualizar fondos CMF (no afecta el resto del bot): {e}")
+
+
 def run_podcast_digests():
     """Job: resumen de episodios nuevos de podcasts (Etapa C)."""
     try:
@@ -333,6 +344,14 @@ def start_scheduler():
                       id="security_daily", name="Chequeo diario de seguridad", replace_existing=True)
     scheduler.add_job(run_security_monthly, CronTrigger(day=1, hour=10, minute=7),
                       id="security_monthly", name="Revisión mensual de seguridad", replace_existing=True)
+
+    # Fondos mutuos (CMF): publica con 1 día de retraso. Se revisa en la
+    # mañana y en la tarde; al arrancar, una vez a los 3 minutos.
+    scheduler.add_job(run_fund_refresh, CronTrigger(hour="9,18", minute=43),
+                      id="fund_refresh", name="Fondos mutuos CMF", replace_existing=True)
+    scheduler.add_job(run_fund_refresh, "date",
+                      run_date=datetime.now() + _timedelta(minutes=3),
+                      id="fund_refresh_boot", name="Fondos mutuos CMF (al arrancar)", replace_existing=True)
 
     scheduler.start()
     logger.info(

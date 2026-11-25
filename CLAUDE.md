@@ -723,3 +723,25 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
 - Costos: generar la imagen US$0 (CPU propia, <1 s); subir media a Meta gratis; la imagen cuenta
   como mensaje de servicio (gratis hasta 1.000/mes por número desde oct 2026, después se cobra).
 - Dependencia nueva `matplotlib==3.11.2`. Tests: `tests/test_imagenes_portafolio.py`. 218/218.
+
+## 25 nov 2026 (noche) — Fondos mutuos chilenos (CMF), para todos los usuarios
+
+- Fuente: export Excel público de la CMF con `admins=0` → **todas** las administradoras en 1
+  archivo diario (~700 KB, ~2.880 series, ~22 AGF). Sin clave. Publica con 1 día de retraso.
+  `finmate/data_sources/cmf_fondos.py` (descarga, lectura con `xlrd` en latin-1, nombres cortos
+  de bancos y alias "banco de chile" → Banchile, etc.).
+- Base: tablas `fund_quotes` (fecha+RUN+serie) y `followed_funds` (lo que sigue cada usuario,
+  con cuotas opcionales). Retención: últimos 45 días completos + último día de cada mes.
+- `finmate/services/funds.py`: `refresh()` (jobs 9:43 y 18:43 + uno a los 3 min de arrancar),
+  `backfill()` una sola vez (cierres de los últimos 13 meses, marcado en kv `cmf:backfill_done`),
+  búsqueda por nombre/banco/tipo, rentabilidad 1d/1m/año/12m, ranking (una serie por fondo,
+  sin series chicas ni de inversionistas calificados), mis fondos.
+- Bot: tools `search_funds`, `get_fund`, `rank_funds`, `follow_fund`, `get_my_funds` + sección
+  FONDOS MUTUOS CHILENOS en el prompt (información, no recomendación).
+- Panel → Mis inversiones → tarjeta "Fondos mutuos": mis fondos (con cuotas y saldo), buscador
+  por nombre/banco/tipo con todas las series, ranking 1m/año/12m. API `/api/fondos/*`.
+- Admin → Fuentes → "CMF — Fondos mutuos" → **Probar**: baja el último día, lo guarda y, si
+  falta, arranca la carga de 13 meses. Es la forma de confirmar que la CMF responde desde Railway
+  (desde la nube de Claude daba 403; desde el computador de Joaco funciona).
+- Si Railway recibe 403: plan B = subir el archivo diario desde el computador de Joaco.
+- Tests: `tests/test_fondos_cmf.py` (+ `tests/fixtures/cmf_fondos_muestra.xls`, recorte real).
