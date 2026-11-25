@@ -68,6 +68,10 @@ KIND_LABELS = {
     "macro": "Datos macroeconómicos",
 }
 
+# Las notas se guardan en silencio: el bot no responde "anotado" ni las deja en el historial
+# de la conversación, así el chat sigue normal. try_handle_rating / rate_from_button devuelven
+# RATED cuando registraron una nota.
+RATED = "__nota_registrada__"
 RATE_FOOTER = "¿Qué tan relevante fue? Responde 1, 2 o 3 (3 = muy relevante)."
 RATE_MARKER = "Responde 1, 2 o 3"
 BUTTONS = (("1", "1 · Poco"), ("2", "2 · Algo"), ("3", "3 · Mucho"))
@@ -489,8 +493,8 @@ def try_handle_rating(user_id: int, text: str, last_assistant: str = "") -> Opti
                     if nid and record_rating(user_id, nid, int(n)):
                         done.append(f"{code.lower()}{n}")
                 if done:
-                    return (f"Anotado ({', '.join(done)}). Con esto voy afinando qué noticias te muestro y dónde. "
-                            "Puedes revisar y cambiar tu perfil en Ajustes → Tus noticias.")
+                    logger.info(f"Perfil de noticias: usuario {user_id} calificó {', '.join(done)} (resumen)")
+                    return RATED
             return None
         # Nota suelta "3": solo si lo último que mandé fue una noticia para calificar
         m = _RX_SINGLE.match(t)
@@ -503,7 +507,9 @@ def try_handle_rating(user_id: int, text: str, last_assistant: str = "") -> Opti
             return None
         rating = int(m.group(1))
         res = record_rating(user_id, last["id"], rating)
-        return _ack(rating, res, user_id) if res else None
+        if res:
+            logger.info(f"Perfil de noticias: usuario {user_id} calificó con {rating} (texto)")
+        return RATED if res else None
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Perfil de noticias: no pude registrar la nota de {user_id}: {e}")
         return None
@@ -514,7 +520,9 @@ def rate_from_button(user_id: int, button_id: str) -> Optional[str]:
     try:
         _p, nid, n = button_id.split(":", 2)
         res = record_rating(user_id, nid, int(n))
-        return _ack(int(n), res, user_id) if res else "Esa noticia ya es antigua, pero gracias: las próximas sí las voy anotando."
+        if res:
+            logger.info(f"Perfil de noticias: usuario {user_id} calificó con {n} (botón)")
+        return RATED        # aunque la noticia sea muy antigua para encontrarla: no se responde nada
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Perfil de noticias: botón inválido {button_id!r}: {e}")
         return None
