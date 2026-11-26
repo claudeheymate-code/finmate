@@ -224,3 +224,51 @@ def test_historia_con_error_no_queda_marcada_lista(funds_db, monkeypatch):
     out = funds_db.backfill()
     assert "error" in out and not load_json(funds_db.BACKFILL_KEY, None)
     assert load_json(funds_db.PROGRESS_KEY, {}).get("error") == "bloqueado"
+
+
+def test_fecha_del_excel():
+    from finmate.data_sources import cmf_fondos
+
+    assert cmf_fondos.parse_date(open(FIXTURE, "rb").read()) == dt.date(2026, 11, 24)
+
+
+def test_importar_excel_desde_el_admin(funds_db, app, monkeypatch):
+    import io
+
+    from config import settings
+    from finmate.db.models import FundQuote, get_session
+
+    s = get_session()
+    s.query(FundQuote).delete()
+    s.commit()
+    s.close()
+    funds_db._invalidate()
+    monkeypatch.setattr(settings, "ADMIN_DEV_LOGIN", True)
+    c = app.test_client()
+    assert c.post("/admin/api/dev-login", json={"email": "claude.heymate@gmail.com"}, headers=H()).status_code == 200
+    data = {"files": [(io.BytesIO(open(FIXTURE, "rb").read()), "cmf.xls"), (io.BytesIO(b"hola"), "otro.txt")]}
+    r = c.post("/admin/api/fondos/importar", data=data, headers=H(), content_type="multipart/form-data")
+    assert r.status_code == 200, r.get_json()
+    res = r.get_json()["results"]
+    assert res[0]["date"] == "2026-11-24" and res[0]["series"] == 10
+    assert "error" in res[1]
+    assert funds_db.get_series("8723-8", "A") is not None
+    # sin anti-CSRF no se puede
+    data = {"files": [(io.BytesIO(open(FIXTURE, "rb").read()), "cmf.xls")]}
+    assert c.post("/admin/api/fondos/importar", data=data, content_type="multipart/form-data").status_code == 403
+
+
+def test_plazo_usa_la_fecha_mas_cercana(funds_db):
+    from finmate.db.models import FundQuote, get_session
+
+    s = get_session()
+    s.query(FundQuote).filter(FundQuote.date == dt.date(2025, 11, 24)).delete()
+    s.commit()
+    s.close()
+    funds_db._invalidate()
+    from finmate.data_sources import cmf_fondos
+
+    rows = cmf_fondos.parse_xls(open(FIXTURE, "rb").read())
+    funds_db.store_day(dt.date(2025, 11, 30), [dict(r, valor_cuota=r["valor_cuota"] * 0.8) for r in rows])
+    s2 = funds_db.get_series("8723-8", "A")
+    assert s2["d_12m"] == "2025-11-30" and s2["r_12m"] == pytest.approx(25.0, abs=0.01)
