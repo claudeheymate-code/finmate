@@ -164,12 +164,28 @@ def _format_message(items: list) -> str:
     return "\n".join(lines).strip()
 
 
+def fetch_premium_news(symbols, now: dt.datetime) -> list:
+    """Noticias de WSJ, Bloomberg, FT, The Economist, Reuters, CNBC y DF que nombran a la empresa."""
+    try:
+        from finmate.data_sources import premium_news
+
+        names = {}
+        if FINNHUB_API_KEY:
+            with httpx.Client(timeout=10) as client:
+                names = {s: _company_name(client, s) for s in sorted(set(symbols))}
+        return premium_news.items_for_symbols(symbols, names, now, hours=FRESH_MINUTES / 60)
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"Grandes medios: sin noticias para avisos ({type(e).__name__})")
+        return []
+
+
 def check_news_alerts(
     messenger=None,
     tracked: Optional[list] = None,
     finnhub_fetch: Callable = fetch_finnhub_news,
     marketaux_fetch: Callable = marketaux.get_news,
     now: Optional[dt.datetime] = None,
+    premium_fetch: Optional[Callable] = None,
 ) -> int:
     """Busca noticias nuevas y avisa a cada usuario. Devuelve cuántos
     mensajes se enviaron. Los parámetros opcionales existen para los tests."""
@@ -188,6 +204,12 @@ def check_news_alerts(
     items = list(finnhub_fetch(symbols, now))
     after = (now - dt.timedelta(minutes=FRESH_MINUTES)).strftime("%Y-%m-%dT%H:%M")
     items += list(marketaux_fetch(symbols, published_after=after))
+    # Los grandes medios van primero en la lista para que, si la misma noticia llega
+    # por varias fuentes, el aviso cite al medio original (el duplicado se descarta por titular).
+    if premium_fetch is None and (finnhub_fetch is fetch_finnhub_news):
+        premium_fetch = fetch_premium_news
+    if premium_fetch is not None:
+        items = list(premium_fetch(symbols, now)) + items
 
     state = _load_state()
     warmup = "seen" not in state
