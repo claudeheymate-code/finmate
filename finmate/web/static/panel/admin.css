@@ -137,3 +137,5 @@ li.sec-done { opacity: .62; }
 .tier { padding: 14px 16px; border-radius: 14px; background: rgba(8,36,72,0.04); }
 .tier .value { font-size: 26px; margin-top: 6px; }
 @media (max-width: 760px) { .tier-grid { grid-template-columns: 1fr; } }
+
+.st.warn { background: #FFF6E5; color: #A15C00; }

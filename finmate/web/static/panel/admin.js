@@ -417,7 +417,24 @@
     } catch (e) { t.className = "test down"; t.textContent = e.message; }
     b.disabled = false;
   }
+  function renderAccess(d) {
+    const cls = { completo: "ok", mixto: "warn", titular: "muted" };
+    const words = { abierto: "abierto", pago: "de pago", bloqueado: "bloqueado", "poco texto": "poco texto" };
+    $("#na-table tbody").innerHTML = (d.rows || []).map((r) => `<tr>
+      <td data-label="Medio"><strong>${esc(r.name)}</strong></td>
+      <td data-label="Acceso"><span class="st ${cls[r.access] || "muted"}">${esc(r.label)}</span>${r.changed ? ' <span class="small down">cambió</span>' : ""}</td>
+      <td data-label="Cómo llega">${esc(r.via)}</td>
+      <td data-label="Qué significa">${esc(r.note)}${r.articles && r.articles.length ? `<br><span class="faint small">Últimos artículos: ${r.articles.map((a) => esc(words[a] || a)).join(", ")}</span>` : ""}</td>
+    </tr>`).join("");
+    $("#na-when").textContent = d.checked_at ? "Última comprobación en vivo: " + new Date(d.checked_at).toLocaleString("es-CL") : "Aún sin comprobación en vivo (se muestra lo revisado el 26 nov 2026).";
+  }
   function pageFuentes() {
+    live("/acceso-medios", renderAccess, (e) => { $("#na-table tbody").innerHTML = `<tr><td colspan="4">${box("error-box", e.message)}</td></tr>`; });
+    $("#na-check").addEventListener("click", async () => {
+      const b = $("#na-check"); b.disabled = true; $("#na-when").textContent = "Comprobando los últimos artículos de cada medio…";
+      try { renderAccess(await api("POST", "/acceso-medios/chequear")); } catch (e) { $("#na-when").textContent = e.message; }
+      b.disabled = false;
+    });
     live("/fuentes", (d, fromCache) => {
       const a = document.activeElement;
       if (fromCache === false && a && (a.closest("#src-grid") || a.id === "src-ideas")) return;   // estás escribiendo
