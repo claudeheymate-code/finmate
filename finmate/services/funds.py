@@ -205,6 +205,8 @@ def backfill(months: int = 13, force: bool = False) -> dict:
                                              "at": dt.datetime.utcnow().isoformat(timespec="seconds")})
                     return {"added": added, "error": str(e)[:200]}  # sin marcar lista: se reintenta
                 time.sleep(3)
+                if not n:
+                    logger.info(f"CMF backfill: la CMF no tiene datos para {day} (o ya estaba)")
                 if n:
                     added.append(day.isoformat())
                     logger.info(f"CMF backfill: guardé {day} ({n} series)")
@@ -214,6 +216,24 @@ def backfill(months: int = 13, force: bool = False) -> dict:
                                  "at": dt.datetime.utcnow().isoformat(timespec="seconds")})
         logger.info(f"CMF backfill listo: {len(added)} cierres de mes guardados")
         return {"added": added}
+
+
+def import_file(content: bytes) -> dict:
+    """Guarda un Excel diario de la CMF subido a mano (Admin → Fuentes). Devuelve fecha y series."""
+    if content[:4] != cmf_fondos.XLS_MAGIC:
+        raise ValueError("No es un Excel de la CMF (.xls)")
+    day = cmf_fondos.parse_date(content)
+    rows = cmf_fondos.parse_xls(content)
+    if not rows:
+        raise ValueError(f"El archivo del {day} no trae series")
+    n = store_day(day, rows)
+    return {"date": day.isoformat(), "series": n}
+
+
+def history_months() -> int:
+    """Cuántos cierres de mes (anteriores al mes actual) hay guardados."""
+    today = _today()
+    return len({(d.year, d.month) for d in stored_dates() if (d.year, d.month) != (today.year, today.month)})
 
 
 def start_backfill_thread() -> bool:
@@ -235,6 +255,7 @@ def status() -> dict:
         "last_refresh": load_json(LAST_RUN_KEY, None),
         "backfill": load_json(BACKFILL_KEY, None),
         "progress": load_json(PROGRESS_KEY, None),
+        "history_months": history_months() if dates else 0,
         "busy": _lock.locked(),
     }
 
@@ -265,15 +286,21 @@ def _ref_dates() -> dict:
         return {}
     latest = dates[0]
 
-    def on_or_before(target):
-        return next((d for d in dates if d <= target), None)
+    def nearest(target, tolerance):
+        """Fecha guardada más cercana al objetivo (antes o después), dentro de la tolerancia en días."""
+        best = min((d for d in dates[1:]), key=lambda d: (abs((d - target).days), d > target), default=None)
+        return best if best and abs((best - target).days) <= tolerance else None
+
+    def on_or_before(target, tolerance):
+        d = next((d for d in dates if d <= target), None)
+        return d if d and (target - d).days <= tolerance else None
 
     return {
         "latest": latest,
-        "1d": dates[1] if len(dates) > 1 else None,
-        "1m": on_or_before(latest - dt.timedelta(days=30)),
-        "ytd": on_or_before(dt.date(latest.year - 1, 12, 31)),
-        "12m": on_or_before(latest - dt.timedelta(days=365)),
+        "1d": dates[1] if len(dates) > 1 and (latest - dates[1]).days <= 5 else None,
+        "1m": nearest(latest - dt.timedelta(days=30), 7),
+        "ytd": on_or_before(dt.date(latest.year - 1, 12, 31), 10),
+        "12m": nearest(latest - dt.timedelta(days=365), 20),
     }
 
 
