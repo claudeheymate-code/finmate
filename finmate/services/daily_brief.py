@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 INDICES = (("SPY", "S&P 500 (SPY)"), ("QQQ", "Nasdaq 100 (QQQ)"), ("DIA", "Dow Jones (DIA)"), ("ECH", "Bolsa Chile (ECH)"))
 MAX_SYMBOLS = 12
 MAX_HELD_LINES = 5
+MAX_MEDIA_LINES = 3
 HEADERS = {"start": "☀️ *Inicio de jornada*", "end": "🌙 *Cierre de jornada*"}
 _DIAS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 _MESES = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
@@ -144,6 +145,56 @@ def _symbol_news(symbols: list, limit: int = 6) -> list:
         return []
 
 
+def _media_stories(limit: int = 6) -> list:
+    """Los temas que más cubren WSJ, Bloomberg, FT, The Economist, Reuters, CNBC y DF (últimas 14 h)."""
+    try:
+        from finmate.data_sources import premium_news
+
+        stories = premium_news.top_stories(hours=14, limit=limit)
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"Resumen de jornada: sin grandes medios ({type(e).__name__})")
+        return []
+    return [{"title": s["title"], "summary": s.get("summary", ""), "source": s["source"],
+             "sources": s.get("sources") or [s["source"]], "lang": s.get("lang", "en"), "url": s.get("url", "")}
+            for s in stories]
+
+
+def _spanish_titles(stories: list) -> list:
+    """Titulares en español (los de medios en inglés se traducen con Haiku; queda en caché un día)."""
+    import hashlib
+
+    todo = [s["title"] for s in stories if s.get("lang") != "es"]
+    if not todo:
+        return [s["title"] for s in stories]
+
+    def compute():
+        from finmate.agent.orchestrator import ANTHROPIC_MODEL_DEFAULT, _client, _record_usage
+
+        if _client is None:
+            return {}
+        r = _client.messages.create(
+            model=ANTHROPIC_MODEL_DEFAULT, max_tokens=600,
+            system=("Traduce titulares de noticias económicas al español de Chile, claros y breves (máximo 95 "
+                    "caracteres cada uno), sin comillas ni numeración. Devuelve JSON: una lista de strings en el "
+                    "mismo orden."),
+            messages=[{"role": "user", "content": json.dumps(todo, ensure_ascii=False)}])
+        _record_usage(ANTHROPIC_MODEL_DEFAULT, r)
+        text = "".join(b.text for b in r.content if b.type == "text").strip()
+        text = text[text.find("["): text.rfind("]") + 1]
+        out = json.loads(text) if text else []
+        return {k: str(v) for k, v in zip(todo, out) if v}
+
+    key = "brief:media_es:" + hashlib.sha1("|".join(todo).encode()).hexdigest()[:16]
+    try:
+        tr = _cached_json(key, 86400, compute)
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"Resumen de jornada: no traduje titulares ({type(e).__name__})")
+        tr = {}
+    if not isinstance(tr, dict):
+        tr = {}
+    return [tr.get(s["title"], s["title"]) if s.get("lang") != "es" else s["title"] for s in stories]
+
+
 def _chile() -> list:
     """[{label, value, fmt}] del Banco Central (dólar, UF, TPM), con cache 30 min."""
     try:
@@ -194,6 +245,7 @@ def gather(user_id: int, edge: str, held: Optional[list] = None, digest: Optiona
         "en_portafolio": sorted(in_portfolio),
         "noticias_de_mis_activos": _symbol_news(syms),
         "noticias_del_mercado": _general_news(),
+        "grandes_medios": _media_stories(),
         "portafolio": _portfolio(user_id),
         "chile": _chile(),
         "noticias_para_ti": list(digest or []),
@@ -239,6 +291,11 @@ def _facts_for_prompt(facts: dict) -> str:
                        ("noticias_del_mercado", "Noticias generales del mercado")):
         if facts.get(key):
             lines.append(f"{label}:\n  - " + "\n  - ".join(facts[key]))
+    media = facts.get("grandes_medios") or []
+    if media:
+        lines.append("Lo que más cubren los grandes medios (WSJ, Bloomberg, FT, The Economist, Reuters, CNBC, DF):\n  - " +
+                     "\n  - ".join(f"{m['title']}" + (f" — {m['summary'][:160]}" if m.get("summary") else "") +
+                                   f" ({', '.join(m['sources'])})" for m in media))
     mine = [d for d in facts.get("noticias_para_ti") or [] if (d.get("level") or 2) >= 2]
     if mine:
         lines.append("Noticias guardadas para su resumen (le importan; van en lista aparte):\n  - " +
@@ -338,6 +395,15 @@ def bullets(facts: dict, edge: str) -> str:
         rows.append("")
         rows.append("Califícalas con la letra y un número del 1 al 3, por ejemplo: a3 b1")
         sections.append("📰 *Noticias para ti*\n" + "\n".join(rows))
+
+    media = (facts.get("grandes_medios") or [])[:MAX_MEDIA_LINES]
+    if media:
+        titles = _spanish_titles(media)
+        rows = []
+        for m, t in zip(media, titles):
+            t = t if len(t) <= 120 else t[:119] + "…"
+            rows.append(f"• {t} ({', '.join(m['sources'][:3])})")
+        sections.append("🌎 *En los grandes medios*\n" + "\n".join(rows))
 
     if edge == "start" and facts.get("agenda_hoy"):
         sections.append("🗓️ *Hoy se publica*\n" + "\n".join(f"• {n}" for n in facts["agenda_hoy"]))
