@@ -388,6 +388,14 @@ developers.facebook.com, número de prueba, luego el prepago chileno.
 
 ## Tareas pendientes (anotadas 16 nov 2026)
 
+- **The Guardian (texto completo gratis) — PENDIENTE (Joaco), anotado 26 nov 2026:** el código ya
+  está listo (`news_content.guardian_search`, se usa en `get_news_detail`; aparece en Admin →
+  Fuentes como «Falta clave»). Falta: (1) crear la clave gratis en
+  https://open-platform.theguardian.com/access/ (opción «Developer», 500 llamadas/día, pide nombre,
+  correo y uso — Claude no crea cuentas ni maneja claves); (2) cargarla en Railway → Variables
+  como `GUARDIAN_API_KEY`; (3) Admin → Fuentes → The Guardian → Probar. Al cargarla, la tarjeta
+  «¿Qué puede leer el bot?» deja de decir «falta clave».
+
 - **Rentabilidad de fondos chilenos (CMF):** prueba exitosa el 16 nov 2026 desde
   el computador de Joaco con LarrainVial Enfoque (RUN 8723-8) y Monetario (RUN
   8177-9). Fuente: export Excel de la CMF,
