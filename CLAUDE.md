@@ -791,3 +791,14 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
 - El lector de artículos (`news_content.extract_article`) ahora respeta `isAccessibleForFree=false`
   (schema.org): el DF manda el texto de suscriptores escondido en la página y no se usa.
 - Plantilla `finmate_buenos_dias`: seguía «En revisión» el 26 nov a las 6:43.
+
+## 26 nov 2026 — Admin: deslizar entre pestañas igual que el panel de usuarios
+
+- El admin ahora es una sola página con las 5 pestañas lado a lado
+  (`templates/admin/base.html` + `templates/admin/_pane_{costos,usuarios,inbox,anuncios,fuentes}.html`;
+  `_render()` en `web/admin.py` renderiza `base.html` con `panes`). Los antiguos
+  `templates/admin/{costos,...}.html` ya no se usan.
+- `admin.js`: `initTabs(MODULES)` (copia del de `panel.js`): el riel sigue al dedo, velocidad
+  del gesto, resistencia en los extremos, `history.pushState`, cada pestaña carga sus datos
+  la primera vez que se ve (y precarga las vecinas). En computador los enlaces navegan normal.
+  `initAutoHideRail()` esconde la barra al bajar.
