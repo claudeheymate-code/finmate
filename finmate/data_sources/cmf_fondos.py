@@ -170,6 +170,23 @@ def parse_xls(content: bytes) -> list[dict]:
     return rows
 
 
+_MESES = {"ENERO": 1, "FEBRERO": 2, "MARZO": 3, "ABRIL": 4, "MAYO": 5, "JUNIO": 6, "JULIO": 7, "AGOSTO": 8,
+          "SEPTIEMBRE": 9, "SETIEMBRE": 9, "OCTUBRE": 10, "NOVIEMBRE": 11, "DICIEMBRE": 12}
+
+
+def parse_date(content: bytes) -> dt.date:
+    """Fecha del archivo, desde la línea «Fecha : 31 DE OCTUBRE DE 2026» del encabezado."""
+    import xlrd
+
+    sh = xlrd.open_workbook(file_contents=content, encoding_override="latin-1").sheet_by_index(0)
+    for i in range(min(sh.nrows, 15)):
+        cell = str(sh.cell_value(i, 0))
+        m = re.search(r"FECHA\s*:\s*(\d{1,2})\s+DE\s+([A-ZÁÉÍÓÚ]+)\s+DE\s+(\d{4})", cell.upper())
+        if m and m.group(2) in _MESES:
+            return dt.date(int(m.group(3)), _MESES[m.group(2)], int(m.group(1)))
+    raise ValueError("No encontré la fecha en el Excel (¿es el export diario de la CMF?)")
+
+
 def fetch_day(day: dt.date) -> list[dict] | None:
     """Descarga y lee un día. None si ese día no tiene datos publicados."""
     content = download_day(day)
