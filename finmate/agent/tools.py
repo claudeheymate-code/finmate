@@ -66,6 +66,7 @@ from finmate.agent.portfolio_tools import (
 from finmate.agent.news_content_tools import (
     tool_get_company_filings,
     tool_get_news_detail,
+    tool_get_premium_news,
     tool_read_article,
 )
 from finmate.agent.setup_tools import (
@@ -446,6 +447,19 @@ TOOLS = [
             "required": ["action"],
         },
     },
+    # ── Grandes medios (RSS) ───────────────────────────────────────────────
+    {
+        "name": "get_premium_news",
+        "description": "Titulares y resúmenes recientes de los grandes medios económicos: WSJ, Bloomberg, Financial Times, The Economist, Reuters, CNBC, MarketWatch y Diario Financiero. Sin query: los temas que más medios están cubriendo hoy. Con query: noticias de ese tema o empresa (en inglés funciona mejor para medios de EE.UU., ej. 'Nvidia', 'Fed', 'oil'). fuente: limita a un medio ('Bloomberg', 'WSJ', 'Economist'…). Usar con '¿qué dicen los medios?', '¿qué está pasando en los mercados?', '¿qué dice Bloomberg de X?'. Solo trae titular y resumen: cuéntalo en español con tus palabras, cita el medio y deja el link; no inventes detalles del artículo.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "fuente": {"type": "string"},
+                "horas": {"type": "integer", "minimum": 1, "maximum": 168},
+            },
+        },
+    },
     # ── Fondos mutuos chilenos (CMF) ───────────────────────────────────────
     {
         "name": "search_funds",
@@ -637,6 +651,9 @@ def run_tool(
 
     if name == "get_company_filings":
         return tool_get_company_filings(tool_input)
+
+    if name == "get_premium_news":
+        return tool_get_premium_news(tool_input)
 
     if name == "search_funds":
         return tool_search_funds(tool_input)

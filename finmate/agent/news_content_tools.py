@@ -31,6 +31,14 @@ def tool_get_news_detail(tool_input: dict) -> str:
     if symbol:
         items += _finnhub_items(symbol)
     q = query or symbol
+    try:  # titulares de los grandes medios primero (solo titular y resumen)
+        from finmate.data_sources import premium_news as pn
+
+        items += [{"title": f"{it['title']} ({it['source']})", "url": it["url"], "source": it["source"],
+                   "summary": it["summary"], "date": it["published"].isoformat() if it["published"] else ""}
+                  for it in pn.search(q, hours=72, limit=4)]
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"Grandes medios no disponibles: {e}")
     items += nc.guardian_search(q)
     items += nc.bing_news(q, "es")
     items += nc.bing_news(q, "en")
@@ -86,4 +94,39 @@ def tool_get_company_filings(tool_input: dict) -> str:
                      + f": {f['url']}")
     if filings[0].get("text"):
         lines.append(f"\nExtracto del más reciente ({filings[0]['form']}):\n{filings[0]['text']}")
+    return "\n".join(lines)
+
+
+def tool_get_premium_news(tool_input: dict) -> str:
+    """Titulares y resúmenes de WSJ, Bloomberg, FT, The Economist, Reuters, CNBC, MarketWatch y DF."""
+    from finmate.data_sources import premium_news as pn
+
+    query = (tool_input.get("query") or "").strip()
+    source = (tool_input.get("fuente") or "").strip() or None
+    try:
+        hours = float(tool_input.get("horas") or (72 if query else 24))
+    except (TypeError, ValueError):
+        hours = 24
+    hours = max(1, min(hours, 168))
+    try:
+        if query or source:
+            items = pn.search(query, hours=hours, source=source, limit=10)
+        else:
+            items = [dict(s) for s in pn.top_stories(hours=min(hours, 24), limit=8)]
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"get_premium_news falló: {e}")
+        return "No pude revisar los grandes medios en este momento."
+    if not items:
+        what = f"sobre «{query}»" if query else "recientes"
+        return (f"No encontré noticias {what} en WSJ, Bloomberg, FT, The Economist, Reuters, CNBC, MarketWatch ni DF "
+                f"en las últimas {int(hours)} horas. Puedes probar get_news_detail para una búsqueda más amplia.")
+    lines = ["Titulares de los grandes medios (solo titular y resumen: el artículo completo es de pago; "
+             "cuéntalo con tus palabras, en español, y deja el link):"]
+    for it in items:
+        cov = f" · también en {', '.join(s for s in it['sources'] if s != it['source'])}" if it.get("coverage", 1) > 1 else ""
+        lines.append(f"• [{it['source']}] {it['title']} ({pn.ago(it.get('published'))}){cov}")
+        if it.get("summary"):
+            lines.append(f"  {it['summary']}")
+        if it.get("url"):
+            lines.append(f"  {it['url']}")
     return "\n".join(lines)
