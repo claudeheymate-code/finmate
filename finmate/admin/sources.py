@@ -104,7 +104,9 @@ def _t_cmf_fondos():
 
     def history_text(st):
         if st.get("backfill"):
-            return "historia de 13 meses lista"
+            m = st.get("history_months", 0)
+            return (f"historia: {m} meses guardados" + ("" if m >= 12 else
+                    " (para completarla, importa los Excel de la CMF abajo)"))
         pr = st.get("progress") or {}
         started = funds.start_backfill_thread()
         if pr.get("error") and not st.get("busy"):
