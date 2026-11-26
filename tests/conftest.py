@@ -37,6 +37,15 @@ def fake_market(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_premium_network(monkeypatch):
+    """Los tests no leen los RSS reales de los grandes medios (los que los prueban usan sus propios datos)."""
+    from finmate.data_sources import premium_news
+
+    premium_news._cache.clear()
+    monkeypatch.setattr(premium_news, "_all_items", lambda feeds=None: [])
+
+
+@pytest.fixture(autouse=True)
 def whatsapp_window_open(monkeypatch):
     """Por defecto los usuarios de prueba escribieron hace poco (ventana de 24 h de WhatsApp
     abierta). Los tests de la ventana cerrada lo cambian con `window_closed`."""
