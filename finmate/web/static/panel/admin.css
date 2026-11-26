@@ -71,7 +71,7 @@ td.hide-sm, th.hide-sm { display: table-cell; }   /* en tablas, inline desarma l
 
 @media (max-width: 760px) {
   .admin .rail a[aria-current="page"] { background: transparent; color: #FFFFFF; }
-  .admin-main { touch-action: pan-x pan-y; }
+  .admin-main { touch-action: pan-y; }
   .admin .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .hide-sm, td.hide-sm, th.hide-sm { display: none; }
   .admin-stats { grid-template-columns: 1fr 1fr; }

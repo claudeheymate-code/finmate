@@ -90,7 +90,6 @@
       const n = d.total || 0;
       badge.textContent = n > 99 ? "99+" : n; badge.hidden = !(n > 0);
     });
-    if (page === "admin-costos") live("/resumen", renderCostos);
     preloadOthers();
   }
 
@@ -593,37 +592,167 @@
   // Barra de pestañas abajo con la "píldora" azul, se esconde al bajar,
   // deslizar con el dedo cambia de pestaña y no se puede hacer zoom.
   const mq = window.matchMedia("(max-width: 760px)");
-  function initRail() {
-    const rail = $(".rail"); if (!rail) return;
-    const pill = $(".tab-pill", rail);
+  // Celular: las 5 pestañas están en la misma página, lado a lado (base.html).
+  // Al arrastrar, el riel sigue al dedo y la vecina ya se ve; al soltar termina
+  // de deslizarse sin recargar (igual que el panel de usuarios). La URL se
+  // actualiza con history.pushState. En computador los enlaces navegan normal.
+  function initTabs(modules) {
+    const rail = $(".rail"); const track = document.getElementById("track"); const main = document.getElementById("main");
+    if (!rail || !track || !main) return;
     const links = $$("a", rail);
-    const place = (a) => { if (!pill || !a) return; pill.style.width = a.offsetWidth + "px"; pill.style.transform = `translateX(${a.offsetLeft}px)`; };
-    const current = () => links.find((a) => a.getAttribute("aria-current") === "page");
-    if (pill) { pill.style.transition = "none"; place(current()); requestAnimationFrame(() => { pill.style.transition = ""; }); }
-    window.addEventListener("resize", () => place(current()));
-    const go = (a) => {
-      if (!a || a === current()) return;
-      if (mq.matches && pill) {
-        links.forEach((x) => x.removeAttribute("aria-current")); a.setAttribute("aria-current", "page"); place(a);
-        showProgress();
-        setTimeout(() => { location.href = a.href; }, 120);
-      } else { showProgress(); location.href = a.href; }
-    };
-    links.forEach((a) => a.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); go(a); }));
-    // Deslizar entre pestañas (no dentro de tablas que se desplazan ni campos)
-    let x0 = null, y0 = 0;
-    document.addEventListener("touchstart", (e) => {
-      if (!mq.matches || e.touches.length !== 1 || e.target.closest(".table-wrap, input, textarea, select, .rail")) { x0 = null; return; }
-      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    const panes = $$(".pane", track);
+    const names = panes.map((p) => p.dataset.pane);
+    const pill = $(".tab-pill", rail);
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const EASE = "cubic-bezier(.22,.8,.24,1)";
+    let idx = names.indexOf((document.body.dataset.page || "").replace(/^admin-/, ""));
+    if (idx < 0) return;
+    let moveToken = 0;
+    let sx = 0, sy = 0, lastX = 0, lastT = 0, vx = 0, dx = 0, lock = null, on = false;
+    const started = new Set([names[idx]]);
+
+    function startPane(i) {
+      const n = names[i];
+      if (!n || started.has(n)) return;
+      started.add(n);
+      try { (modules[n] || function () {})(); } catch (e) { /* cada pestaña maneja sus errores */ }
+    }
+    const width = () => track.parentElement.clientWidth;
+    function setTrack(px, ms) {
+      track.style.transition = ms ? "transform " + ms + "ms " + EASE : "none";
+      track.style.transform = "translate3d(" + px + "px,0,0)";
+    }
+    function placePill(frac, ms) {
+      if (!pill) return;
+      const cur = links[idx]; const n = links[idx + (frac > 0 ? 1 : -1)];
+      let left = cur.offsetLeft, w = cur.offsetWidth;
+      if (n && frac) { const f = Math.min(Math.abs(frac), 1); left += (n.offsetLeft - cur.offsetLeft) * f; w += (n.offsetWidth - cur.offsetWidth) * f; }
+      pill.style.transition = ms === 0 ? "none" : "";
+      pill.style.transform = "translateX(" + left + "px)"; pill.style.width = w + "px";
+      const near = n && Math.abs(frac) > 0.5 ? n : cur;
+      links.forEach((a) => a.classList.toggle("lit", a === near));
+    }
+    function alignNeighbors(onDrag) {
+      const y = onDrag ? window.scrollY : 0;
+      panes.forEach((p, i) => { p.style.transform = y && i !== idx ? "translateY(" + y + "px)" : ""; });
+    }
+    function markActive() {
+      panes.forEach((p, i) => {
+        const act = i === idx;
+        p.classList.toggle("active", act);
+        if (act) { p.removeAttribute("aria-hidden"); p.inert = false; } else { p.setAttribute("aria-hidden", "true"); p.inert = true; }
+      });
+      links.forEach((a, i) => { if (i === idx) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+      document.body.dataset.page = "admin-" + names[idx];
+      document.title = "Finmate Admin — " + (panes[idx].dataset.title || links[idx].getAttribute("title") || "");
+    }
+    function goTo(i, opts) {
+      opts = opts || {};
+      if (i < 0 || i >= panes.length) return;
+      const ms = calm || opts.instant ? 0 : (opts.ms || 300);
+      if (i === idx) { setTrack(-idx * width(), ms); placePill(0); return; }
+      startPane(i);
+      alignNeighbors(true);
+      idx = i;
+      placePill(0);
+      setTrack(-idx * width(), ms);
+      const token = ++moveToken;
+      const finish = () => {
+        if (token !== moveToken) return;
+        markActive();
+        document.dispatchEvent(new Event("finmate:pane"));
+        alignNeighbors(false);
+        window.scrollTo(0, 0);
+        track.style.transition = "none";
+      };
+      if (ms) setTimeout(finish, ms + 20); else finish();
+      if (opts.push !== false && links[idx].href !== location.href) {
+        try { history.pushState({ pane: names[idx] }, "", links[idx].href); } catch (e) {}
+      }
+      setTimeout(() => { startPane(idx - 1); startPane(idx + 1); }, ms + 150);
+    }
+    function layout() {
+      if (mq.matches) { setTrack(-idx * width(), 0); placePill(0, 0); }
+      else { track.style.transform = ""; track.style.transition = ""; }
+    }
+    markActive(); layout();
+    window.addEventListener("resize", layout);
+    // Al volver a la app se deja todo en su lugar (por si quedó un gesto a medias)
+    document.addEventListener("visibilitychange", () => {
+      on = false; lock = null; dx = 0; moveToken++;
+      rail.classList.remove("dragging");
+      alignNeighbors(false); markActive(); layout();
+      track.style.transition = "none";
+    });
+    mq.addEventListener ? mq.addEventListener("change", layout) : mq.addListener(layout);
+    window.addEventListener("popstate", () => {
+      const i = links.findIndex((a) => a.href === location.href || a.pathname === location.pathname);
+      if (i >= 0 && mq.matches) goTo(i, { push: false }); else if (i >= 0) location.reload();
+    });
+    setTimeout(() => { if (mq.matches) { startPane(idx - 1); startPane(idx + 1); } }, 600);
+
+    links.forEach((a, i) => a.addEventListener("click", (e) => {
+      if (e.metaKey || e.ctrlKey) return;
+      e.preventDefault();
+      if (!mq.matches) { if (i !== idx) { showProgress(); location.href = a.href; } return; }
+      goTo(i, { ms: Math.min(260 + 60 * Math.abs(i - idx), 420) });
+    }));
+
+    function scrollsX(el) {
+      for (; el && el !== main; el = el.parentElement) {
+        const ox = getComputedStyle(el).overflowX;
+        if ((ox === "auto" || ox === "scroll") && el.scrollWidth > el.clientWidth + 2) return true;
+      }
+      return false;
+    }
+    main.addEventListener("touchstart", (e) => {
+      on = false;
+      if (!mq.matches || e.touches.length !== 1) return;
+      const t = e.target;
+      if (t.closest("input, textarea, select, [data-noswipe]") || scrollsX(t)) return;
+      on = true; lock = null; dx = 0; vx = 0;
+      sx = lastX = e.touches[0].clientX; sy = e.touches[0].clientY; lastT = performance.now();
     }, { passive: true });
-    document.addEventListener("touchend", (e) => {
-      if (x0 === null) return;
-      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
-      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
-      const i = links.indexOf(current());
-      go(links[i + (dx < 0 ? 1 : -1)]);
-    }, { passive: true });
-    // Se esconde al bajar y vuelve al subir
+    main.addEventListener("touchmove", (e) => {
+      if (!on) return;
+      const x = e.touches[0].clientX, mx = x - sx, my = e.touches[0].clientY - sy;
+      if (lock === null) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        lock = Math.abs(mx) > Math.abs(my) * 1.2 ? "x" : "y";
+        if (lock === "x") { alignNeighbors(true); startPane(idx - 1); startPane(idx + 1); rail.classList.add("dragging"); }
+      }
+      if (lock !== "x") return;
+      e.preventDefault();
+      const now = performance.now();
+      vx = 0.8 * ((x - lastX) / Math.max(now - lastT, 1)) + 0.2 * vx;
+      lastX = x; lastT = now;
+      const atEdge = (mx > 0 && idx === 0) || (mx < 0 && idx === panes.length - 1);
+      dx = atEdge ? mx / 3 : mx;
+      setTrack(-idx * width() + dx, 0);
+      placePill(atEdge ? 0 : -dx / width(), 0);
+    }, { passive: false });
+    function end() {
+      if (!on) return; on = false;
+      rail.classList.remove("dragging");
+      if (lock !== "x") return;
+      const w = width();
+      const flick = Math.abs(vx) > 0.35;
+      let target = idx;
+      if (flick) target = idx + (vx < 0 ? 1 : -1);
+      else if (Math.abs(dx) > w * 0.35) target = idx + (dx < 0 ? 1 : -1);
+      target = Math.max(0, Math.min(panes.length - 1, target));
+      const remaining = Math.abs(-target * w - (-idx * w + dx));
+      const ms = Math.round(Math.max(160, Math.min(340, flick ? remaining / Math.abs(vx) : remaining * 0.9)));
+      if (target !== idx) goTo(target, { ms: ms });
+      else { setTrack(-idx * w, ms); placePill(0); setTimeout(() => alignNeighbors(false), ms + 20); }
+    }
+    main.addEventListener("touchend", end);
+    main.addEventListener("touchcancel", end);
+  }
+
+  // Celular: la barra de abajo se esconde al bajar y vuelve al subir
+  function initAutoHideRail() {
+    const rail = $(".rail"); if (!rail) return;
     let lastY = window.scrollY, acc = 0, ticking = false;
     function update() {
       ticking = false;
@@ -635,6 +764,7 @@
       if (acc > 24) rail.classList.add("rail-hidden"); else if (acc < -12) rail.classList.remove("rail-hidden");
     }
     window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    document.addEventListener("finmate:pane", () => { acc = 0; lastY = window.scrollY; rail.classList.remove("rail-hidden"); });
   }
   function preventZoom() {
     ["gesturestart", "gesturechange", "gestureend"].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
@@ -663,12 +793,14 @@
   freshOnReturn();
   if (page === "admin-login") pageLogin();
   else {
-    initRail();
+    const MODULES = {
+      costos: () => { live("/resumen", renderCostos); pageCostos(); },
+      usuarios: pageUsuarios, inbox: pageInbox, anuncios: pageAnuncios, fuentes: pageFuentes,
+    };
     initCommon();
-    if (page === "admin-costos") pageCostos();
-    if (page === "admin-usuarios") pageUsuarios();
-    if (page === "admin-inbox") pageInbox();
-    if (page === "admin-fuentes") pageFuentes();
-    if (page === "admin-anuncios") pageAnuncios();
+    const cur = page.replace(/^admin-/, "");
+    try { (MODULES[cur] || function () {})(); } catch (e) {}
+    initTabs(MODULES);
+    initAutoHideRail();
   }
 })();
