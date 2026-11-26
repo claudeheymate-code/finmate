@@ -424,6 +424,22 @@
       renderSources(d.sources || []); $("#src-ideas").value = d.ideas || "";
     }, (e) => { $("#src-grid").innerHTML = box("error-box", e.message); });
     $("#src-test-all").addEventListener("click", async () => { for (const c of $$(".src-card")) await testSource(c); });
+    const imp = $("#cmf-import-btn");
+    if (imp) imp.addEventListener("click", async () => {
+      const files = $("#cmf-files").files;
+      if (!files.length) { $("#cmf-import-msg").innerHTML = box("error-box", "Elige uno o más archivos .xls."); return; }
+      const fd = new FormData(); for (const f of files) fd.append("files", f);
+      imp.disabled = true; $("#cmf-import-msg").innerHTML = '<p class="faint">Importando…</p>';
+      try {
+        const r = await fetch("/admin/api/fondos/importar", { method: "POST", body: fd, headers: { "X-Finmate": "1" }, credentials: "same-origin" });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || ("Error " + r.status));
+        $("#cmf-import-msg").innerHTML = "<ul>" + d.results.map((x) => "<li>" + esc(x.file) + ": " + (x.error ? '<span class="down">' + esc(x.error) + "</span>" : esc(x.date) + " · " + esc(x.series) + " series") + "</li>").join("") + "</ul>" +
+          '<p class="faint small">Ahora hay ' + esc(d.status.dates) + " fechas guardadas.</p>";
+        $("#cmf-files").value = "";
+      } catch (e) { $("#cmf-import-msg").innerHTML = box("error-box", e.message); }
+      imp.disabled = false;
+    });
     $("#src-ideas-save").addEventListener("click", async () => {
       try { await api("PUT", "/fuentes/_ideas/nota", { note: $("#src-ideas").value }); $("#src-ideas-msg").innerHTML = okMsg("Ideas guardadas."); }
       catch (e) { $("#src-ideas-msg").innerHTML = box("error-box", e.message); }
