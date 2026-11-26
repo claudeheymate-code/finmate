@@ -764,6 +764,23 @@ def api_source_note(sid):
 
 
 
+@admin_bp.get("/api/acceso-medios")
+@admin_api
+def api_news_access():
+    from finmate.admin import news_access
+
+    return jsonify(news_access.overview())
+
+
+@admin_bp.post("/api/acceso-medios/chequear")
+@admin_api
+def api_news_access_check():
+    from finmate.admin import news_access
+
+    news_access.check()
+    return jsonify(news_access.overview())
+
+
 @admin_bp.post("/api/fondos/importar")
 @admin_api
 def api_funds_import():
