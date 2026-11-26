@@ -174,7 +174,7 @@ def logout():
 # ── Páginas ─────────────────────────────────────────────────────────────
 
 def _render(page: str):
-    return render_template(f"admin/{page}.html", page=page, title=_PAGES[page],
+    return render_template("admin/base.html", page=page, title=_PAGES[page], panes=list(_PAGES), pane_titles=_PAGES,
                            admin_email=current_admin(), admin_name=session.get("admin_name") or current_admin())
 
 
