@@ -1,0 +1,25 @@
+<div class="page-head"><div><p class="faint small">Panel de administrador</p><h1>Inbox</h1>
+  <p class="muted" style="margin-top:6px">Seguridad del sistema, solicitudes de acceso de números nuevos y feedback de la web.</p></div></div>
+<section class="card glass" id="seguridad">
+  <div class="card-head"><div><h2>Seguridad</h2><p>Actividad sospechosa y chequeos automáticos (todos los días a las 4:17 y una revisión completa el día 1 de cada mes). Lo grave también te llega por WhatsApp.</p></div>
+    <div class="row-actions"><button class="btn ghost sm" type="button" id="sec-check">Ejecutar chequeo ahora</button>
+      <button class="btn ghost sm" type="button" id="sec-all">Marcar todo como revisado</button></div></div>
+  <div class="sec-status" id="sec-status"><span class="sec-dot"></span><div><p class="strong" id="sec-title">Cargando…</p><p class="faint small" id="sec-sub"></p></div></div>
+  <div class="chips" id="sec-filter" style="margin-top:12px">
+    <button class="chip" aria-pressed="true" data-f="open">Por revisar</button><button class="chip" aria-pressed="false" data-f="all">Todo el historial</button></div>
+  <ul class="list inbox-list" id="sec-list"><li class="empty">Cargando…</li></ul>
+  <div id="sec-msg" style="margin-top:10px"></div>
+</section>
+<section class="card glass">
+  <div class="card-head"><div><h2>Solicitudes de acceso</h2><p>Cuando un número nuevo le escribe, el bot le pide nombre y correo y la solicitud aparece aquí. Al aprobarla, Finmate le avisa por WhatsApp.</p></div></div>
+  <ul class="list inbox-list" id="ib-req"><li class="empty">Cargando…</li></ul>
+  <div id="ib-req-msg" style="margin-top:10px"></div>
+</section>
+<section class="card glass">
+  <div class="card-head"><div><h2>Feedback</h2><p>Lo que mandan los usuarios desde el panel web (también llega a claude.heymate@gmail.com).</p></div></div>
+  <div class="chips" id="fb-filter" style="margin-top:12px">
+    <button class="chip" aria-pressed="true" data-f="open">Por trabajar</button><button class="chip" aria-pressed="false" data-f="nuevo">Nuevos</button>
+    <button class="chip" aria-pressed="false" data-f="en_curso">En curso</button><button class="chip" aria-pressed="false" data-f="resuelto">Resueltos</button>
+    <button class="chip" aria-pressed="false" data-f="all">Todos</button></div>
+  <ul class="list inbox-list" id="ib-fb"><li class="empty">Cargando…</li></ul>
+</section>

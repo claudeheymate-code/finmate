@@ -1,0 +1,33 @@
+<div class="page-head"><div><p class="faint small">Panel de administrador</p><h1>Anuncios</h1>
+  <p class="muted" style="margin-top:6px">Mensajes para todos los usuarios: cambios en Finmate, funciones nuevas o avisos importantes. Llegan por WhatsApp y quedan en la conversación, así el bot puede responder dudas sobre ellos.</p></div></div>
+<div class="ann-grid">
+  <section class="card glass">
+    <div class="card-head"><div><h2>Nuevo anuncio</h2><p>Escribe el mensaje, o anota en pocas palabras lo que cambió y pide ayuda para redactarlo.</p></div>
+      <button class="btn ghost sm" type="button" id="an-example">Usar ejemplo</button></div>
+    <form id="an-form">
+      <div class="field" style="margin-top:14px"><label for="an-title">Título <span class="faint">(opcional)</span></label>
+        <input id="an-title" maxlength="120" placeholder="Ej: Ahora puedes calificar tus noticias"></div>
+      <div class="field" style="margin-top:12px"><label for="an-body">Mensaje</label>
+        <textarea id="an-body" rows="10" maxlength="3000" placeholder="Qué cambió, para qué le sirve al usuario y qué tiene que hacer (si algo)."></textarea>
+        <p class="faint small ann-count" id="an-count">0 / 3000</p></div>
+      <div class="form-actions" style="margin-top:4px"><button class="btn ghost" type="button" id="an-ai">✨ Ayúdame a redactar</button>
+        <span class="faint small">Toma lo que escribiste como notas y lo deja listo (puedes editarlo después).</span></div>
+      <fieldset class="ann-aud"><legend class="strong">¿A quién?</legend>
+        <div class="chips" id="an-aud">
+          <button type="button" class="chip" data-aud="test" aria-pressed="true">Solo a mí (prueba)</button>
+          <button type="button" class="chip" data-aud="all" aria-pressed="false">Todos los usuarios</button>
+        </div>
+        <p class="faint small" id="an-reach" style="margin-top:10px"></p></fieldset>
+      <div class="form-actions"><button class="btn" type="submit" id="an-send">Enviar prueba</button>
+        <button class="btn ghost" type="button" id="an-cancel" hidden>Cancelar</button><span id="an-msg"></span></div>
+    </form>
+  </section>
+  <section class="card glass ann-preview-card">
+    <div class="card-head"><div><h2>Así se verá</h2><p>Vista previa en WhatsApp</p></div></div>
+    <div class="wa-screen"><div class="wa-bubble" id="an-preview"><span class="faint">Tu anuncio aparecerá aquí.</span></div></div>
+  </section>
+</div>
+<section class="card glass">
+  <div class="card-head"><div><h2>Anuncios enviados</h2><p>WhatsApp solo deja escribir libremente a quien habló con el bot en las últimas 24 h. A los demás el anuncio les llega apenas vuelvan a escribir.</p></div></div>
+  <ul class="list inbox-list" id="an-list"><li class="empty">Cargando…</li></ul>
+</section>

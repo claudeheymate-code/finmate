@@ -30,7 +30,7 @@
       <a href="{{ url_for('admin.fuentes') }}" aria-label="Fuentes" title="Fuentes" {% if page == 'fuentes' %}aria-current="page"{% endif %}>{{ icon('layers') }}<span class="tab-label">Fuentes</span></a>
     </nav>
     <main id="main" class="admin-main">
-      {% block content %}{% endblock %}
+      <div class="pager" id="pager"><div class="track" id="track">{% for p in panes %}<section class="pane{% if p == page %} active{% endif %}" data-pane="{{ p }}" data-title="{{ pane_titles[p] }}"{% if p != page %} aria-hidden="true"{% endif %}>{% include "admin/_pane_" ~ p ~ ".html" %}</section>{% endfor %}</div></div>
     </main>
   </div>
 </div>
