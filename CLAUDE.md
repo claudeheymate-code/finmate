@@ -743,5 +743,14 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
 - Admin → Fuentes → "CMF — Fondos mutuos" → **Probar**: baja el último día, lo guarda y, si
   falta, arranca la carga de 13 meses. Es la forma de confirmar que la CMF responde desde Railway
   (desde la nube de Claude daba 403; desde el computador de Joaco funciona).
-- Si Railway recibe 403: plan B = subir el archivo diario desde el computador de Joaco.
+- **Lo que se aprendió en producción (25 nov):** desde Railway la CMF entrega bien los días
+  recientes, pero para fechas antiguas responde «No se encuentran datos» (desde el computador de
+  Joaco sí las entrega). Además el export no tiene datos de ene–sep 2026 para nadie (sí 2025 y
+  las últimas semanas). Por eso la historia se cargó a mano: Admin → Fuentes → «Importar Excel de
+  la CMF» (la fecha se lee del archivo; **de a 2 archivos**, el servidor acepta máx. 2 MB por
+  envío). Importados: 24 y 30-nov-2025, 31-dic-2025, 23 al 27 y 31-oct-2026. Con eso hay base
+  para 1 mes, año (31-dic) y 12 meses (fecha guardada más cercana, ±20 días).
+- Los plazos usan la fecha guardada más cercana con tolerancia (1m ±7 días, año ≤10 días antes del
+  31-dic, 12m ±20 días); si no hay, la rentabilidad sale «—».
+- Archivos de trabajo en la carpeta local `_to_delete/` (Excel bajados): Joaco puede borrarla.
 - Tests: `tests/test_fondos_cmf.py` (+ `tests/fixtures/cmf_fondos_muestra.xls`, recorte real).
