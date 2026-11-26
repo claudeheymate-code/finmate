@@ -60,6 +60,18 @@ def _fetch_html(url: str) -> str:
         return r.text
 
 
+_PAYWALL_RE = re.compile(r'"isAccessibleForFree"\s*:\s*"?(false|False|FALSE)"?')
+
+
+def is_paywalled(raw_html: str) -> bool:
+    """True si la página se declara de pago (schema.org isAccessibleForFree=false).
+
+    Algunos medios (ej. el DF) mandan el texto completo escondido en la página aunque
+    sea de suscriptores: se respeta la marca y esos artículos se tratan como solo titular.
+    """
+    return bool(_PAYWALL_RE.search(raw_html or ""))
+
+
 def extract_article(url: str, max_chars: int = 6000) -> str:
     """Texto principal de la página (o "" si no se pudo)."""
     if not url or not url.startswith(("http://", "https://")):
@@ -70,7 +82,7 @@ def extract_article(url: str, max_chars: int = 6000) -> str:
             import trafilatura
 
             raw = _fetch_html(url)
-            if not raw:
+            if not raw or is_paywalled(raw):
                 return ""
             text = trafilatura.extract(raw, include_comments=False, include_tables=False,
                                        favor_precision=True) or ""
@@ -79,7 +91,7 @@ def extract_article(url: str, max_chars: int = 6000) -> str:
             logger.info(f"No pude leer el artículo {url[:80]}: {e}")
             return ""
 
-    text = _cached(f"finmate:article:{url}", 6 * 3600, _do) or ""
+    text = _cached(f"finmate:article2:{url}", 6 * 3600, _do) or ""
     return text[:max_chars]
 
 
