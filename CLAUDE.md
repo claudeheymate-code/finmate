@@ -772,3 +772,14 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
   usa; (4) Admin → Fuentes → «Grandes medios (RSS)» → Probar (feeds que responden).
 - Tests: `tests/test_grandes_medios.py` + muestras reales en `tests/fixtures/rss/`. En los tests
   la red de RSS está apagada por un fixture de `conftest.py`. 246/246.
+
+## 26 nov 2026 — Qué puede leer el bot de cada medio (Admin → Fuentes)
+
+- Tarjeta «¿Qué puede leer el bot de cada medio?» (`finmate/admin/news_access.py`, API
+  `/admin/api/acceso-medios` y `/chequear`): Texto completo (CNBC, SEC EDGAR, The Guardian si hay
+  `GUARDIAN_API_KEY`), Mixto (Diario Financiero; Finnhub/Marketaux/Bing según el sitio) y Solo
+  titulares (WSJ y MarketWatch 401; Bloomberg, FT y The Economist 403; Reuters 401). Comprobado
+  artículo por artículo el 26 nov; el botón «Comprobar ahora» abre los últimos artículos de cada medio.
+- El lector de artículos (`news_content.extract_article`) ahora respeta `isAccessibleForFree=false`
+  (schema.org): el DF manda el texto de suscriptores escondido en la página y no se usa.
+- Plantilla `finmate_buenos_dias`: seguía «En revisión» el 26 nov a las 6:43.
