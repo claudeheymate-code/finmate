@@ -754,3 +754,21 @@ cuando el usuario escribe, `webhook` llama `daily_brief.deliver_pending_brief` �
   31-dic, 12m ±20 días); si no hay, la rentabilidad sale «—».
 - Archivos de trabajo en la carpeta local `_to_delete/` (Excel bajados): Joaco puede borrarla.
 - Tests: `tests/test_fondos_cmf.py` (+ `tests/fixtures/cmf_fondos_muestra.xls`, recorte real).
+
+## 25 nov 2026 (noche) — Grandes medios por RSS (WSJ, Bloomberg, FT, The Economist, Reuters…)
+
+- `finmate/data_sources/premium_news.py`: 15 feeds públicos y gratis — WSJ (mercados, economía,
+  empresas), MarketWatch, Bloomberg (mercados, economía), FT (mercados, economía global), The
+  Economist (finanzas y economía, empresas, editoriales), Reuters (vía búsqueda de Google News,
+  Reuters ya no tiene RSS), CNBC y Diario Financiero. WSJ usa `feeds.content.dowjones.io` (las
+  direcciones viejas feeds.a.dj.com dejaron de actualizarse en ene 2025). Todos probados el 25 nov.
+- Solo titular + resumen corto + link (el artículo es de pago: no se lee ni se republica). Cache de
+  10 min por feed; si un feed falla se usa lo último leído.
+- Usos: (1) `news_alerts` busca en estos medios noticias que nombran a las empresas seguidas
+  (nombre corto de Finnhub o ticker de 3+ letras) y las entrega con el perfil de notas 1–3;
+  (2) resúmenes de jornada: los temas que más medios cubren entran al párrafo de Claude y a la
+  sección «🌎 En los grandes medios» (3 titulares traducidos con Haiku, cache 1 día);
+  (3) tool `get_premium_news` (temas del día, o por tema/medio) y `get_news_detail` también los
+  usa; (4) Admin → Fuentes → «Grandes medios (RSS)» → Probar (feeds que responden).
+- Tests: `tests/test_grandes_medios.py` + muestras reales en `tests/fixtures/rss/`. En los tests
+  la red de RSS está apagada por un fixture de `conftest.py`. 246/246.
