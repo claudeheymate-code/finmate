@@ -132,6 +132,19 @@ def _t_cmf_fondos():
                       + " · " + history_text(funds.status()))
     return False, "la CMF respondió, pero sin datos en los últimos 5 días"
 
+def _t_premium():
+    from finmate.data_sources import premium_news
+
+    res = premium_news.health()
+    ok = [k for k, v in res.items() if v.get("ok")]
+    bad = [k for k, v in res.items() if not v.get("ok")]
+    total = sum(v.get("items", 0) for v in res.values())
+    detail = f"{len(ok)}/{len(res)} feeds responden · {total} titulares"
+    if bad:
+        detail += " · fallan: " + ", ".join(bad)
+    return len(ok) >= len(res) // 2, detail
+
+
 def _t_claude():
     from config.settings import ANTHROPIC_MODEL_DEFAULT
 
@@ -150,6 +163,11 @@ SOURCES = [
      "gives": "Búsqueda de noticias por tema en español e inglés, con link directo al medio.",
      "used_for": "Responder «qué pasó con…» sobre cualquier tema, no solo empresas.", "plan": "Sin clave.",
      "url": "https://www.bing.com/news"},
+    {"id": "premium", "name": "Grandes medios (RSS)", "kind": "Noticias", "env": None, "test": _t_premium,
+     "gives": "Titulares y resúmenes de WSJ, MarketWatch, Bloomberg, Financial Times, The Economist, Reuters (vía Google News), CNBC y Diario Financiero.",
+     "used_for": "Avisos de noticias de tus activos, sección «En los grandes medios» de los resúmenes de jornada y respuestas a «¿qué dicen los medios?».",
+     "plan": "Gratis (RSS públicos). Solo titular, resumen y link: el artículo completo es de pago y no se lee ni se republica.",
+     "url": "https://www.economist.com/rss"},
     {"id": "articles", "name": "Lectura de artículos (trafilatura)", "kind": "Contenido", "env": None, "test": _t_article,
      "gives": "El texto completo de una noticia a partir de su link.", "used_for": "Que el bot lea el contenido y no se quede en el titular.",
      "plan": "Sin clave. No funciona con medios con muro de pago.", "url": "https://trafilatura.readthedocs.io"},
