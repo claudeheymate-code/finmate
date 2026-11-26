@@ -4,6 +4,16 @@
   <p class="muted" style="margin-top:6px">De dónde se informa Finmate. Pruébalas en vivo y anota ideas para mejorar.</p></div>
   <button class="btn ghost" type="button" id="src-test-all">Probar todas</button></div>
 <section class="src-grid" id="src-grid"><p class="empty">Cargando…</p></section>
+<section class="card glass" id="cmf-import">
+  <div class="card-head"><div><h2>Importar Excel de la CMF (fondos mutuos)</h2>
+    <p>Para cargar fechas que la CMF no entrega al servidor. Usa el export «Por una fecha», administradora «Todas», en Excel. La fecha se lee del archivo.</p></div></div>
+  <div class="form-actions" style="margin-top:12px">
+    <label class="sr-only" for="cmf-files">Archivos .xls de la CMF</label>
+    <input type="file" id="cmf-files" accept=".xls,application/vnd.ms-excel" multiple>
+    <button class="btn" type="button" id="cmf-import-btn">Importar</button>
+  </div>
+  <div id="cmf-import-msg" style="margin-top:10px"></div>
+</section>
 <section class="card glass">
   <div class="card-head"><div><h2>Ideas e innovaciones</h2><p>Fuentes nuevas que quieres probar, mejoras, pendientes.</p></div></div>
   <div class="field" style="margin-top:12px"><label for="src-ideas" class="sr-only">Ideas</label><textarea id="src-ideas" rows="6" maxlength="2000" placeholder="Ej: probar noticias de Bloomberg Línea, sumar CMF para fondos chilenos…"></textarea></div>
