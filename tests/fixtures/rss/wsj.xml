@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0"
+>
+<channel>
+<title>WSJ.com: Markets</title>
+<description>Markets</description>
+<link>https://www.wsj.com/finance</link>
+<language>en-us</language>
+<copyright>Copyright &#169; Dow Jones &amp; Company, Inc. All rights reserved.</copyright>
+<lastBuildDate>Thu, 26 Nov 2026 00:50:25 GMT</lastBuildDate>
+<image>
+<title>WSJ.com: Markets</title>
+<url>http://online.wsj.com/img/wsj_sm_logo.gif</url>
+<link>https://www.wsj.com/finance</link>
+</image>
+<item>
+<guid isPermaLink="false">lc-wsj-stock-market-today-dow-sp-500-nasdaq-11-25-2026</guid>
+<title>Stock Market News, Nov. 25, 2026: Stocks Pare Losses as Tech Selloff Eases</title>
+<description>Nasdaq tumbles; Nvidia and Micron slump</description>
+<link>https://www.wsj.com/livecoverage/stock-market-today-dow-sp-500-nasdaq-11-25-2026?mod=rss_markets_main</link>
+<pubDate>Wed, 25 Nov 2026 09:56:46 GMT</pubDate>
+<media:content url="https://images.wsj.net/im-925351" medium="image" type="image/jpeg">
+</media:content>
+</item><item>
+<guid isPermaLink="false">WP-WSJ-0004096129</guid>
+<title>Aschenbrenner&#x2019;s Situational Awareness Tells Investors It Lost 65% in Third Quarter</title>
+<description>The hedge fund that nearly went out of business after steep losses this summer said it has worked to learn from its mistakes.</description>
+<link>https://www.wsj.com/finance/investing/aschenbrenners-situational-awareness-tells-investors-it-lost-65-in-third-quarter-de8e9797?mod=rss_markets_main</link>
+<pubDate>Thu, 26 Nov 2026 00:03:00 GMT</pubDate>
+<dc:creator>Anissa Gardizy</dc:creator>
+<dc:creator>Peter Rudegeair</dc:creator>
+<media:content url="https://images.wsj.net/im-27526714" medium="image" type="image/jpeg">
+<media:credit>Josh Edelson for Situational Awareness</media:credit>
+</media:content>
+</item><item>
+<guid isPermaLink="false">WP-WSJ-0004095757</guid>
+<title>Jensen Huang, Trump and the 11 Days That Rocked Nvidia</title>
+<description>Watch WSJ reporters break down what happened in the days after Nvidia ousted its CEO&#x2014;and then brought him back.</description>
+<link>https://www.wsj.com/finance/stocks/jensen-huang-trump-and-the-11-days-that-rocked-nvidia-604fff0b?mod=rss_markets_main</link>
+<pubDate>Wed, 25 Nov 2026 22:27:00 GMT</pubDate>
+<media:content url="https://images.wsj.net/im-58488429" medium="image" type="image/jpeg">
+<media:credit>Annie Zhao</media:credit>
+</media:content>
+</item><item>
+<guid isPermaLink="false">WP-WSJ-0004095579</guid>
+<title>Wall Street Can&#x2019;t Seem to Find Its Footing in the Chaos of the New AI Trade</title>
+<description>The Nasdaq composite plunged as much as 4.5% Wednesday before paring losses.</description>
+<link>https://www.wsj.com/finance/stocks/wall-street-cant-seem-to-find-its-footing-in-the-chaos-of-the-new-ai-trade-b64564e0?mod=rss_markets_main</link>
+<pubDate>Wed, 25 Nov 2026 21:48:00 GMT</pubDate>
+<dc:creator>Hannah Erin Lang</dc:creator>
+<dc:creator>Jack Pitcher</dc:creator>
+<dc:creator>Jasmine Li</dc:creator>
+<media:content url="https://images.wsj.net/im-02216921" medium="image" type="image/jpeg">
+<media:credit>Spencer Platt/Getty Images</media:credit>
+</media:content>
+</item><item>
+<guid isPermaLink="false">WP-WSJ-0004095168</guid>
+<title>Stocks Finish Lower After Wild Session</title>
+<description>Plus, tariffs are back on the agenda and Nvidia gets a warning</description>
+<link>https://www.wsj.com/finance/stocks/stocks-finish-lower-after-wild-session-df50cdeb?mod=rss_markets_main</link>
+<pubDate>Wed, 25 Nov 2026 21:23:00 GMT</pubDate>
+<media:content url="https://images.wsj.net/im-45396261" medium="image" type="image/jpeg">
+<media:credit>Heather Diehl/Bloomberg News</media:credit>
+</media:content>
+</item><item>
+<guid isPermaLink="false">WP-WSJ-0004094354</guid>
+<title>Dan Loeb&#x2019;s Hedge Fund Returns to Startup Investing Years After FTX Loss</title>
+<description>The billionaire told investors that Third Point overhauled its process for investing in late-stage private companies.</description>
+<link>https://www.wsj.com/finance/investing/dan-loebs-hedge-fund-returns-to-startup-investing-years-after-ftx-loss-46f36108?mod=rss_markets_main</link>
+<pubDate>Wed, 25 Nov 2026 19:33:00 GMT</pubDate>
+<dc:creator>Peter Rudegeair</dc:creator>
+<media:content url="https://images.wsj.net/im-25497544" medium="image" type="image/jpeg">
+<media:credit>Yuki Iwamura/Bloomberg News</media:credit>
+</media:content>
+</item></channel></rss>

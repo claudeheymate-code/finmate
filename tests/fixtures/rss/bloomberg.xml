@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+    <channel>
+        <title><![CDATA[Bloomberg Markets]]></title>
+        <description><![CDATA[Bloomberg Markets]]></description>
+        <link>http://bloomberg.com/markets/</link>
+        <image>
+            <url>http://www.bloomberg.com/feeds/static/images/bloomberg_logo_blue.png</url>
+            <title>Bloomberg Markets</title>
+            <link>http://bloomberg.com/markets/</link>
+        </image>
+        <generator>RSS for Node</generator>
+        <lastBuildDate>Thu, 26 Nov 2026 00:50:19 GMT</lastBuildDate>
+        <atom:link href="https://www.bloomberg.com/feeds/markets/news.rss" rel="self" type="application/rss+xml"/>
+        <copyright><![CDATA[Copyright 2026 BLOOMBERG L.P. ALL RIGHTS RESERVED]]></copyright>
+        <language><![CDATA[en]]></language>
+        <item>
+            <title><![CDATA[Asian Stocks Rise as Dip Buyers Stabilize AI Trade: Markets Wrap]]></title>
+            <description><![CDATA[Asian stocks rose after dip buyers helped drive a late recovery on Wall Street, bringing some stability to markets after doubts over the artificial intelligence trade spurred a flight to Treasuries.]]></description>
+            <link>https://www.bloomberg.com/news/articles/2026-11-25/stock-market-today-dow-s-p-live-updates</link>
+            <guid isPermaLink="false">TP2QUNN3N09T00</guid>
+            <dc:creator><![CDATA[Anand Krishnamoorthy]]></dc:creator>
+            <pubDate>Wed, 25 Nov 2026 22:10:42 GMT</pubDate>
+        </item><item>
+            <title><![CDATA[Gold Edges Lower as US Inflation Data Fuels Bets for Rate Hikes]]></title>
+            <description><![CDATA[Gold edged lower, after rising on Wednesday, as inflation data reinforced bets the Federal Reserve will hike interest rates further.]]></description>
+            <link>https://www.bloomberg.com/news/articles/2026-11-26/gold-edges-lower-as-us-inflation-data-fuels-bets-for-rate-hikes</link>
+            <guid isPermaLink="false">TP2T0LT9NJLW00</guid>
+            <dc:creator><![CDATA[Wendy Wells]]></dc:creator>
+            <pubDate>Thu, 26 Nov 2026 00:18:09 GMT</pubDate>
+        </item><item>
+            <title><![CDATA[Emerging Asia’s Best Bond Rally Seen Extending in Philippines]]></title>
+            <description><![CDATA[Philippine government bonds look poised to build on this month’s sharp rally as expectations of easing price pressures and a landmark global index inclusion may stimulate fresh demand next year, according to some market watchers.]]></description>
+            <link>https://www.bloomberg.com/news/articles/2026-11-26/emerging-asia-s-best-bond-rally-seen-extending-in-philippines</link>
+            <guid isPermaLink="false">TOMTANKJH6V800</guid>
+            <dc:creator><![CDATA[Marcus Wong]]></dc:creator>
+            <pubDate>Thu, 26 Nov 2026 00:05:45 GMT</pubDate>
+        </item><item>
+            <title><![CDATA[China 2027 Growth to Top 4.5%, Ex-Official Says]]></title>
+            <description><![CDATA[China’s economy is on track to grow more than 4.5% in 2027, according to former Vice Finance Minister Zhu Guangyao. Speaking to Bloomberg TV’s Avril Hong in Singapore on Wednesday, Zhu noted that Beijing still has room to loosen fiscal policy next year, while also stressing the need for AI regulation. (Source: Bloomberg)]]></description>
+            <link>https://www.bloomberg.com/news/videos/2026-11-25/china-2027-growth-to-top-4-5-ex-official-says-video</link>
+            <guid isPermaLink="false">TP1WNORKV2TC00</guid>
+            <pubDate>Wed, 25 Nov 2026 23:54:41 GMT</pubDate>
+        </item><item>
+            <title><![CDATA[Would-Be RadioShack Revivers Settle SEC Fraud Suit Allegations]]></title>
+            <description><![CDATA[Three entrepreneurs accused of misleading investors about pandemic-era plans to revive distressed retailers including RadioShack and Pier 1 Imports agreed to pay more than $6.8 million to end a US regulator’s lawsuit claiming they were running a Ponzi-like scam.]]></description>
+            <link>https://www.bloomberg.com/news/articles/2026-11-25/would-be-radioshack-revivers-settle-sec-fraud-suit-allegations</link>
+            <guid isPermaLink="false">TKUW8AT96OSI00</guid>
+            <dc:creator><![CDATA[Nicola M White]]></dc:creator>
+            <pubDate>Wed, 25 Nov 2026 23:44:35 GMT</pubDate>
+        </item><item>
+            <title><![CDATA[Latest Oil Market News and Analysis for Nov. 26]]></title>
+            <description><![CDATA[Oil held a two-day gain as continued hostilities in the Middle East threatened to disrupt the recovery in the region’s crude exports.]]></description>
+            <link>https://www.bloomberg.com/news/articles/2026-11-25/latest-oil-market-news-and-analysis-for-nov-26</link>
+            <guid isPermaLink="false">TP1K7NT96OSG00</guid>
+            <dc:creator><![CDATA[Kanoko Matsuyama and Mia Gindis]]></dc:creator>
+            <pubDate>Wed, 25 Nov 2026 23:03:15 GMT</pubDate>
+        </item></channel></rss>

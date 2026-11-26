@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:metadata="http://search.cnbc.com/rss/2.0/modules/siteContentMetadata" version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <atom:link rel="self" type="application/rss+xml" href="https://www.cnbc.com/id/100003114/device/rss/rss.html"/>
+    <language>en-us</language>
+    <ttl>60</ttl>
+    <title>US Top News and Analysis</title>
+    <feed_asset>
+      <id>100003114</id>
+      <type>franchise</type>
+      <subtype>section</subtype>
+      <seo>https://www.cnbc.com/us-top-news-and-analysis/</seo>
+    </feed_asset>
+    <lastBuildDate>Thu, 26 Nov 2026 00:25 GMT</lastBuildDate>
+    <pubDate>Thu, 26 Nov 2026 00:25 GMT</pubDate>
+    <link>https://www.cnbc.com/us-top-news-and-analysis/</link>
+    <description><![CDATA[CNBC is the world leader in business news and real-time financial market coverage. Find fast, actionable information.]]></description>
+    <item>
+      <link>https://www.cnbc.com/2026/11/25/us-tariffs-trump-section-301.html</link>
+      <guid isPermaLink="false">108558929</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108558929</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>U.S. proposes new tariffs on 14 trading partners, including China and the EU</title>
+      <description><![CDATA[The new levies seek to counter foreign trade practices deemed unfair, discriminatory or burdensome to U.S. commerce.]]></description>
+      <pubDate>Wed, 25 Nov 2026 16:02:52 GMT</pubDate>
+    </item><item>
+      <link>https://www.cnbc.com/2026/11/25/vance-jensen-huang-nvidia-doj-investigation.html</link>
+      <guid isPermaLink="false">108559549</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108559549</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>Vance says he was assured Jensen Huang was not under DOJ investigation</title>
+      <description><![CDATA[Whether the Trump administration has investigated Jensen Huang for potential national security risks has been the subject of questions.]]></description>
+      <pubDate>Wed, 25 Nov 2026 21:00:08 GMT</pubDate>
+    </item><item>
+      <link>https://www.cnbc.com/2026/11/25/spacex-fcc-satellite-approval.html</link>
+      <guid isPermaLink="false">108559450</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108559450</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>SpaceX wins FCC approval to deploy 1 million orbital data center satellites</title>
+      <description><![CDATA[SpaceX won approval from the FCC to put 1 million orbital data center satellites into space, a proposal that was opposed by Amazon and other groups.]]></description>
+      <pubDate>Wed, 25 Nov 2026 19:52:47 GMT</pubDate>
+    </item><item>
+      <link>https://www.cnbc.com/2026/11/25/kevin-warsh-greenspan-fed-rates-ai-inflation.html</link>
+      <guid isPermaLink="false">108559571</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108559571</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>Liesman: Why Greenspan could bet on productivity — and Warsh needs to hike</title>
+      <description><![CDATA[Alan Greenspan famously held the line on interest rates because he believed in the productivity promise of the internet boom. Why can't Kevin Warsh do the same?]]></description>
+      <pubDate>Wed, 25 Nov 2026 21:56:43 GMT</pubDate>
+    </item><item>
+      <link>https://www.cnbc.com/2026/11/25/macys-thanksgiving-day-parade-postponed.html</link>
+      <guid isPermaLink="false">108559635</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108559635</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>Macy&apos;s postpones Thanksgiving Day Parade due to severe weather</title>
+      <description><![CDATA[Macy's announced Wednesday that its annual Thanksgiving Day Parade is being postponed to Saturday due to severe weather.]]></description>
+      <pubDate>Wed, 25 Nov 2026 22:26:56 GMT</pubDate>
+    </item><item>
+      <link>https://www.cnbc.com/2026/11/26/india-auto-slaes-economy-suzuki-hyundai-toyota.html</link>
+      <guid isPermaLink="false">108558069</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108558069</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>Inside India newsletter: Roaring economy, foreign investors’ return and now record auto sales</title>
+      <description><![CDATA[Automakers in India are poised to sell over 30 million vehicles in the financial year ending March 2027.]]></description>
+      <pubDate>Thu, 26 Nov 2026 00:12:16 GMT</pubDate>
+    </item></channel></rss>
