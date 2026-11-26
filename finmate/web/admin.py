@@ -761,3 +761,27 @@ def api_source_note(sid):
     except ValueError as e:
         return _err(str(e))
     return jsonify({"ok": True})
+
+
+
+@admin_bp.post("/api/fondos/importar")
+@admin_api
+def api_funds_import():
+    """Importa Excel diarios de la CMF (export «por fecha», todas las administradoras)."""
+    from finmate.services import funds
+
+    files = request.files.getlist("files")
+    if not files:
+        return _err("Elige uno o más archivos .xls de la CMF.")
+    results = []
+    for f in files[:20]:
+        content = f.read(5 * 1024 * 1024 + 1)
+        if len(content) > 5 * 1024 * 1024:
+            results.append({"file": f.filename, "error": "archivo muy grande"})
+            continue
+        try:
+            results.append({"file": f.filename, **funds.import_file(content)})
+        except Exception as e:  # noqa: BLE001
+            results.append({"file": f.filename, "error": str(e)[:160]})
+    funds.prune()
+    return jsonify({"results": results, "status": funds.status()})
